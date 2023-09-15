@@ -267,8 +267,7 @@ if __name__ == "__main__":
                 'cam19': 21334211
                 }
 
-    data_root = "D:/Datasets/play"
-    cam_file = "camera_compress.json"
+    cam_file = "./camera.json"
     cam_param = json.load(open(cam_file))
     R = np.array(cam_param['cam0']['R']).reshape([3, 3])
     T = np.array(cam_param['cam0']['T'])
@@ -386,7 +385,7 @@ if __name__ == "__main__":
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                file = f"./dwpose/cello_0823_{cam_dict[cc]}/{ff}.json"
+                file = f"../dwpose/cello_0823_{cam_dict[cc]}/{ff}.json"
                 kp_2d_cc_ff = np.array(json.load(open(file)))
                 kp_2d_all_cams.append(kp_2d_cc_ff)
             except FileNotFoundError as e:
