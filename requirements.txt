@@ -1,0 +1,4 @@
+opencv-python~=4.8.0.76
+numpy~=1.24.4
+matplotlib~=3.7.2
+icecream~=2.1.3
