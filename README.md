@@ -15,7 +15,7 @@ git clone https://github.com/Yitongishere/cello_performance.git
 cd cello_performance
 conda create -n cello_performance python=3.8
 conda activate cello_performance
-pip install -r requirements.text
+pip install -r requirements.txt
 ```
 
 You need to prepare 2D key points coordinates in order to run our `triangulation.py`
