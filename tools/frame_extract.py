@@ -1,62 +1,99 @@
 import cv2
 import os
 
-def getFiles(dir, suffix): # 查找根目录，文件后缀 
+def getFiles(dir, suffix): # find the files with specific suffix
     res = []
-    for root, directory, files in os.walk(dir):  # =>当前根,根下目录,目录下的文件
+    for root, directory, files in os.walk(dir):
         for filename in files:
-            name, suf = os.path.splitext(filename) # =>文件名,文件后缀
+            name, suf = os.path.splitext(filename)
             if suf == suffix:
-                res.append(os.path.join(root, filename)) # =>吧一串字符串组合成路径
+                res.append(os.path.join(root, filename))
     return res
- 
-def extract_frames(video_path, output_path, frame_rate, camera_i):
-    # 创建输出路径
+
+
+# extract frames every x frames / seconds
+def extract_frames(video_path, output_path, interval, camera_i, bysec=False):
     os.makedirs(output_path, exist_ok=True)
- 
-    # 打开视频文件
+    # open the video file
     video = cv2.VideoCapture(video_path)
  
-    # 获取视频的帧率
+    # get the frame rate / sec
     fps = video.get(cv2.CAP_PROP_FPS)
-    print(f"获取视频的帧率:{fps}")
+    # print(f"\t Frame rate is: {fps}")
  
-    # 计算每隔多少帧抽取一帧
-    frame_interval = int(fps*frame_rate)
+    # calcu frame interval
+    if bysec == True: 
+        frame_interval = int(fps*interval)
+    else:
+        frame_interval = interval
     
-    # 初始化帧计数器
+    # count
     frame_count = 0
     num = 0
     while True:
-        # 读取视频的一帧
+        # get 1 frame
         ret, frame = video.read()
  
-        # 如果无法读取到帧，则退出循环
+        # if no frame afterward (end of the video), break
         if not ret:
             break
  
-        # 如果帧计数器是frame_interval的倍数，则保存该帧
+        # get frame at the beginning of the frame_interval
         if frame_count % frame_interval == 0:
-            # 构造保存路径
-            save_path = os.path.join(output_path, f"camera_{camera_i}.jpg")
- 
-            # 保存帧为图片
+            # save path for extracted frame
+            save_path = os.path.join(output_path, f"camera_{camera_i}_{num}.jpg")
             cv2.imwrite(save_path, frame)
- 
-            num = frame_count/82  #视频fps为25，设定为3.3s抽帧，相乘后82.5取的82，具体看自身情况
-            print(f"当前处理到第{num}张")
- 
-        # 增加帧计数器
+            num += 1
+        # next frame
         frame_count += 1
  
-    # 释放视频对象
     video.release()
 
 
-directory_path = "./dwpose/"    #修改此处为视频存放目录
-video_format = ".avi"       #修改此处为视频格式
-output_path = "./frames/"  #修改此处为输出路径
-frame_rate = 25   #每多少秒抽帧，此处设定为25秒抽取一张图片
-for i, file in enumerate(getFiles(directory_path, video_format)):  # =>查找以.py结尾的文件
-    extract_frames(file, output_path, frame_rate, i)
-    print(f"视频{i}处理完毕")
+# extract specific frames listed in the "frame_list"
+def extract_spec_frames(video_path, output_path,  camera_i, frame_list=[1, 200, 250]):
+    os.makedirs(output_path, exist_ok=True)
+    # open the video file
+    video = cv2.VideoCapture(video_path)
+
+    frame_count = 0
+    while True:
+        # get 1 frame
+        ret, frame = video.read()
+
+        # if no frame afterward (end of the video), break
+        if not ret:
+            print(f"{frame_count} frames in total.")
+            break
+
+        frame_count += 1
+        # get frame at the beginning of the frame_interval
+        if frame_count in frame_list:
+            # save path for extracted frame
+            save_path = os.path.join(output_path, f"camera_{camera_i}_{frame_count}.jpg")
+            cv2.imwrite(save_path, frame)
+
+    video.release()
+
+
+
+if __name__ == "__main__":
+    # path of the videos
+    directory_path = "../data/cello_0920_video"  
+    # video format  
+    video_format = ".avi"   
+    # output path    
+    output_path = "../extracted_frames/"  
+
+
+    # # set the interval (frame / sec)
+    # interval = 5
+    # for i, file in enumerate(getFiles(directory_path, video_format)):
+    #     extract_frames(file, output_path, interval, i, bysec=True)
+    #     print(f"The {i}th camera finished")
+
+    # specify the frames
+    frame_list = [1, 400, 401]
+    for i, file in enumerate(getFiles(directory_path, video_format)):
+        extract_spec_frames(file, output_path, i, frame_list)
+        print(f"The {i}th camera finished")
