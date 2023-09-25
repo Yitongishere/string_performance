@@ -1,6 +1,5 @@
 import cv2
 import os
-import glob
 
 def getFiles(dir, suffix): # find the files with specific suffix
     res = []
@@ -44,7 +43,8 @@ def extract_frames(video_path, output_path, interval, camera_i, bysec=False):
             # save path for extracted frame
             save_path = os.path.join(output_path, f"camera_{camera_i}_{num}.jpg")
             # two cameras with special placement
-            if video_path == r'../data/calib/calib_0\calib_0_21334181.avi' or video_path == r'../data/calib/calib_0\calib_0_21334237.avi':
+            if (video_path == r'../data/calib/calib_0/calib_0_21334181.avi' or
+                    video_path == r'../data/calib/calib_0/calib_0_21334237.avi'):
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
             else:
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
@@ -69,7 +69,6 @@ def extract_spec_frames(video_path, output_path,  camera_i, frame_list=[1, 200, 
 
         # if no frame afterward (end of the video), break
         if not ret:
-            print(f"{frame_count} frames in total.")
             break
 
         frame_count += 1
@@ -78,7 +77,8 @@ def extract_spec_frames(video_path, output_path,  camera_i, frame_list=[1, 200, 
             # save path for extracted frame
             save_path = os.path.join(output_path, f"camera_{camera_i}_{frame_count}.jpg")
             # two cameras with special placement
-            if video_path == r'../data/calib/calib_0\calib_0_21334181.avi' or video_path == r'../data/calib/calib_0\calib_0_21334237.avi':
+            if (video_path == '../data/calib_video/calib_0/calib_0_21334181.avi' or
+                    video_path == '../data/calib_video/calib_0/calib_0_21334237.avi'):
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
             else:
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
@@ -89,12 +89,28 @@ def extract_spec_frames(video_path, output_path,  camera_i, frame_list=[1, 200, 
 
 
 if __name__ == "__main__":
+
+    # set which calib set to deal with, specify [0-5]
+    calib_set_number = 0
     # path of the videos
-    directory_path = "../data/calib/calib_0"
+    directory_path = f"../data/calib_video/calib_{calib_set_number}"
     # video format  
-    video_format = ".avi"   
-    # output path    
-    output_path = "../calib_frames/"
+    video_format = ".avi"
+
+    # specify the frames
+    frame_list_set = [[70, 80, 90, 100, 110, 130, 140, 150, 300, 310],
+                      [10, 40, 70, 100, 130, 160, 190, 220, 250, 280],
+                      [10, 20, 70, 100, 130, 160, 190, 240, 250, 280],
+                      [10, 40, 70, 100, 130, 160, 190, 220, 250, 280],
+                      [10, 50, 70, 100, 130, 160, 190, 220, 250, 280],
+                      [10, 40, 70, 100, 130, 160, 190, 220, 250, 280]]
+
+    # output path
+    output_path = f"../calib_frames/calib_frames_{calib_set_number}/"
+    frame_list = frame_list_set[calib_set_number]
+    for i, file in enumerate(getFiles(directory_path, video_format)):
+        extract_spec_frames(file, output_path, i, frame_list)
+        print(f"Frames extraction in '{file}' finished")
 
 
     # set the interval (frame / sec)
@@ -102,11 +118,3 @@ if __name__ == "__main__":
     # for i, file in enumerate(getFiles(directory_path, video_format)):
     #     extract_frames(file, output_path, interval, i, bysec=True)
     #     print(f"The {i}th camera finished")
-
-    # specify the frames
-    frame_list = [1, 100]
-    # frame_list = [1, 50, 100, 150, 200, 250, 300]
-    for i, file in enumerate(getFiles(directory_path, video_format)):
-        print(file)
-        extract_spec_frames(file, output_path, i, frame_list)
-        print(f"The {i}th camera finished")
