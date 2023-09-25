@@ -214,7 +214,7 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_joint, n
             inlier_set = sampled_cam.copy()
 
         inlier_list = sorted(list(inlier_set))
-        ic(j, inlier_list)
+        # ic(j, inlier_list)
         # if len(inlier_list) > 2:
             # ic(j, inlier_list)
         kp3d = triangulate(keypoints_mview[inlier_list, j, :2], projection_matrices[inlier_list])
@@ -267,7 +267,7 @@ if __name__ == "__main__":
                 'cam19': 21334211
                 }
 
-    cam_file = "./camera.json"
+    cam_file = "./camera_new.json"
     cam_param = json.load(open(cam_file))
     R = np.array(cam_param['cam0']['R']).reshape([3, 3])
     T = np.array(cam_param['cam0']['T'])
@@ -379,13 +379,14 @@ if __name__ == "__main__":
 
     # define frame number
     # ff = 1
-    # for ff in range(1,151):
-    for ff in range(50,51):
+    xlim, ylim, zlim = None, None, None
+    for ff in range(1, 494):
+    # for ff in range(50,51):
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                file = f"../dwpose/cello_0823_{cam_dict[cc]}/{ff}.json"
+                file = f"../dwpose/cello_0920_2_{cam_dict[cc]}/{ff}.json"
                 kp_2d_cc_ff = np.array(json.load(open(file)))
                 kp_2d_all_cams.append(kp_2d_cc_ff)
             except FileNotFoundError as e:
@@ -398,17 +399,17 @@ if __name__ == "__main__":
         # ic(kp_2d_all_cams)
         # kp_3d = triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, kpt_thr=0.6)
         kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, niter=20, epsilon=15, kpt_thr=0.5)
-
         # Remove hand and face
         # kp_2d_all_cams = kp_2d_all_cams[:, 0:24, :]
         # kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=23, niter=20, epsilon=130)
         # ic(kp_3d.shape)
-        xlim, ylim, zlim = compute_axis_lim(kp_3d)
+        if xlim is None:
+            xlim, ylim, zlim = compute_axis_lim(kp_3d)
         # ic(xlim, ylim, zlim)
         # plt.ion()
         fig = plt.figure(figsize=[10, 10])
         axes3 = fig.add_subplot(projection="3d")
-        axes3.view_init(azim=90, elev=75, roll=0)
+        axes3.view_init(azim=135, elev=-20, roll=-45)
         # view = (0, 90)
         axes3.set_xlim3d(xlim)
         axes3.set_ylim3d(ylim)
@@ -424,6 +425,8 @@ if __name__ == "__main__":
         coll_3d = Line3DCollection(segs3d, linewidths=1)
         axes3.add_collection(coll_3d)
 
-        # plt.savefig(f'./kp_3d_front/sample{ff}.jpg')
+        plt.savefig(f'../kp_3d/sample{ff}.jpg')
         # plt.ioff()
         plt.show()
+
+    # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
