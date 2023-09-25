@@ -92,19 +92,19 @@ def extract_spec_frames(video_path, output_path, camera_num, frame_list=[1, 200,
 if __name__ == "__main__":
 
     # set which calib set to deal with, specify [0-5]
-    calib_set_number = 3
+    calib_set_number = 5
     # path of the videos
-    directory_path = f"../calib_{calib_set_number}"
+    directory_path = f"../data/calib_video/calib_{calib_set_number}"
     # video format  
     video_format = ".avi"
 
     # specify the frames
     frame_list_set = [[70, 80, 90, 100, 110, 130, 140, 150, 300, 310],
-                      [10, 40, 70, 100, 130, 160, 190, 220, 250, 280],
+                      [10, 40, 70, 100, 130, 160, 190, 220, 250, 260],
                       [10, 20, 70, 100, 130, 160, 190, 240, 250, 280],
                       [10, 40, 70, 100, 130, 160, 190, 220, 250, 280],
-                      [10, 50, 70, 100, 130, 160, 190, 220, 250, 280],
-                      [10, 40, 70, 100, 130, 160, 190, 220, 250, 280]]
+                      [10, 50, 70, 100, 130, 160, 190, 220, 250, 260],
+                      [10, 40, 70, 100, 130, 160, 190, 220, 250, 260]]
 
     # output path
     output_path = f"../calib_frames"
