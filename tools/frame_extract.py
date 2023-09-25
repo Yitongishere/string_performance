@@ -43,8 +43,8 @@ def extract_frames(video_path, output_path, interval, camera_i, bysec=False):
             # save path for extracted frame
             save_path = os.path.join(output_path, f"camera_{camera_i}_{num}.jpg")
             # two cameras with special placement
-            if (video_path == r'../data/calib/calib_0/calib_0_21334181.avi' or
-                    video_path == r'../data/calib/calib_0/calib_0_21334237.avi'):
+            if (video_path == r'../data/calib_video/calib_0/calib_0_21334181.avi' or
+                    video_path == r'../data/calib_video/calib_0/calib_0_21334237.avi'):
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
             else:
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
