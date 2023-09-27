@@ -21,7 +21,7 @@ from mmdet.apis import inference_detector, init_detector
 
 '''
 configs and models for pose estimator (2d kept detection) and detector (bbox detection) should be prepared ahead
-preferred pose estimator model link: https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/view
+preferred pose estimator model link: https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/
 '''
 def visualize(pose_estimator, img, data_samples):
     # 半径
