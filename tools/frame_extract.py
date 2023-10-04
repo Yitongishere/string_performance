@@ -1,8 +1,9 @@
 import cv2
 import os
 import re
+import glob
 
-def getFiles(dir, suffix): # find the files with specific suffix
+def getFiles(dir, suffix):  # find the files with specific suffix
     res = []
     for root, directory, files in os.walk(dir):
         for filename in files:
@@ -17,28 +18,28 @@ def extract_frames(video_path, output_path, interval, camera_i, bysec=False):
     os.makedirs(output_path, exist_ok=True)
     # open the video file
     video = cv2.VideoCapture(video_path)
- 
+
     # get the frame rate / sec
     fps = video.get(cv2.CAP_PROP_FPS)
     # print(f"\t Frame rate is: {fps}")
- 
+
     # calcu frame interval
-    if bysec == True: 
-        frame_interval = int(fps*interval)
+    if bysec == True:
+        frame_interval = int(fps * interval)
     else:
         frame_interval = interval
-    
+
     # count
     frame_count = 0
     num = 0
     while True:
         # get 1 frame
         ret, frame = video.read()
- 
+
         # if no frame afterward (end of the video), break
         if not ret:
             break
- 
+
         # get frame at the beginning of the frame_interval
         if frame_count % frame_interval == 0:
             # save path for extracted frame
@@ -53,7 +54,7 @@ def extract_frames(video_path, output_path, interval, camera_i, bysec=False):
             num += 1
         # next frame
         frame_count += 1
- 
+
     video.release()
 
 
@@ -64,7 +65,7 @@ def extract_spec_frames(video_path, output_path, camera_num, frame_list=[1, 200,
     video = cv2.VideoCapture(video_path)
 
     frame_count = 0
-        
+
     while True:
         # get 1 frame
         ret, frame = video.read()
@@ -88,14 +89,13 @@ def extract_spec_frames(video_path, output_path, camera_num, frame_list=[1, 200,
     video.release()
 
 
-
-if __name__ == "__main__":
-
+# TODO: reconstruct the code
+def extract_calib_frame(directory_path, output_path):
     # set which calib set to deal with, specify [0-5]
     calib_set_number = 5
     # path of the videos
     directory_path = f"../data/calib_video/calib_{calib_set_number}"
-    # video format  
+    # video format
     video_format = ".avi"
 
     # specify the frames
@@ -108,15 +108,15 @@ if __name__ == "__main__":
 
     # output path
     output_path = f"../calib_frames"
-    
+
     if not os.path.exists(output_path):
         os.mkdir(output_path)
-    
+
     output_path += os.sep + f"calib_frames_{calib_set_number}"
-    
+
     if not os.path.exists(output_path):
         os.mkdir(output_path)
-    
+
     frame_list = frame_list_set[calib_set_number]
     for i, file in enumerate(getFiles(directory_path, video_format)):
         save_path = output_path
@@ -129,9 +129,36 @@ if __name__ == "__main__":
         extract_spec_frames(file, save_path, cam_num, frame_list)
         print(f"Frames extraction in '{file}' finished")
 
-
     # set the interval (frame / sec)
     # interval = 1
     # for i, file in enumerate(getFiles(directory_path, video_format)):
     #     extract_frames(file, output_path, interval, i, bysec=True)
     #     print(f"The {i}th camera finished")
+
+
+# Extract frames interval: [start : end]
+def extract_frames_interval(files_path, output_path, start, end):
+    videos_path = glob.glob(files_path)
+    base_name = [os.path.basename(i) for i in videos_path]
+    file_name = [os.path.splitext(i)[0] for i in base_name]
+    cam_nums = [i.split('_')[-1] for i in file_name]
+    frame_list = [i for i in range(start, end+1)]
+
+    print(videos_path)
+
+    for i, video_path in enumerate(videos_path):
+        # save_path = f'{output_path}/{cam_num[i]}'
+        # if not os.path.exists(save_path):
+        #     os.mkdir(save_path)
+        frames_output_path = output_path + os.sep + cam_nums[i]
+        extract_spec_frames(video_path, frames_output_path, cam_nums[i], frame_list)
+
+
+if __name__ == "__main__":
+    # path of videos
+    files_path = f"E:\\cello_0926_excerpt\\*.avi"
+
+    output_path = f"E:\\cello_0926_excerpt\\frames"
+
+    extract_frames_interval(files_path, output_path, 70, 800)
+
