@@ -3,6 +3,7 @@ import os
 import re
 import glob
 
+
 def getFiles(dir, suffix):  # find the files with specific suffix
     res = []
     for root, directory, files in os.walk(dir):
@@ -66,6 +67,8 @@ def extract_spec_frames(video_path, output_path, camera_num, frame_list=[1, 200,
 
     frame_count = 0
 
+    frame_list_been = []
+
     while True:
         # get 1 frame
         ret, frame = video.read()
@@ -77,15 +80,17 @@ def extract_spec_frames(video_path, output_path, camera_num, frame_list=[1, 200,
         frame_count += 1
         # get frame at the beginning of the frame_interval
         if frame_count in frame_list:
+            frame_list_been.append(frame_count)
             # save path for extracted frame
             save_path = os.path.join(output_path, f"camera_{camera_num}_{frame_count}.jpg")
             # two cameras with special placement
-            if (re.search('21334181', video_path) or re.search('21334237', video_path)):
+            if re.search('21334181', video_path) or re.search('21334237', video_path):
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
             else:
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
             cv2.imwrite(save_path, frame_trans)
-
+        if len(frame_list_been) == len(frame_list):
+            break
     video.release()
 
 
@@ -136,13 +141,13 @@ def extract_calib_frame(directory_path, output_path):
     #     print(f"The {i}th camera finished")
 
 
-# Extract frames interval: [start : end]
+# Extract frames interval: [start : end-1]
 def extract_frames_interval(files_path, output_path, start, end):
     videos_path = glob.glob(files_path)
     base_name = [os.path.basename(i) for i in videos_path]
     file_name = [os.path.splitext(i)[0] for i in base_name]
     cam_nums = [i.split('_')[-1] for i in file_name]
-    frame_list = [i for i in range(start, end+1)]
+    frame_list = [i for i in range(start, end)]
 
     print(videos_path)
 
@@ -156,9 +161,9 @@ def extract_frames_interval(files_path, output_path, start, end):
 
 if __name__ == "__main__":
     # path of videos
-    files_path = f"E:\\cello_0926_excerpt\\*.avi"
+    files_path = f"E:\\cello_0926\\*.avi"
 
-    output_path = f"E:\\cello_0926_excerpt\\frames"
+    output_path = f"E:\\cello_0926\\frames"
 
-    extract_frames_interval(files_path, output_path, 70, 800)
-
+    # extract_frames_interval(files_path, output_path, 70, 800)
+    extract_frames_interval(files_path, output_path, 1, 2)
