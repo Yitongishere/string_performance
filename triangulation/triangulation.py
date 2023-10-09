@@ -1,5 +1,8 @@
+import os.path
 import random
 import xml.dom.minidom
+
+import cv2
 from icecream import ic
 import json
 import numpy as np
@@ -267,7 +270,7 @@ if __name__ == "__main__":
                 'cam19': 21334211
                 }
 
-    cam_file = "./camera_new.json"
+    cam_file = "./camera.json"
     cam_param = json.load(open(cam_file))
     R = np.array(cam_param['cam0']['R']).reshape([3, 3])
     T = np.array(cam_param['cam0']['T'])
@@ -348,12 +351,12 @@ if __name__ == "__main__":
     """read 2d results."""
 
     # problem cam: cam3
-    # used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
-    #              'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
-    #              'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
-
     used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
-                 'cam7', 'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
+                 'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
+                 'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
+
+    # used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
+    #              'cam7', 'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
 
     # used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5']
 
@@ -380,13 +383,17 @@ if __name__ == "__main__":
     # define frame number
     # ff = 1
     xlim, ylim, zlim = None, None, None
-    for ff in range(1, 494):
+
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(f'../kp_3d/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
+
+    for ff in range(1, 687):
     # for ff in range(50,51):
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                file = f"../dwpose/cello_0920_2_{cam_dict[cc]}/{ff}.json"
+                file = f"../kp_2d/cello_0926_{cam_dict[cc]}/{ff}.json"
                 kp_2d_cc_ff = np.array(json.load(open(file)))
                 kp_2d_all_cams.append(kp_2d_cc_ff)
             except FileNotFoundError as e:
@@ -406,10 +413,9 @@ if __name__ == "__main__":
         if xlim is None:
             xlim, ylim, zlim = compute_axis_lim(kp_3d)
         # ic(xlim, ylim, zlim)
-        # plt.ion()
         fig = plt.figure(figsize=[10, 10])
         axes3 = fig.add_subplot(projection="3d")
-        axes3.view_init(azim=135, elev=-20, roll=-45)
+        axes3.view_init(azim=-60, elev=30, roll=15)
         # view = (0, 90)
         axes3.set_xlim3d(xlim)
         axes3.set_ylim3d(ylim)
@@ -424,9 +430,20 @@ if __name__ == "__main__":
         # ic(segs3d.shape)
         coll_3d = Line3DCollection(segs3d, linewidths=1)
         axes3.add_collection(coll_3d)
+        # plt.show()
+
+        if not os.path.exists(f'../kp_3d/'):
+            os.makedirs(f'../kp_3d/')
 
         plt.savefig(f'../kp_3d/sample{ff}.jpg')
-        # plt.ioff()
-        plt.show()
+
+        canvas = fig.canvas
+        canvas.draw()
+        width, height = canvas.get_width_height()
+        image_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        image_array = image_array.reshape(height, width, 3)
+        image_array = image_array[:, :, ::-1]  # rgb to bgr
+        out.write(image_array)
+        plt.close()
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
