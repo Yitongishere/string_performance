@@ -84,13 +84,15 @@ if __name__ == '__main__':
 
     pose_estimator = init_pose_estimator(
         'configs/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py',
-        './dw-ll_ucoco_384.pth',  # your pose estimator model.pth path
+        '../model/dw-ll_ucoco_384.pth',  # your pose estimator model.pth path
         device=device,
         # if you want to see heatmaps, please uncomment the following line (but it'll be much slower)
         # cfg_options={'model': {'test_cfg': {'output_heatmaps': True}}}
     )
+
     # files_path = r'./*.mp4'  # your video path
     files_path = r'/media/ping/Qping/cello_0926/*.avi'
+
     videos_path = glob.glob(files_path)
     base_name = [os.path.basename(i) for i in videos_path]
     file_name = [os.path.splitext(i)[0] for i in base_name]
