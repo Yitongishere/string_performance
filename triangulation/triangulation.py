@@ -9,6 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import itertools
+from smooth import Kalman_filter
+from smooth import Lowpass_Filter
+from smooth import Savgol_Filter
 
 
 def get_all_combinations(cams):
@@ -219,7 +222,7 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_joint, n
         inlier_list = sorted(list(inlier_set))
         # ic(j, inlier_list)
         # if len(inlier_list) > 2:
-            # ic(j, inlier_list)
+        #     ic(j, inlier_list)
         kp3d = triangulate(keypoints_mview[inlier_list, j, :2], projection_matrices[inlier_list])
         keypoints_3d[j, :] = kp3d
 
@@ -245,6 +248,52 @@ def compute_axis_lim(triangulated_points):
         mid_z = np.mean(minmax[2])
         zlim = mid_z - minmax_range, mid_z + minmax_range
     return xlim, ylim, zlim
+
+
+def visualize(data):
+    xlim, ylim, zlim = None, None, None
+    framenum = data.shape[0]
+
+    if not os.path.exists(f'../kp_3d/'):
+        os.makedirs(f'../kp_3d/')
+
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(f'../kp_3d/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
+
+    for f in range(framenum):
+        kp_3d = data[f]
+        if xlim is None:
+            xlim, ylim, zlim = compute_axis_lim(data[f])
+        # ic(xlim, ylim, zlim)
+        fig = plt.figure(figsize=[10, 10])
+        axes3 = fig.add_subplot(projection="3d")
+        axes3.view_init(azim=-60, elev=30, roll=15)
+        # view = (0, 90)
+        axes3.set_xlim3d(xlim)
+        axes3.set_ylim3d(ylim)
+        axes3.set_zlim3d(zlim)
+        axes3.set_box_aspect((1, 1, 1))
+        axes3.scatter(kp_3d[:, 0],
+                      kp_3d[:, 1],
+                      kp_3d[:, 2], s=5)
+        # ic(kp_3d)
+        segs3d = kp_3d[tuple([links])]
+        # ic(np.array(links).shape)
+        # ic(segs3d.shape)
+        coll_3d = Line3DCollection(segs3d, linewidths=1)
+        axes3.add_collection(coll_3d)
+        # plt.show()
+
+        plt.savefig(f'../kp_3d/sample{f}.jpg')
+
+        canvas = fig.canvas
+        canvas.draw()
+        width, height = canvas.get_width_height()
+        image_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        image_array = image_array.reshape(height, width, 3)
+        image_array = image_array[:, :, ::-1]  # rgb to bgr
+        out.write(image_array)
+        plt.close()
 
 
 if __name__ == "__main__":
@@ -350,7 +399,6 @@ if __name__ == "__main__":
 
     """read 2d results."""
 
-    # problem cam: cam3
     used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
                  'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
                  'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
@@ -382,18 +430,18 @@ if __name__ == "__main__":
 
     # define frame number
     # ff = 1
-    xlim, ylim, zlim = None, None, None
 
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../kp_3d/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
-
-    for ff in range(1, 687):
+    frame_num = 686
+    joint_num = 133
+    kp_3d_all = np.zeros([frame_num, joint_num, 3])
+    # for ff in range(1, 687):
+    for ff in range(frame_num):
     # for ff in range(50,51):
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                file = f"../kp_2d/cello_0926_{cam_dict[cc]}/{ff}.json"
+                file = f"../kp_2d/cello_0926_{cam_dict[cc]}/{ff+1}.json"
                 kp_2d_cc_ff = np.array(json.load(open(file)))
                 kp_2d_all_cams.append(kp_2d_cc_ff)
             except FileNotFoundError as e:
@@ -405,45 +453,20 @@ if __name__ == "__main__":
         kp_2d_all_cams = np.array(kp_2d_all_cams)
         # ic(kp_2d_all_cams)
         # kp_3d = triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, kpt_thr=0.6)
-        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, niter=20, epsilon=15, kpt_thr=0.5)
+        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, niter=20, epsilon=20, kpt_thr=0.6)
         # Remove hand and face
         # kp_2d_all_cams = kp_2d_all_cams[:, 0:24, :]
         # kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=23, niter=20, epsilon=130)
-        # ic(kp_3d.shape)
-        if xlim is None:
-            xlim, ylim, zlim = compute_axis_lim(kp_3d)
-        # ic(xlim, ylim, zlim)
-        fig = plt.figure(figsize=[10, 10])
-        axes3 = fig.add_subplot(projection="3d")
-        axes3.view_init(azim=-60, elev=30, roll=15)
-        # view = (0, 90)
-        axes3.set_xlim3d(xlim)
-        axes3.set_ylim3d(ylim)
-        axes3.set_zlim3d(zlim)
-        axes3.set_box_aspect((1, 1, 1))
-        axes3.scatter(kp_3d[:, 0],
-                      kp_3d[:, 1],
-                      kp_3d[:, 2], s=5)
-        # ic(kp_3d)
-        segs3d = kp_3d[tuple([links])]
-        # ic(np.array(links).shape)
-        # ic(segs3d.shape)
-        coll_3d = Line3DCollection(segs3d, linewidths=1)
-        axes3.add_collection(coll_3d)
-        # plt.show()
+        kp_3d_all[ff] = kp_3d
+        print(f'Frame {ff+1} triangulation done.')
 
-        if not os.path.exists(f'../kp_3d/'):
-            os.makedirs(f'../kp_3d/')
 
-        plt.savefig(f'../kp_3d/sample{ff}.jpg')
+    # data_smooth = np.zeros_like(kp_3d_all)
+    kp_3d_kalman = Kalman_filter(kp_3d_all, joint_num)
+    # print(data_kalman.shape)
+    # kp_3d_smooth = Lowpass_Filter(kp_3d_all, joint_num)
+    kp_3d_smooth = Savgol_Filter(kp_3d_kalman, joint_num)
 
-        canvas = fig.canvas
-        canvas.draw()
-        width, height = canvas.get_width_height()
-        image_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        image_array = image_array.reshape(height, width, 3)
-        image_array = image_array[:, :, ::-1]  # rgb to bgr
-        out.write(image_array)
-        plt.close()
+    visualize(kp_3d_smooth)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
