@@ -34,7 +34,7 @@ def Lowpass_Filter(data, jointnum, LowPassParam=0.1):
     # lowpass_result[0] = lowpass_result[1]  # first frame lacks of prior info (remove it otherwise deviation occurs)
     return lowpass_result
 
-def Savgol_Filter(data, jointnum, WindowLength=13, PolyOrder=2):
+def Savgol_Filter(data, jointnum, WindowLength=11, PolyOrder=5):
     savgol_result = np.zeros_like(data)
     for joint in range(jointnum):
         data_joint_x = data[:, joint, 0]
@@ -49,4 +49,6 @@ if __name__ == '__main__':
     a = np.array([1,2,3,4,5,6,7,8]).reshape(2,2,2)
     b = np.zeros_like(a)
     b[:,0,:] = a[:,0,:]
+    c = [1,2,3]
+    print(c[1:3])
     print(b)

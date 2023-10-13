@@ -1,3 +1,4 @@
+import glob
 import os.path
 import random
 import xml.dom.minidom
@@ -155,15 +156,15 @@ def triangulate_joints(keypoints_mview, projection_matrices, num_joint, kpt_thr)
     return keypoints_3d
 
 
-def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_joint, niter=50, epsilon=150, kpt_thr=0.6):
+def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, niter=50, epsilon=150, kpt_thr=0.6):
     """
     perform ransac triangulation on the multiview mmpose estimation results for a frame
-    keypoints_mview: [num_cams, num_joints, 3], [x, y, score]
+    keypoints_mview: [num_cams, num_kpt, 3], [x, y, score]
     projection_matrices: [num_cams, 3, 4]
     returns: keypoints_3d [num_joints, 3]
     """
 
-    keypoints_3d = np.empty([num_joint, 3])
+    keypoints_3d = np.empty([num_kpt, 3])
     keypoints_3d.fill(np.nan)
     num_cams = keypoints_mview.shape[0]
     # ic(num_cams)
@@ -173,7 +174,7 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_joint, n
     # cam_combinations = list(itertools.combinations(cam_list, 2))
     # ic(cam_combinations)
 
-    for j in range(num_joint):
+    for j in range(num_kpt):
 
         cams_detected = keypoints_mview[:, j, 2] > kpt_thr
         # ic(cams_detected)
@@ -206,12 +207,9 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_joint, n
             ones = np.ones((num_cams, 1))
             points_2d_ho = np.concatenate([points_2d_eu, ones], axis=1)  # shape: (num_cams, 3)
             reprojection_error = np.sqrt(np.sum((kp2d - points_2d_ho) ** 2, axis=1))
-
-            # ic(reprojection_error)
+            # compute the new inlier list whose re-projection error is smaller than the threshold
             new_inlier_set = set([i for i, v in enumerate(reprojection_error) if v < epsilon])
-            # ic(reprojection_error)
-            # ic(new_inlier_set)
-
+            # leave the new inlier set IFF it has more cams
             if len(new_inlier_set) > len(inlier_set):
                 inlier_set = new_inlier_set
             if len(inlier_set) == num_cams:
@@ -221,8 +219,6 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_joint, n
 
         inlier_list = sorted(list(inlier_set))
         # ic(j, inlier_list)
-        # if len(inlier_list) > 2:
-        #     ic(j, inlier_list)
         kp3d = triangulate(keypoints_mview[inlier_list, j, :2], projection_matrices[inlier_list])
         keypoints_3d[j, :] = kp3d
 
@@ -257,8 +253,8 @@ def visualize(data):
     if not os.path.exists(f'../kp_3d/'):
         os.makedirs(f'../kp_3d/')
 
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../kp_3d/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
+    # fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    # out = cv2.VideoWriter(f'../kp_3d/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
 
     for f in range(framenum):
         kp_3d = data[f]
@@ -268,23 +264,32 @@ def visualize(data):
         fig = plt.figure(figsize=[10, 10])
         axes3 = fig.add_subplot(projection="3d")
         axes3.view_init(azim=-60, elev=30, roll=15)
-        # view = (0, 90)
         axes3.set_xlim3d(xlim)
         axes3.set_ylim3d(ylim)
         axes3.set_zlim3d(zlim)
         axes3.set_box_aspect((1, 1, 1))
-        axes3.scatter(kp_3d[:, 0],
-                      kp_3d[:, 1],
-                      kp_3d[:, 2], s=5)
-        # ic(kp_3d)
-        segs3d = kp_3d[tuple([links])]
-        # ic(np.array(links).shape)
-        # ic(segs3d.shape)
-        coll_3d = Line3DCollection(segs3d, linewidths=1)
-        axes3.add_collection(coll_3d)
-        # plt.show()
+        axes3.scatter(kp_3d[0:133, 0],
+                      kp_3d[0:133, 1],
+                      kp_3d[0:133, 2], s=5)
+        axes3.scatter(kp_3d[133:142, 0],
+                      kp_3d[133:142, 1],
+                      kp_3d[133:142, 2], c='saddlebrown', s=5)
+        axes3.scatter(kp_3d[142:144, 0],
+                      kp_3d[142:144, 1],
+                      kp_3d[142:144, 2], c='goldenrod', s=5)
 
-        plt.savefig(f'../kp_3d/sample{f}.jpg')
+        human_segs3d = kp_3d[tuple([human_links])]
+        cello_segs3d = kp_3d[tuple([cello_links])]
+        bow_segs3d = kp_3d[tuple([bow_links])]
+        human_coll_3d = Line3DCollection(human_segs3d, linewidths=1)
+        cello_coll_3d = Line3DCollection(cello_segs3d, edgecolors='saddlebrown', linewidths=1)
+        bow_coll_3d = Line3DCollection(bow_segs3d, edgecolors='goldenrod', linewidths=1)
+        axes3.add_collection(human_coll_3d)
+        axes3.add_collection(cello_coll_3d)
+        axes3.add_collection(bow_coll_3d)
+        plt.show()
+
+        # plt.savefig(f'../kp_3d/sample{f}.jpg')
 
         canvas = fig.canvas
         canvas.draw()
@@ -292,7 +297,7 @@ def visualize(data):
         image_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         image_array = image_array.reshape(height, width, 3)
         image_array = image_array[:, :, ::-1]  # rgb to bgr
-        out.write(image_array)
+        # out.write(image_array)
         plt.close()
 
 
@@ -327,75 +332,98 @@ if __name__ == "__main__":
     # ic(T@R)
 
     """skeleton define"""
-    # data_info_file = '../configs/_base_/datasets/coco_wholebody.py'
-    # config = mmcv.Config.fromfile(data_info_file)
-    # dataset_info = DatasetInfo(config._cfg_dict['dataset_info'])
-    # ic(dataset_info.skeleton)
-    links = [[15, 13],
-             [13, 11],
-             [16, 14],
-             [14, 12],
-             [11, 12],
-             [5, 11],
-             [6, 12],
-             [5, 6],
-             [5, 7],
-             [6, 8],
-             [7, 9],
-             [8, 10],
-             [1, 2],
-             [0, 1],
-             [0, 2],
-             [1, 3],
-             [2, 4],
-             [3, 5],
-             [4, 6],
-             [15, 17],
-             [15, 18],
-             [15, 19],
-             [16, 20],
-             [16, 21],
-             [16, 22],
-             [91, 92],
-             [92, 93],
-             [93, 94],
-             [94, 95],
-             [91, 96],
-             [96, 97],
-             [97, 98],
-             [98, 99],
-             [91, 100],
-             [100, 101],
-             [101, 102],
-             [102, 103],
-             [91, 104],
-             [104, 105],
-             [105, 106],
-             [106, 107],
-             [91, 108],
-             [108, 109],
-             [109, 110],
-             [110, 111],
-             [112, 113],
-             [113, 114],
-             [114, 115],
-             [115, 116],
-             [112, 117],
-             [117, 118],
-             [118, 119],
-             [119, 120],
-             [112, 121],
-             [121, 122],
-             [122, 123],
-             [123, 124],
-             [112, 125],
-             [125, 126],
-             [126, 127],
-             [127, 128],
-             [112, 129],
-             [129, 130],
-             [130, 131],
-             [131, 132]]
+    human_links = [[15, 13],
+                   [13, 11],
+                   [16, 14],
+                   [14, 12],
+                   [11, 12],
+                   [5, 11],
+                   [6, 12],
+                   [5, 6],
+                   [5, 7],
+                   [6, 8],
+                   [7, 9],
+                   [8, 10],
+                   [1, 2],
+                   [0, 1],
+                   [0, 2],
+                   [1, 3],
+                   [2, 4],
+                   [3, 5],
+                   [4, 6],
+                   [15, 17],
+                   [15, 18],
+                   [15, 19],
+                   [16, 20],
+                   [16, 21],
+                   [16, 22],
+                   [91, 92],
+                   [92, 93],
+                   [93, 94],
+                   [94, 95],
+                   [91, 96],
+                   [96, 97],
+                   [97, 98],
+                   [98, 99],
+                   [91, 100],
+                   [100, 101],
+                   [101, 102],
+                   [102, 103],
+                   [91, 104],
+                   [104, 105],
+                   [105, 106],
+                   [106, 107],
+                   [91, 108],
+                   [108, 109],
+                   [109, 110],
+                   [110, 111],
+                   [112, 113],
+                   [113, 114],
+                   [114, 115],
+                   [115, 116],
+                   [112, 117],
+                   [117, 118],
+                   [118, 119],
+                   [119, 120],
+                   [112, 121],
+                   [121, 122],
+                   [122, 123],
+                   [123, 124],
+                   [112, 125],
+                   [125, 126],
+                   [126, 127],
+                   [127, 128],
+                   [112, 129],
+                   [129, 130],
+                   [130, 131],
+                   [131, 132]]
+
+    cello_links = [[133, 134],
+                   [133, 135],
+                   [134, 136],
+                   [135, 137],
+                   [136, 138],
+                   [137, 139],
+                   [138, 140],
+                   [139, 140],
+                   [140, 141]]
+
+    bow_links = [[142, 143]]
+
+    """cello keypoint dict define"""
+    cello_dict = {
+        'scroll_top': 0,
+        'nut_l': 1,
+        'nut_r': 2,
+        'neck_bottom_l': 3,
+        'neck_bottom_r': 4,
+        'bridge_l': 5,
+        'bridge_r': 6,
+        'tail_gut': 7,
+        'end_pin': 8,
+        'frog': 9,
+        'tip_plate': 10,
+    }
 
     """read 2d results."""
 
@@ -426,47 +454,57 @@ if __name__ == "__main__":
     # used_cams = ['cam3', 'cam5', 'cam7']
     # used_cams = ['cam3', 'cam4', 'cam8']
 
-    # ic(proj_mat.shape)
-
-    # define frame number
-    # ff = 1
-
-    frame_num = 686
-    joint_num = 133
-    kp_3d_all = np.zeros([frame_num, joint_num, 3])
+    kpt_num = 144
+    start_frame = 89
+    end_frame = 91
+    # kp_3d_all = np.zeros([frame_num, joint_num, 3])
+    kp_3d_all = []
     # for ff in range(1, 687):
-    for ff in range(frame_num):
+    # for ff in range(frame_num):
     # for ff in range(50,51):
+    for ff in range(start_frame, end_frame):
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                file = f"../kp_2d/cello_0926_{cam_dict[cc]}/{ff+1}.json"
-                kp_2d_cc_ff = np.array(json.load(open(file)))
-                kp_2d_all_cams.append(kp_2d_cc_ff)
+                joint = f"../kp_2d/cello_0926_{cam_dict[cc]}/{ff+1}.json"
+                joint_2d_cc_ff = np.array(json.load(open(joint)))
             except FileNotFoundError as e:
                 # remove camera that drop frames
                 cam_ff.remove(cc)
+                continue
+            cello_2d_cc_ff = np.zeros([11, 3])  # 11 cello key points in total (default score 0 will not be used)
+            try:
+                labelme_path = f'../cello_kp_2d/camera_{cam_dict[cc]}/camera_{cam_dict[cc]}_{ff+1}.json'
+                labelme = json.load(open(labelme_path))
+                # Resolve XML
+                for each_ann in labelme['shapes']:
+                    if each_ann['shape_type'] == 'point':
+                        kpt_label = each_ann['label']
+                        kpt_idx = cello_dict[kpt_label]
+                        kpt_xy = each_ann['points'][0]
+                        cello_2d_cc_ff[kpt_idx] = [kpt_xy[0], kpt_xy[1], 1]  # set the human-label score to be 1
+                kp_2d_cc_ff = np.concatenate([joint_2d_cc_ff, cello_2d_cc_ff], axis=0)
+                kp_2d_all_cams.append(kp_2d_cc_ff)
+            except FileNotFoundError as e:
+                kp_2d_cc_ff = np.concatenate([joint_2d_cc_ff, cello_2d_cc_ff], axis=0)
+                kp_2d_all_cams.append(kp_2d_cc_ff)
+                continue
         # make projection matrix using filtered camera
-        # ic(cam_ff)
         proj_mat = make_projection_matrix(cam_param, cams=cam_ff)
         kp_2d_all_cams = np.array(kp_2d_all_cams)
-        # ic(kp_2d_all_cams)
         # kp_3d = triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, kpt_thr=0.6)
-        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, niter=20, epsilon=20, kpt_thr=0.6)
-        # Remove hand and face
-        # kp_2d_all_cams = kp_2d_all_cams[:, 0:24, :]
-        # kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=23, niter=20, epsilon=130)
-        kp_3d_all[ff] = kp_3d
+        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=kpt_num, niter=20, epsilon=20, kpt_thr=0.6)
+        # kp_3d_all[ff] = kp_3d
+        kp_3d_all.append(kp_3d)
         print(f'Frame {ff+1} triangulation done.')
 
+    kp_3d_all = np.array(kp_3d_all)
+    visualize(kp_3d_all)
 
-    # data_smooth = np.zeros_like(kp_3d_all)
-    kp_3d_kalman = Kalman_filter(kp_3d_all, joint_num)
-    # print(data_kalman.shape)
-    # kp_3d_smooth = Lowpass_Filter(kp_3d_all, joint_num)
-    kp_3d_smooth = Savgol_Filter(kp_3d_kalman, joint_num)
-
-    visualize(kp_3d_smooth)
+    # kp_3d_kalman = Kalman_filter(kp_3d_all, kpt_num)
+    # kp_3d_smooth = Savgol_Filter(kp_3d_kalman, kpt_num)
+    #
+    # visualize(kp_3d_smooth)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
