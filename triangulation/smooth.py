@@ -43,12 +43,8 @@ def Savgol_Filter(data, jointnum, WindowLength=11, PolyOrder=5):
         savgol_result[:, joint, 0] = signal.savgol_filter(data_joint_x, WindowLength, PolyOrder)
         savgol_result[:, joint, 1] = signal.savgol_filter(data_joint_y, WindowLength, PolyOrder)
         savgol_result[:, joint, 2] = signal.savgol_filter(data_joint_z, WindowLength, PolyOrder)
+    # point 12 is most occluded
+    savgol_result[:, 11, 0] = signal.savgol_filter(data[:, 11, 0], 27, 3)
+    savgol_result[:, 11, 1] = signal.savgol_filter(data[:, 11, 1], 27, 3)
+    savgol_result[:, 11, 2] = signal.savgol_filter(data[:, 11, 2], 27, 3)
     return savgol_result
-
-if __name__ == '__main__':
-    a = np.array([1,2,3,4,5,6,7,8]).reshape(2,2,2)
-    b = np.zeros_like(a)
-    b[:,0,:] = a[:,0,:]
-    c = [1,2,3]
-    print(c[1:3])
-    print(b)
