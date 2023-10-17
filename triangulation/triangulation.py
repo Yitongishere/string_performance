@@ -167,12 +167,6 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, nit
     keypoints_3d = np.empty([num_kpt, 3])
     keypoints_3d.fill(np.nan)
     num_cams = keypoints_mview.shape[0]
-    # ic(num_cams)
-
-    # cam_list = [i for i in range(num_cams)]
-    # # ic(cam_list)
-    # cam_combinations = list(itertools.combinations(cam_list, 2))
-    # ic(cam_combinations)
 
     for j in range(num_kpt):
 
@@ -183,11 +177,7 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, nit
         if np.sum(cams_detected) < 2:
             continue
         cam_combinations = list(itertools.combinations(cam_idx, 2))
-        # cam_combinations = get_all_combinations(cam_idx)
-
-        # cam_set = set(range(keypoints_mview.shape[0]))
         inlier_set = set()
-        # for i in range(niter):
         for i in cam_combinations:
             # use the minimum cam to estimate the model
             # sampled_cam = sorted(random.sample(cam_set, 2))
@@ -253,8 +243,8 @@ def visualize(data):
     if not os.path.exists(f'../kp_3d/'):
         os.makedirs(f'../kp_3d/')
 
-    # fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    # out = cv2.VideoWriter(f'../kp_3d/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(f'../kp_3d/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
 
     for f in range(framenum):
         kp_3d = data[f]
@@ -287,9 +277,9 @@ def visualize(data):
         axes3.add_collection(human_coll_3d)
         axes3.add_collection(cello_coll_3d)
         axes3.add_collection(bow_coll_3d)
-        plt.show()
+        # plt.show()
 
-        # plt.savefig(f'../kp_3d/sample{f}.jpg')
+        plt.savefig(f'../kp_3d/sample{f}.jpg')
 
         canvas = fig.canvas
         canvas.draw()
@@ -297,7 +287,7 @@ def visualize(data):
         image_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         image_array = image_array.reshape(height, width, 3)
         image_array = image_array[:, :, ::-1]  # rgb to bgr
-        # out.write(image_array)
+        out.write(image_array)
         plt.close()
 
 
@@ -455,19 +445,19 @@ if __name__ == "__main__":
     # used_cams = ['cam3', 'cam4', 'cam8']
 
     kpt_num = 144
-    start_frame = 89
-    end_frame = 91
+    start_frame = 76
+    end_frame = 660
     # kp_3d_all = np.zeros([frame_num, joint_num, 3])
     kp_3d_all = []
     # for ff in range(1, 687):
     # for ff in range(frame_num):
     # for ff in range(50,51):
-    for ff in range(start_frame, end_frame):
+    for ff in range(start_frame, end_frame+1):
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                joint = f"../kp_2d/cello_0926_{cam_dict[cc]}/{ff+1}.json"
+                joint = f"../kp_2d/cello_0926_{cam_dict[cc]}/{ff}.json"
                 joint_2d_cc_ff = np.array(json.load(open(joint)))
             except FileNotFoundError as e:
                 # remove camera that drop frames
@@ -475,7 +465,7 @@ if __name__ == "__main__":
                 continue
             cello_2d_cc_ff = np.zeros([11, 3])  # 11 cello key points in total (default score 0 will not be used)
             try:
-                labelme_path = f'../cello_kp_2d/camera_{cam_dict[cc]}/camera_{cam_dict[cc]}_{ff+1}.json'
+                labelme_path = f'../cello_kp_2d/camera_{cam_dict[cc]}/camera_{cam_dict[cc]}_{ff}.json'
                 labelme = json.load(open(labelme_path))
                 # Resolve XML
                 for each_ann in labelme['shapes']:
@@ -494,17 +484,17 @@ if __name__ == "__main__":
         proj_mat = make_projection_matrix(cam_param, cams=cam_ff)
         kp_2d_all_cams = np.array(kp_2d_all_cams)
         # kp_3d = triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, kpt_thr=0.6)
-        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=kpt_num, niter=20, epsilon=20, kpt_thr=0.6)
+        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=kpt_num, niter=20, epsilon=40, kpt_thr=0.6)
         # kp_3d_all[ff] = kp_3d
         kp_3d_all.append(kp_3d)
-        print(f'Frame {ff+1} triangulation done.')
+        print(f'Frame {ff} triangulation done.')
 
     kp_3d_all = np.array(kp_3d_all)
-    visualize(kp_3d_all)
+    # visualize(kp_3d_all)
 
-    # kp_3d_kalman = Kalman_filter(kp_3d_all, kpt_num)
-    # kp_3d_smooth = Savgol_Filter(kp_3d_kalman, kpt_num)
-    #
-    # visualize(kp_3d_smooth)
+    kp_3d_kalman = Kalman_filter(kp_3d_all, kpt_num)
+    kp_3d_smooth = Savgol_Filter(kp_3d_kalman, kpt_num)
+
+    visualize(kp_3d_smooth)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
