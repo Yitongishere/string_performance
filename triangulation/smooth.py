@@ -34,7 +34,7 @@ def Lowpass_Filter(data, jointnum, LowPassParam=0.1):
     # lowpass_result[0] = lowpass_result[1]  # first frame lacks of prior info (remove it otherwise deviation occurs)
     return lowpass_result
 
-def Savgol_Filter(data, jointnum, WindowLength=11, PolyOrder=5):
+def Savgol_Filter(data, jointnum, WindowLength=11, PolyOrder=5, LongWindowLength=27, SmallPolyOrder=3):
     savgol_result = np.zeros_like(data)
     for joint in range(jointnum):
         data_joint_x = data[:, joint, 0]
@@ -43,8 +43,8 @@ def Savgol_Filter(data, jointnum, WindowLength=11, PolyOrder=5):
         savgol_result[:, joint, 0] = signal.savgol_filter(data_joint_x, WindowLength, PolyOrder)
         savgol_result[:, joint, 1] = signal.savgol_filter(data_joint_y, WindowLength, PolyOrder)
         savgol_result[:, joint, 2] = signal.savgol_filter(data_joint_z, WindowLength, PolyOrder)
-    # point 12 is most occluded
-    savgol_result[:, 11, 0] = signal.savgol_filter(data[:, 11, 0], 27, 3)
-    savgol_result[:, 11, 1] = signal.savgol_filter(data[:, 11, 1], 27, 3)
-    savgol_result[:, 11, 2] = signal.savgol_filter(data[:, 11, 2], 27, 3)
+    # point 12 is most occluded which need greater smoothness
+    savgol_result[:, 11, 0] = signal.savgol_filter(data[:, 11, 0], LongWindowLength, SmallPolyOrder)
+    savgol_result[:, 11, 1] = signal.savgol_filter(data[:, 11, 1], LongWindowLength, SmallPolyOrder)
+    savgol_result[:, 11, 2] = signal.savgol_filter(data[:, 11, 2], LongWindowLength, SmallPolyOrder)
     return savgol_result
