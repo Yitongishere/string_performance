@@ -161,9 +161,9 @@ def extract_frames_interval(files_path, output_path, start, end):
 
 if __name__ == "__main__":
     # path of videos
-    files_path = f"E:\\cello_0926\\*.avi"
+    files_path = f"../data/cello_0926/cello_0926_21334181.avi"
 
-    output_path = f"E:\\cello_0926\\frames"
+    output_path = f"../data/cello_0926/frames/"
 
     # extract_frames_interval(files_path, output_path, 70, 800)
-    extract_frames_interval(files_path, output_path, 1, 2)
+    extract_frames_interval(files_path, output_path, 1, 687)

@@ -13,7 +13,36 @@ import itertools
 from smooth import Kalman_filter
 from smooth import Lowpass_Filter
 from smooth import Savgol_Filter
+import imageio
+from contextlib import contextmanager
 
+@contextmanager
+def plot_over(img, extent=None, origin="upper", dpi=100):
+    """用于基于原图画点"""
+    h, w, d = img.shape
+    assert d == 3
+    if extent is None:
+        xmin, xmax, ymin, ymax = -0.5, w + 0.5, -0.5, h + 0.5
+    else:
+        xmin, xmax, ymin, ymax = extent
+    if origin == "upper":
+        ymin, ymax = ymax, ymin
+    elif origin != "lower":
+        raise ValueError("origin must be 'upper' or 'lower'")
+    fig = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
+    ax = plt.Axes(fig, (0, 0, 1, 1))
+    ax.set_axis_off()
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+    fig.add_axes(ax)
+    fig.set_facecolor((0, 0, 0, 0))
+    yield ax
+    fig.canvas.draw()
+    plot = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).reshape(h, w, 4)
+    plt.close(fig)
+    rgb = plot[..., :3]
+    alpha = plot[..., 3, None]
+    img[...] = ((255 - alpha) * img.astype(np.uint16) + alpha * rgb.astype(np.uint16)) // 255
 
 def get_all_combinations(cams):
     cams_num = len(cams)
@@ -290,6 +319,44 @@ def visualize(data):
         out.write(image_array)
         plt.close()
 
+def visualize_demo(data):
+    framenum = data.shape[0]
+
+    if not os.path.exists(f'../vis_compare/'):
+        os.makedirs(f'../vis_compare/')
+
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(f'../vis_compare/output.avi', fourcc, fps=30, frameSize=[2656, 2300])
+
+    for f in range(framenum):
+        ic(f)
+        kp_2d = data[f]
+        fig = plt.figure(figsize=[10, 10])
+        axes = fig.add_subplot()
+
+        img = imageio.imread(f"../data/cello_0926/frames/21334181/camera_21334181_{f + 76}.jpg")
+        img_with_plot = img.copy()
+        with plot_over(img_with_plot) as axes:
+            axes.scatter(kp_2d[0:133, 0],
+                          kp_2d[0:133, 1], s=50)
+            axes.scatter(kp_2d[133:142, 0],
+                          kp_2d[133:142, 1], c='saddlebrown', s=50)
+            axes.scatter(kp_2d[142:144, 0],
+                          kp_2d[142:144, 1], c='goldenrod', s=50)
+
+            for human in human_links:
+                plt.plot([kp_2d[human[0]][0], kp_2d[human[1]][0]], [kp_2d[human[0]][1], kp_2d[human[1]][1]], c='blue')
+            for cello in cello_links:
+                plt.plot([kp_2d[cello[0]][0], kp_2d[cello[1]][0]], [kp_2d[cello[0]][1], kp_2d[cello[1]][1]],
+                         c='saddlebrown')
+            for bow in bow_links:
+                plt.plot([kp_2d[bow[0]][0], kp_2d[bow[1]][0]], [kp_2d[bow[0]][1], kp_2d[bow[1]][1]], c='goldenrod')
+
+        img_with_plot = img_with_plot[:, :, ::-1]
+        frame = cv2.imwrite(f"../vis_compare/sample{f}.jpg", img_with_plot)
+        out.write(frame)
+        plt.close()
+
 
 if __name__ == "__main__":
     cam_dict = {'cam0': 21334181,
@@ -421,37 +488,11 @@ if __name__ == "__main__":
                  'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
                  'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
 
-    # used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
-    #              'cam7', 'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
-
-    # used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5']
-
-    # used_cams = ['cam18', 'cam19', 'cam0', 'cam1']
-
-    # used_cams = ['cam0', 'cam1']
-
-    # used_cams = ['cam4', 'cam5']
-
-    # used_cams = ['cam18', 'cam19']
-
-    # used_cams = ['cam14', 'cam15', 'cam16', 'cam17','cam18', 'cam19']
-
-    # used_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13']
-
-    # used_cams = ['cam0', 'cam11', 'cam2']
-    # used_cams = ['cam0', 'cam1']  # Best
-    # used_cams = ['cam0', 'cam1', 'cam2'] # Best
-    # used_cams = ['cam3', 'cam5', 'cam7']
-    # used_cams = ['cam3', 'cam4', 'cam8']
-
     kpt_num = 144
     start_frame = 76
     end_frame = 660
-    # kp_3d_all = np.zeros([frame_num, joint_num, 3])
+
     kp_3d_all = []
-    # for ff in range(1, 687):
-    # for ff in range(frame_num):
-    # for ff in range(50,51):
     for ff in range(start_frame, end_frame+1):
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
@@ -498,3 +539,21 @@ if __name__ == "__main__":
     visualize(kp_3d_smooth)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
+
+    # visualize with original videos (comparison demo)
+    # find reprojection of the specific camera
+    repro_2d = np.empty([end_frame - start_frame + 1, kpt_num, 2])
+    repro_2d.fill(np.nan)
+    proj_mat_cam_x = make_projection_matrix(cam_param, cams=['cam0'])
+    for ff in range(end_frame - start_frame + 1):
+        for kpt in range(kpt_num):
+            ones = np.ones((1))
+            kp4d = np.concatenate([kp_3d_all[ff][kpt], ones], axis=0)
+            kp4d = kp4d.reshape(-1)
+            # reprojection: p = mP
+            kp2d = np.matmul(proj_mat_cam_x, kp4d)
+            kp2d = kp2d.reshape((3,))
+            kp2d = kp2d / kp2d[2:3]
+            repro_2d[ff, kpt, :] = kp2d[:2]
+
+    visualize_demo(repro_2d)
