@@ -73,7 +73,7 @@ def visualize_demo(data):
 
         img_with_plot = img_with_plot[:, :, ::-1]
         frame = cv2.imwrite(f"../reproj_demo/sample{f}.jpg", img_with_plot)
-        out.write(frame)
+        out.write(img_with_plot)
         plt.close()
 
 if __name__ == "__main__":
