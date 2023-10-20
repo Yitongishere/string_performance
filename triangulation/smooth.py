@@ -50,13 +50,13 @@ def Lowpass_Filter(data, jointnum, LowPassParam=0.1):
 #     savgol_result[:, 11, 2] = signal.savgol_filter(data[:, 11, 2], 27, 3)
 #     return savgol_result
 
-def Savgol_Filter(data, jointnum, WindowLength=[12, 24, 48], PolyOrder=[10, 5, 2]):
+def Savgol_Filter(data, jointnum, WindowLength=[11, 22, 44], PolyOrder=[8, 4, 2]):
     """Enhancing smoothing process with longer WindowLength or lower PolyOrder"""
 
     delicated_kps = [i for i in range(112, 133)]  # left hand
     occluded_kps = [11, 12]                       # occluded hip joints
     savgol_result = np.zeros_like(data)
-    
+
     for joint in range(jointnum):
         savgol_result[:, joint, 0] = signal.savgol_filter(data[:, joint, 0], WindowLength[1], PolyOrder[1])
         savgol_result[:, joint, 1] = signal.savgol_filter(data[:, joint, 1], WindowLength[1], PolyOrder[1])

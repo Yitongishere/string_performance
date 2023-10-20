@@ -1,8 +1,4 @@
-import glob
 import os.path
-import random
-import xml.dom.minidom
-
 import cv2
 from icecream import ic
 import json
@@ -13,36 +9,127 @@ import itertools
 from smooth import Kalman_filter
 from smooth import Lowpass_Filter
 from smooth import Savgol_Filter
-import imageio
-from contextlib import contextmanager
 
-@contextmanager
-def plot_over(img, extent=None, origin="upper", dpi=100):
-    """用于基于原图画点"""
-    h, w, d = img.shape
-    assert d == 3
-    if extent is None:
-        xmin, xmax, ymin, ymax = -0.5, w + 0.5, -0.5, h + 0.5
-    else:
-        xmin, xmax, ymin, ymax = extent
-    if origin == "upper":
-        ymin, ymax = ymax, ymin
-    elif origin != "lower":
-        raise ValueError("origin must be 'upper' or 'lower'")
-    fig = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
-    ax = plt.Axes(fig, (0, 0, 1, 1))
-    ax.set_axis_off()
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(ymin, ymax)
-    fig.add_axes(ax)
-    fig.set_facecolor((0, 0, 0, 0))
-    yield ax
-    fig.canvas.draw()
-    plot = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).reshape(h, w, 4)
-    plt.close(fig)
-    rgb = plot[..., :3]
-    alpha = plot[..., 3, None]
-    img[...] = ((255 - alpha) * img.astype(np.uint16) + alpha * rgb.astype(np.uint16)) // 255
+
+CAM_DICT = {
+            'cam0': 21334181,
+            'cam1': 21334237,
+            'cam2': 21334180,
+            'cam3': 21334209,
+            'cam4': 21334208,
+            'cam5': 21334186,
+            'cam6': 21293326,
+            'cam7': 21293325,
+            'cam8': 21293324,
+            'cam9': 21334206,
+            'cam10': 21334220,
+            'cam11': 21334183,
+            'cam12': 21334207,
+            'cam13': 21334191,
+            'cam14': 21334184,
+            'cam15': 21334238,
+            'cam16': 21334221,
+            'cam17': 21334219,
+            'cam18': 21334190,
+            'cam19': 21334211
+            }
+
+"""cello keypoint dict define"""
+CELLO_DICT = {
+            'scroll_top': 0,
+            'nut_l': 1,
+            'nut_r': 2,
+            'neck_bottom_l': 3,
+            'neck_bottom_r': 4,
+            'bridge_l': 5,
+            'bridge_r': 6,
+            'tail_gut': 7,
+            'end_pin': 8,
+            'frog': 9,
+            'tip_plate': 10,
+}
+
+KPT_NUM = 144
+
+"""skeleton define"""
+HUMAN_LINKS = [[15, 13],
+               [13, 11],
+               [16, 14],
+               [14, 12],
+               [11, 12],
+               [5, 11],
+               [6, 12],
+               [5, 6],
+               [5, 7],
+               [6, 8],
+               [7, 9],
+               [8, 10],
+               [1, 2],
+               [0, 1],
+               [0, 2],
+               [1, 3],
+               [2, 4],
+               [3, 5],
+               [4, 6],
+               [15, 17],
+               [15, 18],
+               [15, 19],
+               [16, 20],
+               [16, 21],
+               [16, 22],
+               [91, 92],
+               [92, 93],
+               [93, 94],
+               [94, 95],
+               [91, 96],
+               [96, 97],
+               [97, 98],
+               [98, 99],
+               [91, 100],
+               [100, 101],
+               [101, 102],
+               [102, 103],
+               [91, 104],
+               [104, 105],
+               [105, 106],
+               [106, 107],
+               [91, 108],
+               [108, 109],
+               [109, 110],
+               [110, 111],
+               [112, 113],
+               [113, 114],
+               [114, 115],
+               [115, 116],
+               [112, 117],
+               [117, 118],
+               [118, 119],
+               [119, 120],
+               [112, 121],
+               [121, 122],
+               [122, 123],
+               [123, 124],
+               [112, 125],
+               [125, 126],
+               [126, 127],
+               [127, 128],
+               [112, 129],
+               [129, 130],
+               [130, 131],
+               [131, 132]]
+
+CELLO_LINKS = [[133, 134],
+               [133, 135],
+               [134, 136],
+               [135, 137],
+               [136, 138],
+               [137, 139],
+               [138, 140],
+               [139, 140],
+               [140, 141]]
+
+BOW_LINKS = [[142, 143]]
+
 
 def get_all_combinations(cams):
     cams_num = len(cams)
@@ -297,9 +384,9 @@ def visualize(data):
                       kp_3d[142:144, 1],
                       kp_3d[142:144, 2], c='goldenrod', s=5)
 
-        human_segs3d = kp_3d[tuple([human_links])]
-        cello_segs3d = kp_3d[tuple([cello_links])]
-        bow_segs3d = kp_3d[tuple([bow_links])]
+        human_segs3d = kp_3d[tuple([HUMAN_LINKS])]
+        cello_segs3d = kp_3d[tuple([CELLO_LINKS])]
+        bow_segs3d = kp_3d[tuple([BOW_LINKS])]
         human_coll_3d = Line3DCollection(human_segs3d, linewidths=1)
         cello_coll_3d = Line3DCollection(cello_segs3d, edgecolors='saddlebrown', linewidths=1)
         bow_coll_3d = Line3DCollection(bow_segs3d, edgecolors='goldenrod', linewidths=1)
@@ -319,67 +406,8 @@ def visualize(data):
         out.write(image_array)
         plt.close()
 
-def visualize_demo(data):
-    framenum = data.shape[0]
-
-    if not os.path.exists(f'../vis_compare/'):
-        os.makedirs(f'../vis_compare/')
-
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../vis_compare/output.avi', fourcc, fps=30, frameSize=[2656, 2300])
-
-    for f in range(framenum):
-        ic(f)
-        kp_2d = data[f]
-        fig = plt.figure(figsize=[10, 10])
-        axes = fig.add_subplot()
-
-        img = imageio.imread(f"../data/cello_0926/frames/21334181/camera_21334181_{f + 76}.jpg")
-        img_with_plot = img.copy()
-        with plot_over(img_with_plot) as axes:
-            axes.scatter(kp_2d[0:133, 0],
-                          kp_2d[0:133, 1], s=50)
-            axes.scatter(kp_2d[133:142, 0],
-                          kp_2d[133:142, 1], c='saddlebrown', s=50)
-            axes.scatter(kp_2d[142:144, 0],
-                          kp_2d[142:144, 1], c='goldenrod', s=50)
-
-            for human in human_links:
-                plt.plot([kp_2d[human[0]][0], kp_2d[human[1]][0]], [kp_2d[human[0]][1], kp_2d[human[1]][1]], c='blue')
-            for cello in cello_links:
-                plt.plot([kp_2d[cello[0]][0], kp_2d[cello[1]][0]], [kp_2d[cello[0]][1], kp_2d[cello[1]][1]],
-                         c='saddlebrown')
-            for bow in bow_links:
-                plt.plot([kp_2d[bow[0]][0], kp_2d[bow[1]][0]], [kp_2d[bow[0]][1], kp_2d[bow[1]][1]], c='goldenrod')
-
-        img_with_plot = img_with_plot[:, :, ::-1]
-        frame = cv2.imwrite(f"../vis_compare/sample{f}.jpg", img_with_plot)
-        out.write(frame)
-        plt.close()
-
 
 if __name__ == "__main__":
-    cam_dict = {'cam0': 21334181,
-                'cam1': 21334237,
-                'cam2': 21334180,
-                'cam3': 21334209,
-                'cam4': 21334208,
-                'cam5': 21334186,
-                'cam6': 21293326,
-                'cam7': 21293325,
-                'cam8': 21293324,
-                'cam9': 21334206,
-                'cam10': 21334220,
-                'cam11': 21334183,
-                'cam12': 21334207,
-                'cam13': 21334191,
-                'cam14': 21334184,
-                'cam15': 21334238,
-                'cam16': 21334221,
-                'cam17': 21334219,
-                'cam18': 21334190,
-                'cam19': 21334211
-                }
 
     cam_file = "./camera.json"
     cam_param = json.load(open(cam_file))
@@ -388,107 +416,11 @@ if __name__ == "__main__":
     # ic(R, T)
     # ic(T@R)
 
-    """skeleton define"""
-    human_links = [[15, 13],
-                   [13, 11],
-                   [16, 14],
-                   [14, 12],
-                   [11, 12],
-                   [5, 11],
-                   [6, 12],
-                   [5, 6],
-                   [5, 7],
-                   [6, 8],
-                   [7, 9],
-                   [8, 10],
-                   [1, 2],
-                   [0, 1],
-                   [0, 2],
-                   [1, 3],
-                   [2, 4],
-                   [3, 5],
-                   [4, 6],
-                   [15, 17],
-                   [15, 18],
-                   [15, 19],
-                   [16, 20],
-                   [16, 21],
-                   [16, 22],
-                   [91, 92],
-                   [92, 93],
-                   [93, 94],
-                   [94, 95],
-                   [91, 96],
-                   [96, 97],
-                   [97, 98],
-                   [98, 99],
-                   [91, 100],
-                   [100, 101],
-                   [101, 102],
-                   [102, 103],
-                   [91, 104],
-                   [104, 105],
-                   [105, 106],
-                   [106, 107],
-                   [91, 108],
-                   [108, 109],
-                   [109, 110],
-                   [110, 111],
-                   [112, 113],
-                   [113, 114],
-                   [114, 115],
-                   [115, 116],
-                   [112, 117],
-                   [117, 118],
-                   [118, 119],
-                   [119, 120],
-                   [112, 121],
-                   [121, 122],
-                   [122, 123],
-                   [123, 124],
-                   [112, 125],
-                   [125, 126],
-                   [126, 127],
-                   [127, 128],
-                   [112, 129],
-                   [129, 130],
-                   [130, 131],
-                   [131, 132]]
-
-    cello_links = [[133, 134],
-                   [133, 135],
-                   [134, 136],
-                   [135, 137],
-                   [136, 138],
-                   [137, 139],
-                   [138, 140],
-                   [139, 140],
-                   [140, 141]]
-
-    bow_links = [[142, 143]]
-
-    """cello keypoint dict define"""
-    cello_dict = {
-        'scroll_top': 0,
-        'nut_l': 1,
-        'nut_r': 2,
-        'neck_bottom_l': 3,
-        'neck_bottom_r': 4,
-        'bridge_l': 5,
-        'bridge_r': 6,
-        'tail_gut': 7,
-        'end_pin': 8,
-        'frog': 9,
-        'tip_plate': 10,
-    }
-
     """read 2d results."""
-
     used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
                  'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
                  'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
 
-    kpt_num = 144
     start_frame = 76
     end_frame = 660
 
@@ -498,7 +430,7 @@ if __name__ == "__main__":
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                joint = f"../kp_2d/cello_0926_{cam_dict[cc]}/{ff}.json"
+                joint = f"../kp_2d/cello_0926_{CAM_DICT[cc]}/{ff}.json"
                 joint_2d_cc_ff = np.array(json.load(open(joint)))
             except FileNotFoundError as e:
                 # remove camera that drop frames
@@ -506,13 +438,13 @@ if __name__ == "__main__":
                 continue
             cello_2d_cc_ff = np.zeros([11, 3])  # 11 cello key points in total (default score 0 will not be used)
             try:
-                labelme_path = f'../cello_kp_2d/camera_{cam_dict[cc]}/camera_{cam_dict[cc]}_{ff}.json'
+                labelme_path = f'../cello_kp_2d/camera_{CAM_DICT[cc]}/camera_{CAM_DICT[cc]}_{ff}.json'
                 labelme = json.load(open(labelme_path))
                 # Resolve XML
                 for each_ann in labelme['shapes']:
                     if each_ann['shape_type'] == 'point':
                         kpt_label = each_ann['label']
-                        kpt_idx = cello_dict[kpt_label]
+                        kpt_idx = CELLO_DICT[kpt_label]
                         kpt_xy = each_ann['points'][0]
                         cello_2d_cc_ff[kpt_idx] = [kpt_xy[0], kpt_xy[1], 1]  # set the human-label score to be 1
                 kp_2d_cc_ff = np.concatenate([joint_2d_cc_ff, cello_2d_cc_ff], axis=0)
@@ -525,7 +457,7 @@ if __name__ == "__main__":
         proj_mat = make_projection_matrix(cam_param, cams=cam_ff)
         kp_2d_all_cams = np.array(kp_2d_all_cams)
         # kp_3d = triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, kpt_thr=0.6)
-        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=kpt_num, niter=20, epsilon=40, kpt_thr=0.6)
+        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=KPT_NUM, niter=20, epsilon=40, kpt_thr=0.6)
         # kp_3d_all[ff] = kp_3d
         kp_3d_all.append(kp_3d)
         print(f'Frame {ff} triangulation done.')
@@ -533,27 +465,14 @@ if __name__ == "__main__":
     kp_3d_all = np.array(kp_3d_all)
     # visualize(kp_3d_all)
 
-    kp_3d_kalman = Kalman_filter(kp_3d_all, kpt_num)
-    kp_3d_smooth = Savgol_Filter(kp_3d_kalman, kpt_num)
+    kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
+    kp_3d_smooth = Savgol_Filter(kp_3d_kalman, KPT_NUM)
 
     visualize(kp_3d_smooth)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
 
-    # visualize with original videos (comparison demo)
-    # find reprojection of the specific camera
-    repro_2d = np.empty([end_frame - start_frame + 1, kpt_num, 2])
-    repro_2d.fill(np.nan)
-    proj_mat_cam_x = make_projection_matrix(cam_param, cams=['cam0'])
-    for ff in range(end_frame - start_frame + 1):
-        for kpt in range(kpt_num):
-            ones = np.ones((1))
-            kp4d = np.concatenate([kp_3d_all[ff][kpt], ones], axis=0)
-            kp4d = kp4d.reshape(-1)
-            # reprojection: p = mP
-            kp2d = np.matmul(proj_mat_cam_x, kp4d)
-            kp2d = kp2d.reshape((3,))
-            kp2d = kp2d / kp2d[2:3]
-            repro_2d[ff, kpt, :] = kp2d[:2]
+    data_dict = {'kp_3d_all': kp_3d_all.tolist()}
+    with open('../kp_3d/kp_3d_all.json', 'w') as f:
+        json.dump(data_dict, f)
 
-    visualize_demo(repro_2d)
