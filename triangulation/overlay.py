@@ -45,7 +45,7 @@ def visualize_demo(data):
         os.makedirs(f'../reproj_demo/')
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../reproj_demo/output.avi', fourcc, fps=30, frameSize=[2656, 2300])
+    out = cv2.VideoWriter(f'../reproj_demo/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
 
     for f in range(framenum):
         ic(f)
@@ -53,7 +53,7 @@ def visualize_demo(data):
         fig = plt.figure(figsize=[10, 10])
         axes = fig.add_subplot()
 
-        img = imageio.imread(f"../data/cello_0926/frames/21334181/camera_21334181_{f + 76}.jpg")
+        img = imageio.v2.imread(f"../data/cello_0926/frames/21334181/camera_21334181_{f + 76}.jpg")
         img_with_plot = img.copy()
         with plot_over(img_with_plot) as axes:
             axes.scatter(kp_2d[0:133, 0],
@@ -77,9 +77,9 @@ def visualize_demo(data):
         plt.close()
 
 if __name__ == "__main__":
-    with open('../kp_3d/kp_3d_all.json', 'r') as f:
+    with open('../kp_3d/kp_3d_smooth.json', 'r') as f:
         data_dict = json.load(f)
-    kp_3d_all = np.array(data_dict['kp_3d_all'])
+    kp_3d_all = np.array(data_dict['kp_3d_smooth'])
 
     framenum = kp_3d_all.shape[0]
 

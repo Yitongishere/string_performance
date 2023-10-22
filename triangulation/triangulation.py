@@ -465,14 +465,14 @@ if __name__ == "__main__":
     kp_3d_all = np.array(kp_3d_all)
     # visualize(kp_3d_all)
 
-    kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
-    kp_3d_smooth = Savgol_Filter(kp_3d_kalman, KPT_NUM)
+    # kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
+    kp_3d_smooth = Savgol_Filter(kp_3d_all, KPT_NUM)
 
     visualize(kp_3d_smooth)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
 
-    data_dict = {'kp_3d_all': kp_3d_all.tolist()}
-    with open('../kp_3d/kp_3d_all.json', 'w') as f:
+    data_dict = {'kp_3d_smooth': kp_3d_smooth.tolist()}
+    with open('../kp_3d/kp_3d_smooth.json', 'w') as f:
         json.dump(data_dict, f)
 
