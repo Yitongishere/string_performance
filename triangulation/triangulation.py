@@ -470,9 +470,8 @@ if __name__ == "__main__":
 
     visualize(kp_3d_smooth)
 
-    # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
-
     data_dict = {'kp_3d_smooth': kp_3d_smooth.tolist()}
     with open('../kp_3d/kp_3d_smooth.json', 'w') as f:
         json.dump(data_dict, f)
 
+    # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0

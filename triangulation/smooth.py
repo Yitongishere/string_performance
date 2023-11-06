@@ -50,23 +50,26 @@ def Lowpass_Filter(data, jointnum, LowPassParam=0.1):
 #     savgol_result[:, 11, 2] = signal.savgol_filter(data[:, 11, 2], 27, 3)
 #     return savgol_result
 
-def Savgol_Filter(data, jointnum, WindowLength=[11, 22, 44], PolyOrder=[8, 4, 2]):
+def Savgol_Filter(data, jointnum, WindowLength=[11, 22, 44], PolyOrder=[6, 4, 2]):
     """Enhancing smoothing process with longer WindowLength or lower PolyOrder"""
 
-    delicated_kps = [i for i in range(112, 133)]  # left hand
-    occluded_kps = [11, 12]                       # occluded hip joints
+    all_kps = [i for i in range(jointnum)]
+    fine_kps = [i for i in range(91, 112)]  # left hand
+    fine_kps.append(9)  # left wrist
+    ordinary_kps = list(set(all_kps).difference(set(fine_kps)))
+    occluded_kps = [11, 12]  # occluded hip joints
     savgol_result = np.zeros_like(data)
 
-    for joint in range(jointnum):
+    # fine key points with shorter WindowLength and higher PolyOrder
+    for f_joint in fine_kps:
+        savgol_result[:, f_joint, 0] = signal.savgol_filter(data[:, f_joint, 0], WindowLength[0], PolyOrder[0])
+        savgol_result[:, f_joint, 1] = signal.savgol_filter(data[:, f_joint, 1], WindowLength[0], PolyOrder[0])
+        savgol_result[:, f_joint, 2] = signal.savgol_filter(data[:, f_joint, 2], WindowLength[0], PolyOrder[0])
+
+    for joint in ordinary_kps:
         savgol_result[:, joint, 0] = signal.savgol_filter(data[:, joint, 0], WindowLength[1], PolyOrder[1])
         savgol_result[:, joint, 1] = signal.savgol_filter(data[:, joint, 1], WindowLength[1], PolyOrder[1])
         savgol_result[:, joint, 2] = signal.savgol_filter(data[:, joint, 2], WindowLength[1], PolyOrder[1])
-
-    # delicated kps with shorter WindowLength and higher PolyOrder
-    for d_joint in delicated_kps:
-        savgol_result[:, d_joint, 0] = signal.savgol_filter(data[:, d_joint, 0], WindowLength[0], PolyOrder[0])
-        savgol_result[:, d_joint, 1] = signal.savgol_filter(data[:, d_joint, 1], WindowLength[0], PolyOrder[0])
-        savgol_result[:, d_joint, 2] = signal.savgol_filter(data[:, d_joint, 2], WindowLength[0], PolyOrder[0])
 
     # enhance the smoothing process towards occluded_kps
     for o_joint in occluded_kps:
@@ -74,6 +77,4 @@ def Savgol_Filter(data, jointnum, WindowLength=[11, 22, 44], PolyOrder=[8, 4, 2]
         savgol_result[:, o_joint, 1] = signal.savgol_filter(data[:, o_joint, 1], WindowLength[2], PolyOrder[2])
         savgol_result[:, o_joint, 2] = signal.savgol_filter(data[:, o_joint, 2], WindowLength[2], PolyOrder[2])
     return savgol_result
-
-
 
