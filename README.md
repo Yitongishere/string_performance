@@ -37,11 +37,16 @@ Our Example (Windows or linux, torch==1.9.1+cu111, mmcv=2.0.0)
 
 `pip install mmcv==2.0.0 -f https://download.openmmlab.com/mmcv/dist/cu111/torch1.9/index.html`
 
+### 4. CREPE installation
+You may need to install tensorflow as well.
+Please refer to [CREPE Documentation](https://github.com/marl/crepe)
+
 ## 2d Key Points Detection
 `model.pth` for pose estimator should be downloaded ahead for `infer.py`
 
-Preferred pose estimator model link: https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/view
+Preferred pose estimator model is [this](https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/view).
 
 ## Triangulation
 You need to prepare 2D key points coordinates in order to run our `triangulation.py`
 
+## Pitch Detection
