@@ -214,7 +214,7 @@ if __name__ == '__main__':
                           [   0, 2539,  994]])
             The second and the third elements of this array are positions "Y (height)" and "X (width)"  of the pixels.
     '''
-    labelled_json = ''
+    labelled_json = 'camera_21334237_{}.json'.format(start_frame_idx)
     
     print('Loading frames and Inferecing...')
     for num in tqdm(range(video.count_frames()), desc="Loading frames"):
@@ -230,15 +230,15 @@ if __name__ == '__main__':
             if (num+1)%iter_frames == 0 or num == video.count_frames()-1:
                 print('\n Round [%d] is starting!'%((num+1)//iter_frames + int((num+1)%iter_frames>0)))
                 if (num+1)//iter_frames == 1:
-                    with open('camera_21334237_{}.json'.format(start_frame_idx),'r') as f:
-                        content = json.load(f)
+                    with open(labelled_json,'r') as f:
+                        labelled_info = json.load(f)
                     f.close()
     
                     cello_keypoints =['scroll_top','nut_l','nut_r','neck_bottom_l','neck_bottom_r','bridge_l','bridge_r','tail_gut','end_pin']
                     bow_keypoints = ['tip_plate','frog']
     
                     kpdict = {}
-                    for item in content['shapes']:
+                    for item in labelled_info['shapes']:
                         if item['label'] in cello_keypoints+bow_keypoints:
                             kpdict[(cello_keypoints+bow_keypoints).index(item['label'])] = item['points'][0]
                             continue
