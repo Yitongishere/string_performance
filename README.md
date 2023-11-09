@@ -50,3 +50,4 @@ Preferred pose estimator model is [this](https://drive.google.com/file/d/1Oy9O18
 You need to prepare 2D key points coordinates in order to run our `triangulation.py`
 
 ## Pitch Detection
+You need to prepare audio file with '.wav' format in 'audio' directory. Run 'pitch_detect.py" for audio pitch detection, while "freq_position.py" for locating thoses pitches on cello.
