@@ -5,7 +5,7 @@ Created on Wed Nov  8 21:37:43 2023
 @author: shrim
 
 This code will run TAPIR to track the keypoints of the cello that have labelled in *.json.
-For more information, please visit 
+For more information, please visit "https://github.com/google-deepmind/tapnet".
 
 The version of some wheels as below:
 mediapy                         1.1.9
