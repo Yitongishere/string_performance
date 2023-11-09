@@ -89,7 +89,7 @@ ic(PITCH_RANGES)
 if __name__ == "__main__":
 
     # 读取 pitch detection 结果，推算演奏位置
-    results = np.loadtxt(open("./pitch.csv"), delimiter=",", skiprows=0)
+    results = np.loadtxt(open("./pitch.csv"), delimiter=",", skiprows=1)
 
     # 可视化音高检测结果
     plt.figure(figsize=(16, 10))
@@ -100,6 +100,8 @@ if __name__ == "__main__":
 
     # 设置音高检测置信度门槛
     conf_threshold = 0.6
+    # 空弦判断门槛
+    base_threshold = 0.04
     # shape in (n_timesteps, 7)
     #      ->  dim1: (timestep, frequency, confidence, string1_pos, string2_pos, string3_pos, string4_pos)
     info_all = []
@@ -119,12 +121,14 @@ if __name__ == "__main__":
             if len(possible_strings) != 0:
                 for i in possible_strings:
                     position_cur[i+2] = freq2position(PITCH_RANGES[i - 1][0], freq_cur)
+                    if abs(position_cur[i+2] - 1) < base_threshold:
+                        position_cur[i + 2] = 1
         info_all.append((position_cur))
 
-    np.savetxt("pitch.csv", info_all, delimiter=",")
+    np.savetxt("info_all.csv", info_all, delimiter=",")
 
     index_text = 'time, frequency, confidence, string1_pos, string2_pos, string3_pos, string4_pos'
-    _write_raw_index(path="pitch.csv", text=index_text)
+    _write_raw_index(path="info_all.csv", text=index_text)
 
     ic(len(info_all))
     ic(info_all)
