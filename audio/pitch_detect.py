@@ -19,4 +19,8 @@ if __name__ == '__main__':
     # viterbi: smoothing for the pitch curve
     # step_size: 10 milliseconds
     time, frequency, confidence, activation = crepe.predict(audio, sr, viterbi=False, step_size=10)
-    draw_fundamental_curve(time, frequency)
+
+    pitch_results = np.stack((time, frequency, confidence), axis=1)
+    np.savetxt("pitch.csv", pitch_results, delimiter=",")
+
+    # draw_fundamental_curve(time, frequency)
