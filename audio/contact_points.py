@@ -19,7 +19,9 @@ def draw_fundamental_curve(time_arr, freq_arr, conf_arr):
 
 
 def draw_contact_points(data):
-    # data: [n, 4], n: frame number, 4: string number
+    """
+    data: [n, 4], n: frame number, 4: string number
+    """
     string_low = 1
     string_high = 10
     string_length = string_high - string_low
@@ -96,7 +98,8 @@ def pitch_detect(audio_path='background.wav'):
     sr, audio = wavfile.read(audio_path)
     # viterbi: smoothing for the pitch curve
     # step_size: 10 milliseconds
-    time, frequency, confidence, activation = crepe.predict(audio, sr, viterbi=False, step_size=33.33)
+    time, frequency, confidence, activation = crepe.predict(
+        audio, sr, viterbi=True, step_size=33.33, model_capacity='full')
     draw_fundamental_curve(time, frequency, confidence)
     pitch_results = np.stack((time, frequency, confidence), axis=1)
     # Pitch Data Persistence
@@ -110,6 +113,4 @@ if __name__ == '__main__':
     ic(pitch_with_positions.shape)
     positions = pitch_with_positions[:, -4:]
     ic(positions.shape)
-    draw_contact_points(positions)
-
-
+    # draw_contact_points(positions)
