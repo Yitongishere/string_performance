@@ -2,6 +2,7 @@ import cv2
 import os
 import re
 import glob
+from icecream import ic
 
 
 def getFiles(dir, suffix):  # find the files with specific suffix
@@ -89,6 +90,7 @@ def extract_spec_frames(video_path, output_path, camera_num, frame_list=[1, 200,
             else:
                 frame_trans = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
             cv2.imwrite(save_path, frame_trans)
+            print(f'{camera_num} frame {frame_count} extracted ...')
         if len(frame_list_been) == len(frame_list):
             break
     video.release()
@@ -149,7 +151,7 @@ def extract_frames_interval(files_path, output_path, start, end):
     cam_nums = [i.split('_')[-1] for i in file_name]
     frame_list = [i for i in range(start, end)]
 
-    print(videos_path)
+    ic(videos_path)
 
     for i, video_path in enumerate(videos_path):
         # save_path = f'{output_path}/{cam_num[i]}'
@@ -160,10 +162,13 @@ def extract_frames_interval(files_path, output_path, start, end):
 
 
 if __name__ == "__main__":
-    # path of videos
-    files_path = f"../data/cello_0926/cello_0926_21334181.avi"
+    # path of videos to be extracted
+    files_path = f"../data/cello_1113/cello_1113_scale/video/*"
+    # files_path = f"../data/cello_1113/cello_1113_pgy/video/*"
 
-    output_path = f"../data/cello_0926/frames/"
+    # output path for extracted frames
+    output_path = f"../data/cello_1113/cello_1113_scale/frames"
+    # output_path = f"../data/cello_1113/cello_1113_pgy/frames"
 
+    extract_frames_interval(files_path, output_path, 1, 2)  # For camera calibration
     # extract_frames_interval(files_path, output_path, 70, 800)
-    extract_frames_interval(files_path, output_path, 1, 687)
