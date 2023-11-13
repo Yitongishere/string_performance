@@ -191,23 +191,26 @@ if __name__ == '__main__':
     )
 
     # Load the video
-    video_name = 'out37.mp4'
+    video_name = 'out37.mp4' #The path of the input video
     video = imageio.get_reader(os.path.abspath(video_name), 'ffmpeg')
     iter_frames = 300  # Number of iteration frames per model insertion <=video.count_frames()
 
     start_frame_idx = 77
-    resize_height = 256
-    resize_width = 256
+    
+    # The default modification size is (256,256),and you'd better set it to a power of 2. 
+    # We found that using larger sized images as input can greatly improve accuracy.
+    resize_height = 1024
+    resize_width = 1024
 
     frames = None
     tracks = None
     track_result = None
 
     '''
-        labelled json file should be loaded as np.array to the variable "query_points", or you should manully set it.
+        Labelled json file should be loaded as np.array to the variable "query_points", or you should manully set it.
         
         For example:
-            if you define "n" points, you'll get an array shaped (n,3)
+            If you define "n" points, you'll get an array shaped (n,3)
             3 points has been defined, and its shape is (3,3)
             then query_points seems like:
                 np.array([[   0,  419, 1257],
@@ -215,7 +218,8 @@ if __name__ == '__main__':
                           [   0, 2539,  994]])
             The second and the third elements of this array are positions "Y (height)" and "X (width)"  of the pixels.
     '''
-    labelled_json = 'camera_21334237_{}.json'.format(start_frame_idx)
+    labelled_json = 'camera_21334237_{}.json'.format(start_frame_idx) # The path of your keypoints. ->(camera_{cameraID}_{start_frame_index})
+    # We use labelme to sign them, and you can use other Labeling tools or give the array of keypoints position information artificially.
 
     print('Loading frames and Inferecing...')
     for num in tqdm(range(video.count_frames()), desc="Loading frames"):
@@ -230,7 +234,7 @@ if __name__ == '__main__':
 
             if (num + 1) % iter_frames == 0 or num == video.count_frames() - 1:
                 print('\n Round [%d] is starting!' % ((num + 1) // iter_frames + int((num + 1) % iter_frames > 0)))
-                if (num + 1) // iter_frames == 1:
+                if ((num+1)//iter_frames + int((num+1)%iter_frames>0)) == 1:
                     with open(labelled_json, 'r') as f:
                         labelled_info = json.load(f)
                     f.close()
@@ -288,7 +292,7 @@ if __name__ == '__main__':
 
                 # Visualize sparse point tracks
                 tracks = transforms.convert_grid_coordinates(tracks, (resize_width, resize_height), (width, height))
-                if (num + 1) // iter_frames == 1:
+                if ((num+1)//iter_frames + int((num+1)%iter_frames>0)) == 1:
                     tracks_result = tracks
                 else:
                     tracks_result = np.concatenate((tracks_result, tracks), axis=1)
@@ -318,7 +322,8 @@ if __name__ == '__main__':
     colormap = viz_utils.get_colors(readfile.shape[1])
 
     print('Generate a video...')
-    plot_flag = False
+    plot_flag = False # plot_flag = True -> Use matplotlib.pyplot to visualize
+    
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     framesize = tuple(np.flip(video.get_data(0).shape)[1:])  # turple->(width,height)
     out = cv2.VideoWriter('pointtracking3_output.avi', fourcc, fps=30, frameSize=framesize)
@@ -331,7 +336,6 @@ if __name__ == '__main__':
                 frame = cv2.circle(image,
                                    tuple(np.array(np.round(readfile[num - start_frame_idx + 1][j]),
                                                   dtype=np.int16)), 1, color, 10)
-                pass
             if plot_flag:
                 plt.imshow(frame)
                 plt.tight_layout()
