@@ -7,7 +7,7 @@ import os
 import matplotlib.pyplot as plt
 import torch
 import traceback
-
+from icecream import ic
 import mmcv
 from mmcv import imread
 import mmengine
@@ -84,55 +84,57 @@ if __name__ == '__main__':
 
     pose_estimator = init_pose_estimator(
         'configs/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py',
-        '../model/dw-ll_ucoco_384.pth',  # your pose estimator model.pth path
+        './dw-ll_ucoco_384.pth',  # your pose estimator model.pth path
         device=device,
         # if you want to see heatmaps, please uncomment the following line (but it'll be much slower)
         # cfg_options={'model': {'test_cfg': {'output_heatmaps': True}}}
     )
 
-    # files_path = r'./*.mp4'  # your video path
-    files_path = r'/media/ping/Qping/cello_0926/*.avi'
-
-    videos_path = glob.glob(files_path)
-    base_name = [os.path.basename(i) for i in videos_path]
-    file_name = [os.path.splitext(i)[0] for i in base_name]
-    cam_num = [i.split('_')[-1] for i in file_name]
-    clock_wise = ['21334181', '21334237']
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    for i, video_path in enumerate(videos_path):
-        cap = cv2.VideoCapture(video_path)
-        frame_num = 1
-        if not os.path.exists('../kp_2d'):
-            os.makedirs('../kp_2d')
-        store_path = r'../kp_2d/{filename}'.format(filename=file_name[i])
-        if not os.path.exists(store_path):
-            os.makedirs(store_path)
-        out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=[2300,2656])
-        while (True):
-            ret, frame = cap.read()
-            if not ret:
-                break
-            if cam_num[i] in clock_wise:
-                frame_rot = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-            else:
-                frame_rot = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            init_default_scope(detector.cfg.get('default_scope', 'mmdet'))
-            detect_result = inference_detector(detector, frame_rot)
-            pred_instance = detect_result.pred_instances.cpu().numpy()
-            bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
-            bboxes = bboxes[np.logical_and(pred_instance.labels == 0, pred_instance.scores > DET_CONF_THRES)]
-            bboxes = bboxes[nms(bboxes, 0.3)][:, :4]
-            init_default_scope(pose_estimator.cfg.get('default_scope', 'mmpose'))
-            # bboxes=None indicates that the entire image will be regarded as a single bbox area (one person)
-            pose_results = inference_topdown(pose_estimator, frame_rot, bboxes=bboxes)
-            data_samples = merge_data_samples(pose_results)
-            result_img = visualize(pose_estimator, frame_rot, data_samples)
-            # store 2d key points result to json file
-            posinfo2json(pose_results, f'{store_path}/{frame_num}.json')
-            out.write(result_img)
-            # cv2.imshow('result', result_img)
-            # cv2.waitKey(1)
-            frame_num += 1
-        cap.release()
-        out.release()
-    cv2.destroyAllWindows()
+    dirs_path = r'../data/cello_1113'  # Your directory path
+    dirs_list = os.listdir(dirs_path)
+    full_path = [dirs_path + os.sep + i for i in dirs_list]
+    for idx, dir_path in enumerate(full_path):
+        videos_path = glob.glob(dir_path + os.sep + 'video' + os.sep + '*.avi')
+        base_name = [os.path.basename(i) for i in videos_path]
+        file_name = [os.path.splitext(i)[0] for i in base_name]
+        cam_num = [i.split('_')[-1] for i in file_name]
+        sub_dir_name = dirs_list[idx]
+        clock_wise = ['21334181', '21334237']
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        for i, video_path in enumerate(videos_path):
+            cap = cv2.VideoCapture(video_path)
+            frame_num = 1
+            if not os.path.exists('../kp_2d'):
+                os.makedirs('../kp_2d')
+            store_path = r'../kp_2d/{sub_dir_name}/{filename}'.format(sub_dir_name=sub_dir_name, filename=file_name[i])
+            if not os.path.exists(store_path):
+                os.makedirs(store_path)
+            out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=[2300,2656])
+            while (True):
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                if cam_num[i] in clock_wise:
+                    frame_rot = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                else:
+                    frame_rot = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                init_default_scope(detector.cfg.get('default_scope', 'mmdet'))
+                detect_result = inference_detector(detector, frame_rot)
+                pred_instance = detect_result.pred_instances.cpu().numpy()
+                bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
+                bboxes = bboxes[np.logical_and(pred_instance.labels == 0, pred_instance.scores > DET_CONF_THRES)]
+                bboxes = bboxes[nms(bboxes, 0.3)][:, :4]
+                init_default_scope(pose_estimator.cfg.get('default_scope', 'mmpose'))
+                # bboxes=None indicates that the entire image will be regarded as a single bbox area (one person)
+                pose_results = inference_topdown(pose_estimator, frame_rot, bboxes=bboxes)
+                data_samples = merge_data_samples(pose_results)
+                result_img = visualize(pose_estimator, frame_rot, data_samples)
+                # store 2d key points result to json file
+                posinfo2json(pose_results, f'{store_path}/{frame_num}.json')
+                out.write(result_img)
+                # cv2.imshow('result', result_img)
+                # cv2.waitKey(1)
+                frame_num += 1
+            cap.release()
+            out.release()
+        cv2.destroyAllWindows()
