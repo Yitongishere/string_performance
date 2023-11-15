@@ -211,7 +211,10 @@ if __name__ == '__main__':
     video_name = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334181.avi'
     cam_num = video_name.split('_')[-1].split('.')[0]
     parent_folder = os.path.dirname(video_name)
-    base_name = os.path.basename(video_name).split('.')[0] + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
+    base_name = os.path.basename(video_name)
+    file_name = base_name.split('.')[0] + '_' + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
+    save_sub_dir = '_'.join(base_name.split('_')[:2])
+    save_folder_path = '../cello_2d_result'
     video = imageio.get_reader(os.path.abspath(video_name), 'ffmpeg')
     iter_frames = 300  # Number of iteration frames per model insertion <=video.count_frames()
 
@@ -237,13 +240,12 @@ if __name__ == '__main__':
     # The path of your keypoints -> (camera_{cameraID}_{start_frame_index}). We use labelme to label them, or you can
     # use other tools to give the array of keypoints position information manually.
 
-    if os.path.exists(os.path.abspath(parent_folder) + os.sep + base_name + '.json'):
+    if os.path.exists(os.path.abspath(parent_folder) + os.sep + file_name + '.json'):
         # Read some inferred information from *.json
-        with open(os.path.abspath(parent_folder) + os.sep + base_name + '.json', 'r') as f:
+        with open(os.path.abspath(parent_folder) + os.sep + file_name + '.json', 'r') as f:
             readfile = np.asarray(json.load(f))
         f.close()
     else:
-
         print('Loading frames and Inferring...')
         for num in tqdm(range(video.count_frames()), desc="Loading frames"):
             if num >= start_frame_idx - 1:
@@ -339,9 +341,23 @@ if __name__ == '__main__':
         # change the shape from (keypoints_num, frame_num, 2) into (frame_num, keypoints_num, 2)
         tracks_result = np.transpose(np.asarray(tracks_result), (1, 0, 2))
 
-        with open(os.path.abspath(parent_folder) + os.sep + base_name + '.json', 'w') as f:
-            f.write(json.dumps(tracks_result.tolist()))
-        f.close()
+        if not os.path.exists(save_folder_path):
+            os.mkdir(save_folder_path)
+        save_sub_dir_path = save_folder_path + os.sep + save_sub_dir
+        if not os.path.exists(save_sub_dir_path):
+            os.mkdir(save_sub_dir_path)
+        save_sub_sub_dir_path = save_sub_dir_path + os.sep + cam_num
+        if not os.path.exists(save_sub_sub_dir_path):
+            os.mkdir(save_sub_sub_dir_path)
+
+        for idx, frame in enumerate(tracks_result):
+            with open(f'{save_folder_path}/{save_sub_dir}/{cam_num}/{start_frame_idx + idx}.json', 'w') as f:
+                f.write(json.dumps(frame.tolist()))
+            f.close()
+
+        # with open(os.path.abspath(parent_folder) + os.sep + file_name + '.json', 'w') as f:
+        #     f.write(json.dumps(tracks_result.tolist()))
+        # f.close()
         print('Completed!')
 
         readfile = tracks_result

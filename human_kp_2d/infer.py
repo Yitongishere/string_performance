@@ -24,6 +24,8 @@ from tools.rotate import frame_rotate
 configs and models for pose estimator (2d kept detection) and detector (bbox detection) should be prepared ahead
 preferred pose estimator model link: https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/
 '''
+
+
 def visualize(pose_estimator, img, data_samples):
     # 半径
     pose_estimator.cfg.visualizer.radius = 2
@@ -52,6 +54,7 @@ def visualize(pose_estimator, img, data_samples):
     # plt.imshow(img_output)
     # plt.show()
     return img_output
+
 
 def posinfo2json(pose, path='json/pos.json', save=True, kp_type='unit8'):
     file_name_split = path.split('.')[:-1]
@@ -104,15 +107,15 @@ if __name__ == '__main__':
         for i, video_path in enumerate(videos_path):
             cap = cv2.VideoCapture(video_path)
             frame_num = 1
-            if not os.path.exists('../kp_2d'):
-                os.makedirs('../kp_2d')
-            store_path = r'../kp_2d/{sub_dir_name}/{filename}'.format(sub_dir_name=sub_dir_name, filename=file_name[i])
+            if not os.path.exists('../human_2d_result'):
+                os.makedirs('../human_2d_result')
+            store_path = r'../human_2d_result/{sub_dir_name}/{cam_num}'.format(sub_dir_name=sub_dir_name,
+                                                                               cam_num=cam_num[i])
             if not os.path.exists(store_path):
                 os.makedirs(store_path)
-            out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=[2300,2656])
-            while (True):
+            out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
+            while True:
                 ret, frame = cap.read()
-                ic(type(frame))
                 if not ret:
                     break
                 frame_rot = frame_rotate(cam_num[i], frame)

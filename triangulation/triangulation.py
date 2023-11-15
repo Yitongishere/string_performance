@@ -421,7 +421,7 @@ if __name__ == "__main__":
                  'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
                  'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
 
-    start_frame = 76
+    start_frame = 121
     end_frame = 660
 
     kp_3d_all = []
