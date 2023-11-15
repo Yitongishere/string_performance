@@ -1,0 +1,14 @@
+chex
+jax
+jaxline
+optax
+dm-haiku==0.0.10
+dm-tree
+typing_extensions
+matplotlib
+mediapy
+opencv-python
+einshape
+ipympl
+tqdm
+imageio[ffmpeg]
