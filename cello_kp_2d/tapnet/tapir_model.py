@@ -24,9 +24,9 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 
-from tapnet.models import resnet
-from tapnet.utils import model_utils
-from tapnet.utils import transforms
+from cello_kp_2d.tapnet.models import resnet
+from cello_kp_2d.tapnet.utils import model_utils
+from cello_kp_2d.tapnet.utils import transforms
 
 
 def layernorm(x):

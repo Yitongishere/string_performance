@@ -35,12 +35,13 @@ import json
 import os
 
 import requests
+from tools.rotate import frame_rotate
 
 
 # https://storage.googleapis.com/dm-tapnet/causal_tapir_checkpoint.npy
 
 def download_checkpoints(ck_url='https://storage.googleapis.com/dm-tapnet/causal_tapir_checkpoint.npy'):
-    print('Download the checkpoint...')
+    print('Downloading the checkpoint...')
     ipadd = '127.0.0.1:7890'
     proxies = {'http': 'http://{}'.format(ipadd),
                'https': 'https://{}'.format(ipadd)}
@@ -164,6 +165,16 @@ def construct_initial_causal_state(num_points, num_resolutions):
     return [fake_ret] * num_resolutions * 4
 
 
+def adjust_image_factor(img, contrast=1, brightness=1):
+    from PIL import Image, ImageEnhance
+    pil_img = Image.fromarray(img)
+    enhancer = ImageEnhance.Contrast(pil_img)
+    pil_img = enhancer.enhance(contrast)
+    enhancer = ImageEnhance.Brightness(pil_img)
+    pil_img = enhancer.enhance(brightness)
+    return np.asarray(pil_img)
+
+
 if __name__ == '__main__':
     # Load the checkpoint
     print('Loading the checkpoint...')
@@ -190,24 +201,28 @@ if __name__ == '__main__':
         online_predict_apply, params=params, state=state, rng=rng
     )
 
-    # Load the video
-    video_name = 'out37.mp4' #The path of the input video
-    video = imageio.get_reader(os.path.abspath(video_name), 'ffmpeg')
-    iter_frames = 300  # Number of iteration frames per model insertion <=video.count_frames()
-
-    start_frame_idx = 77
-    
-    # The default modification size is (256,256),and you'd better set it to a power of 2. 
+    # The default modification size is (256,256),and you'd better set it to the power of 2.
     # We found that using larger sized images as input can greatly improve accuracy.
     resize_height = 1024
     resize_width = 1024
+
+    # Load the video
+    # video_name = 'out37.mp4' #The path of the input video
+    video_name = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334181.avi'
+    cam_num = video_name.split('_')[-1].split('.')[0]
+    parent_folder = os.path.dirname(video_name)
+    base_name = os.path.basename(video_name).split('.')[0] + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
+    video = imageio.get_reader(os.path.abspath(video_name), 'ffmpeg')
+    iter_frames = 300  # Number of iteration frames per model insertion <=video.count_frames()
+
+    start_frame_idx = 128
 
     frames = None
     tracks = None
     track_result = None
 
     '''
-        Labelled json file should be loaded as np.array to the variable "query_points", or you should manully set it.
+        Labelled json file should be loaded as np.array to the variable "query_points", or you should manually set it.
         
         For example:
             If you define "n" points, you'll get an array shaped (n,3)
@@ -218,120 +233,133 @@ if __name__ == '__main__':
                           [   0, 2539,  994]])
             The second and the third elements of this array are positions "Y (height)" and "X (width)"  of the pixels.
     '''
-    labelled_json = 'camera_21334237_{}.json'.format(start_frame_idx) # The path of your keypoints. ->(camera_{cameraID}_{start_frame_index})
-    # We use labelme to sign them, and you can use other Labeling tools or give the array of keypoints position information artificially.
+    labelled_json = 'camera_21334181_{}.json'.format(start_frame_idx)
+    # The path of your keypoints -> (camera_{cameraID}_{start_frame_index}). We use labelme to label them, or you can
+    # use other tools to give the array of keypoints position information manually.
 
-    print('Loading frames and Inferecing...')
-    for num in tqdm(range(video.count_frames()), desc="Loading frames"):
-        if num >= start_frame_idx - 1:
-            image = np.asarray(video.get_data(num), dtype=np.uint8)
-            frame = media.resize_video(image[np.newaxis, :], (resize_height, resize_width))
-            if frames is None:
-                height, width = image.shape[0:2]
-                frames = frame
-            else:
-                frames = np.concatenate((frames, frame), axis=0)
+    if os.path.exists(os.path.abspath(parent_folder) + os.sep + base_name + '.json'):
+        # Read some inferred information from *.json
+        with open(os.path.abspath(parent_folder) + os.sep + base_name + '.json', 'r') as f:
+            readfile = np.asarray(json.load(f))
+        f.close()
+    else:
 
-            if (num + 1) % iter_frames == 0 or num == video.count_frames() - 1:
-                print('\n Round [%d] is starting!' % ((num + 1) // iter_frames + int((num + 1) % iter_frames > 0)))
-                if ((num+1)//iter_frames + int((num+1)%iter_frames>0)) == 1:
-                    with open(labelled_json, 'r') as f:
-                        labelled_info = json.load(f)
-                    f.close()
+        print('Loading frames and Inferring...')
+        for num in tqdm(range(video.count_frames()), desc="Loading frames"):
+            if num >= start_frame_idx - 1:
+                image = np.asarray(video.get_data(num), dtype=np.uint8)
+                image = frame_rotate(cam_num, image)
+                # image = adjust_image_factor(image, 1.5, 1.5)
 
-                    cello_keypoints = ['scroll_top', 'nut_l', 'nut_r', 'neck_bottom_l', 'neck_bottom_r', 'bridge_l',
-                                       'bridge_r', 'tail_gut', 'end_pin']
-                    bow_keypoints = ['tip_plate', 'frog']
-
-                    kpdict = {}
-                    for item in labelled_info['shapes']:
-                        if item['label'] in cello_keypoints + bow_keypoints:
-                            kpdict[(cello_keypoints + bow_keypoints).index(item['label'])] = item['points'][0]
-                            continue
-
-                    kpdict = dict(sorted(kpdict.items(), key=lambda item: item[0], reverse=False))
-                    query_points = np.concatenate((np.zeros((len(kpdict), 1)), np.flip(list(kpdict.values()))), axis=1)
-
-                    '''
-                    query_points = np.array([[   0,  419, 1257],
-                                             [   0, 1290, 1001],
-                                             [   0, 2539,  994]])
-                    '''
-
+                frame = media.resize_video(image[np.newaxis, :], (resize_height, resize_width))
+                if frames is None:
+                    height, width = image.shape[0:2]
+                    frames = frame
+                    if num == start_frame_idx - 1:
+                        cv2.imshow('frame1', cv2.cvtColor(cv2.resize(image, (920, 1062)), cv2.COLOR_RGB2BGR))
+                        cv2.waitKey(0)
+                        cv2.destroyAllWindows()
                 else:
-                    '''
-                    If not all frames are inserted at once, the last inference result needs to be input into the next inference.
-                    '''
-                    query_points = np.concatenate((np.zeros((tracks.shape[0], 1)), np.flip(tracks[:, -1, :], axis=1)),
-                                                  axis=1)
+                    frames = np.concatenate((frames, frame), axis=0)
 
-                query_points = transforms.convert_grid_coordinates(
-                    query_points, (1, height, width), (1, resize_height, resize_width), coordinate_format='tyx')
+                if (num + 1) % iter_frames == 0 or num == video.count_frames() - 1:
+                    print('\n Round [%d] is starting!' % ((num + 1) // iter_frames + int((num + 1) % iter_frames > 0)))
+                    if ((num + 1) // iter_frames + int((num + 1) % iter_frames > 0)) == 1:
+                        with open(labelled_json, 'r') as f:
+                            labelled_info = json.load(f)
+                        f.close()
 
-                query_features, _ = online_init_apply(frames=preprocess_frames(frames[None, None, 0]),
-                                                      query_points=query_points[None])
-                causal_state = construct_initial_causal_state(query_points.shape[0],
-                                                              len(query_features.resolutions) - 1)
+                        cello_keypoints = ['scroll_top', 'nut_l', 'nut_r', 'neck_bottom_l', 'neck_bottom_r', 'bridge_l',
+                                           'bridge_r', 'tail_gut', 'end_pin']
+                        bow_keypoints = ['tip_plate', 'frog']
 
-                # Predict point tracks frame by frame
-                predictions = []
-                for i in tqdm(range(frames.shape[0]), desc="Inferencing", leave=False):
-                    (prediction, causal_state), _ = online_predict_apply(
-                        frames=preprocess_frames(frames[None, None, i]),
-                        query_features=query_features,
-                        causal_context=causal_state,
-                    )
-                    predictions.append(prediction)
+                        kpdict = {}
+                        for item in labelled_info['shapes']:
+                            if item['label'] in cello_keypoints + bow_keypoints:
+                                kpdict[(cello_keypoints + bow_keypoints).index(item['label'])] = item['points'][0]
+                                continue
 
-                # Extract some informations
-                tracks = np.concatenate([x['tracks'][0] for x in predictions], axis=1)
-                occlusions = np.concatenate([x['occlusion'][0] for x in predictions], axis=1)
-                expected_dist = np.concatenate([x['expected_dist'][0] for x in predictions], axis=1)
+                        kpdict = dict(sorted(kpdict.items(), key=lambda item: item[0], reverse=False))
+                        # query_points = np.concatenate((np.zeros((len(kpdict),1)),np.flip(list(kpdict.values()))),axis =1)
+                        query_points = np.concatenate(
+                            (np.ones((len(kpdict), 1)) * (num + 1), np.flip(list(kpdict.values()))), axis=1)
 
-                visibles = postprocess_occlusions(occlusions, expected_dist)
+                        '''
+                        query_points = np.array([[   0,  419, 1257],
+                                                 [   0, 1290, 1001],
+                                                 [   0, 2539,  994]])
+                        '''
 
-                # Visualize sparse point tracks
-                tracks = transforms.convert_grid_coordinates(tracks, (resize_width, resize_height), (width, height))
-                if ((num+1)//iter_frames + int((num+1)%iter_frames>0)) == 1:
-                    tracks_result = tracks
-                else:
-                    tracks_result = np.concatenate((tracks_result, tracks), axis=1)
-                frames = None
-                print('-' * 80)
-    print('\nCompleted!')
+                    else:
+                        '''
+                        If not all frames are inserted at once, the last inference result needs to be input into the next inference.
+                        '''
+                        # query_points = np.concatenate((np.zeros((tracks.shape[0],1)),np.flip(tracks[:,-1,:],axis = 1)),axis =1)
+                        query_points = np.concatenate(
+                            (np.ones((tracks.shape[0], 1)) * (num + 1), np.flip(tracks[:, -1, :], axis=1)), axis=1)
 
-    # Save
-    print('Save the information of keypoints...')
+                    query_points = transforms.convert_grid_coordinates(
+                        query_points, (1, height, width), (1, resize_height, resize_width), coordinate_format='tyx')
 
-    # keypoint file name
-    keypoints_jsonfile = video_name.split('.')[-2] + '_keypoints'
+                    query_features, _ = online_init_apply(frames=preprocess_frames(frames[None, None, 0]),
+                                                          query_points=query_points[None])
+                    causal_state = construct_initial_causal_state(query_points.shape[0],
+                                                                  len(query_features.resolutions) - 1)
 
-    # change the shape from (keypoints_num, frame_num, 2) into (frame_num, keypoints_num, 2)
-    tracks_result = np.transpose(np.asarray(tracks_result), (1, 0, 2))
+                    # Predict point tracks frame by frame
+                    predictions = []
+                    for i in tqdm(range(frames.shape[0]), desc="Inferring", leave=False):
+                        (prediction, causal_state), _ = online_predict_apply(
+                            frames=preprocess_frames(frames[None, None, i]),
+                            query_features=query_features,
+                            causal_context=causal_state,
+                        )
+                        predictions.append(prediction)
 
-    with open(os.path.abspath(keypoints_jsonfile + '.json'), 'w') as f:
-        f.write(json.dumps(tracks_result.tolist()))
-    f.close()
-    print('Completed!')
+                    # Extract some information
+                    tracks = np.concatenate([x['tracks'][0] for x in predictions], axis=1)
+                    occlusions = np.concatenate([x['occlusion'][0] for x in predictions], axis=1)
+                    expected_dist = np.concatenate([x['expected_dist'][0] for x in predictions], axis=1)
 
-    # Read some inferenced infomation from *.json
-    with open(os.path.abspath(keypoints_jsonfile + '.json'), 'r') as f:
-        readfile = np.asarray(json.load(f))
-    f.close()
+                    visibles = postprocess_occlusions(occlusions, expected_dist)
+
+                    # Visualize sparse point tracks
+                    tracks = transforms.convert_grid_coordinates(tracks, (resize_width, resize_height), (width, height))
+                    if ((num + 1) // iter_frames + int((num + 1) % iter_frames > 0)) == 1:
+                        tracks_result = tracks
+                    else:
+                        tracks_result = np.concatenate((tracks_result, tracks), axis=1)
+                    frames = None
+                    print('-' * 80)
+        print('\nCompleted!')
+
+        # Save
+        print('Save the information of keypoints...')
+
+        # change the shape from (keypoints_num, frame_num, 2) into (frame_num, keypoints_num, 2)
+        tracks_result = np.transpose(np.asarray(tracks_result), (1, 0, 2))
+
+        with open(os.path.abspath(parent_folder) + os.sep + base_name + '.json', 'w') as f:
+            f.write(json.dumps(tracks_result.tolist()))
+        f.close()
+        print('Completed!')
+
+        readfile = tracks_result
 
     colormap = viz_utils.get_colors(readfile.shape[1])
 
     print('Generate a video...')
-    plot_flag = False # plot_flag = True -> Use matplotlib.pyplot to visualize
-    
+    plot_flag = False  # plot_flag = True -> Use matplotlib.pyplot to visualize
+
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     framesize = tuple(np.flip(video.get_data(0).shape)[1:])  # turple->(width,height)
-    out = cv2.VideoWriter('pointtracking3_output.avi', fourcc, fps=30, frameSize=framesize)
+    out = cv2.VideoWriter('pointtracking3_output.avi', fourcc, fps=30, frameSize=np.flip(framesize))
 
     # Visualize and generate a video.
     for num in tqdm(range(video.count_frames())):
         if num >= start_frame_idx - 1:
             image = np.asarray(video.get_data(num), dtype=np.uint8)
+            image = frame_rotate(cam_num, image)
             for j, color in enumerate(colormap):
                 frame = cv2.circle(image,
                                    tuple(np.array(np.round(readfile[num - start_frame_idx + 1][j]),

@@ -28,7 +28,7 @@ pip install -r requirements.txt
 #### CPU version (NOT RECOMMEND)
 `pip install torch==1.9.1+cpu torchvision==0.10.1+cpu torchaudio==0.9.1 -f https://download.pytorch.org/whl/torch_stable.html`
 
-You could also follow the instructions on the PyTorch official site: `https://pytorch.org/get-started/previous-versions/`
+You could also follow the [instructions](https://pytorch.org/get-started/previous-versions/) on the PyTorch official site.
 
 ### 3. MMCV installation
 You need to follow the instruction on the [MMCV official Installation Guide](https://mmcv.readthedocs.io/en/latest/get_started/installation.html) depending on the type of system, CUDA version, PyTorch version, and MMCV version(mmcv~=2.0.0 is preferred).
@@ -40,6 +40,34 @@ Our Example (Windows or linux, torch==1.9.1+cu111, mmcv=2.0.0)
 ### 4. CREPE installation
 You may need to install tensorflow as well.
 Please refer to [CREPE Documentation](https://github.com/marl/crepe)
+
+### 5. TAP-Net installation
+If you want to track the cello key points using [TAPIR](https://deepmind-tapir.github.io/), you can either
+follow the instructions below or the [official guide](https://github.com/google-deepmind/tapnet#live-demo) provided by google.
+
+5.1. Please first switch to the working directory for tapnet:
+`cd cello_kp_2d\tapnet`
+
+5.2. Install requirements for inference:
+`pip install -r requirements_inference.txt`
+
+If you want to use the GPU/TPU version of Jax:
+
+[Linux System, **Recommended**]
+
+Install Jax referring to the [jax manual](https://github.com/google/jax#installation).
+
+[Windows System] 
+
+You may need to use the [Wheel](https://whls.blob.core.windows.net/unstable/index.html).
+
+We use the jaxlib-0.3.22+cuda11.cudnn82-cp38-cp38-win_amd64.whl with the configuration of Windows 11, CUDA 11.1+CUDNN8.2(NVIDIA RTX3060), Python=3.8.
+
+5.3. Download the checkpoint: (Optional, TrackKeypoints.py could automatically download it)
+```
+cd checkpoints
+wget -P checkpoints https://storage.googleapis.com/dm-tapnet/causal_tapir_checkpoint.npy
+```
 
 ## 2d Key Points Detection
 `model.pth` for pose estimator should be downloaded ahead for `infer.py`

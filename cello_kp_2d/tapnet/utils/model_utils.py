@@ -23,7 +23,7 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
-from tapnet.utils import transforms
+from cello_kp_2d.tapnet.utils import transforms
 
 
 def huber_loss(
