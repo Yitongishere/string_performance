@@ -18,6 +18,7 @@ from mmpose.evaluation.functional import nms
 from mmpose.registry import VISUALIZERS
 from mmpose.structures import merge_data_samples
 from mmdet.apis import inference_detector, init_detector
+from tools.rotate import frame_rotate
 
 '''
 configs and models for pose estimator (2d kept detection) and detector (bbox detection) should be prepared ahead
@@ -99,7 +100,6 @@ if __name__ == '__main__':
         file_name = [os.path.splitext(i)[0] for i in base_name]
         cam_num = [i.split('_')[-1] for i in file_name]
         sub_dir_name = dirs_list[idx]
-        clock_wise = ['21334181', '21334237']
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         for i, video_path in enumerate(videos_path):
             cap = cv2.VideoCapture(video_path)
@@ -112,12 +112,10 @@ if __name__ == '__main__':
             out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=[2300,2656])
             while (True):
                 ret, frame = cap.read()
+                ic(type(frame))
                 if not ret:
                     break
-                if cam_num[i] in clock_wise:
-                    frame_rot = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-                else:
-                    frame_rot = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                frame_rot = frame_rotate(cam_num[i], frame)
                 init_default_scope(detector.cfg.get('default_scope', 'mmdet'))
                 detect_result = inference_detector(detector, frame_rot)
                 pred_instance = detect_result.pred_instances.cpu().numpy()
