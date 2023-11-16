@@ -213,7 +213,7 @@ if __name__ == '__main__':
     cam_num = video_name.split('_')[-1].split('.')[0]
     parent_folder = os.path.dirname(video_name)
     base_name = os.path.basename(video_name)
-    file_name = base_name.split('.')[0] + '_' + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
+    file_name = proj_dir + '_' + cam_num + '_' + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
     # save_sub_dir = '_'.join(base_name.split('_')[:2])
     save_folder_path = '../cello_2d_result'
     video = imageio.get_reader(os.path.abspath(video_name), 'ffmpeg')
@@ -241,7 +241,7 @@ if __name__ == '__main__':
                           [   0, 2539,  994]])
             The second and the third elements of this array are positions "Y (height)" and "X (width)"  of the pixels.
     '''
-    labelled_json = 'camera_21334181_{}.json'.format(start_frame_idx)
+    labelled_json = f'{proj_dir}_21334181_{start_frame_idx}.json'
     # The path of your keypoints -> (camera_{cameraID}_{start_frame_index}). We use labelme to label them, or you can
     # use other tools to give the array of keypoints position information manually.
 
