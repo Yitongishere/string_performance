@@ -14,24 +14,6 @@ cello_performance----.\
     |    |    |    |----variables\
     |    |    |    |    |----variables.data-00000-of-00001
     |    |    |    |    |----variables.index
-    |----calib_frames\
-    |    |----camera_0_21334181_1.jpg
-    |    |----camera_10_21334207_1.jpg
-    |    |----camera_11_21334209_1.jpg
-    |    |----camera_12_21334211_1.jpg
-    |    |----camera_13_21334219_1.jpg
-    |    |----camera_14_21334220_1.jpg
-    |    |----camera_15_21334221_1.jpg
-    |    |----camera_16_21334237_1.jpg
-    |    |----camera_1_21293324_1.jpg
-    |    |----camera_2_21293325_1.jpg
-    |    |----camera_3_21293326_1.jpg
-    |    |----camera_4_21334180_1.jpg
-    |    |----camera_5_21334183_1.jpg
-    |    |----camera_6_21334186_1.jpg
-    |    |----camera_7_21334190_1.jpg
-    |    |----camera_8_21334191_1.jpg
-    |    |----camera_9_21334206_1.jpg
     |----cello_2d_result\
     |    |----cello_1113_scale\
     |    |    |----21334181\  ...
