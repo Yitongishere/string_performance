@@ -78,7 +78,7 @@ def _write_raw_index(path, text):
 
 def get_contact_position(pitch_info):
     # 设置音高检测置信度门槛
-    conf_threshold = 0.6
+    conf_threshold = 0.7
     # 空弦判断门槛
     base_threshold = 0.04
     # shape in (n_timesteps, 7)

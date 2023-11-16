@@ -1,3 +1,4 @@
+import os.path
 import crepe
 import cv2
 from scipy.io import wavfile
@@ -7,7 +8,7 @@ from icecream import ic
 import freq_position
 
 
-def draw_fundamental_curve(time_arr, freq_arr, conf_arr):
+def draw_fundamental_curve(time_arr, freq_arr, conf_arr, proj):
     fig = plt.figure(figsize=(10, 8))
     # percentage of axes occupied
     axes = fig.add_axes([0.1, 0.1, 0.9, 0.8])
@@ -15,10 +16,15 @@ def draw_fundamental_curve(time_arr, freq_arr, conf_arr):
     ax = axes.scatter(time_arr, freq_arr, c=conf_arr, s=1.5, cmap="OrRd")
     axes.set_title('Pitch Curve')
     fig.colorbar(ax)
-    plt.show()
+    # plt.show()
+    if not os.path.exists('output'):
+        os.mkdir('output')
+    if not os.path.exists(f'output/{proj}'):
+        os.mkdir(f'output/{proj}')
+    plt.savefig(f'output/{proj}/pitch_curve.jpg')
 
 
-def draw_contact_points(data):
+def draw_contact_points(data, proj):
     """
     data: [n, 4], n: frame number, 4: string number
     """
@@ -41,8 +47,13 @@ def draw_contact_points(data):
     x3, y3 = zip(*string3)
     x4, y4 = zip(*string4)
 
+    if not os.path.exists('output'):
+        os.mkdir('output')
+    if not os.path.exists(f'output/{proj}'):
+        os.mkdir(f'output{proj}')
+
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'contact_point.avi', fourcc, fps=30, frameSize=[700, 1000])
+    out = cv2.VideoWriter(f'output/{proj}/virtual_contact_point.avi', fourcc, fps=30, frameSize=[700, 1000])
     for frame_idx, frame in enumerate(data):
         print(f'Frame {frame_idx+1}...')
         points = []
@@ -94,13 +105,14 @@ def draw_contact_points(data):
         plt.close()
 
 
-def pitch_detect(audio_path='background.wav'):
+def pitch_detect(proj, audio_path='wavs/background.wav', ):
     sr, audio = wavfile.read(audio_path)
     # viterbi: smoothing for the pitch curve
     # step_size: 10 milliseconds
+    # center: False, don't need to pad!
     time, frequency, confidence, activation = crepe.predict(
-        audio, sr, viterbi=True, step_size=33.33, model_capacity='full')
-    draw_fundamental_curve(time, frequency, confidence)
+        audio, sr, viterbi=True, step_size=33.33, model_capacity='full', center=False)
+    draw_fundamental_curve(time, frequency, confidence, proj)
     pitch_results = np.stack((time, frequency, confidence), axis=1)
     # Pitch Data Persistence
     # np.savetxt("pitch.csv", pitch_results, delimiter=",")
@@ -108,9 +120,9 @@ def pitch_detect(audio_path='background.wav'):
 
 
 if __name__ == '__main__':
-    pitch_results = pitch_detect()
+    proj_dir = 'cello_1113_scale'
+    pitch_results = pitch_detect(proj_dir, 'wavs/scale.wav')
     pitch_with_positions = freq_position.get_contact_position(pitch_results)
     ic(pitch_with_positions.shape)
     positions = pitch_with_positions[:, -4:]
-    ic(positions.shape)
-    # draw_contact_points(positions)
+    draw_contact_points(positions, proj_dir)
