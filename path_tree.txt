@@ -22,16 +22,16 @@ cello_performance----.\
     |    |----TrackKeypoints.py
     |    |----bow.png
     |    |----camera_21334181\  ...
-    |    |----camera_21334181_90.jpg
-    |    |----camera_21334181_90.json
     |    |----camera_21334190\  ...
     |    |----camera_21334237\  ...
-    |    |----camera_21334237_128.json
     |    |----cello.png
     |    |----cello_1113_scale_21334181_1024x1024_keypoints.avi
     |    |----cello_1113_scale_21334181_128.json
+    |    |----cello_1113_scale_21334237_128.json
     |    |----cello_kp.png
     |    |----cello_kp_modify.py
+    |    |----example.jpg
+    |    |----example.json
     |    |----pointtracking3_output.avi
     |    |----tapnet\
     |    |    |----__pycache__\
