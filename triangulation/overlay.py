@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     framenum = kp_3d_all.shape[0]
 
-    cam_file = "./camera.json"
+    cam_file = "jsons/camera.json"
     cam_param = json.load(open(cam_file))
 
     # find reprojection of the specific camera

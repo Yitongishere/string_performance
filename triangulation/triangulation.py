@@ -352,15 +352,15 @@ def compute_axis_lim(triangulated_points):
     return xlim, ylim, zlim
 
 
-def visualize(data):
+def visualize(data, proj_path):
     xlim, ylim, zlim = None, None, None
     framenum = data.shape[0]
 
-    if not os.path.exists(f'../kp_3d/'):
-        os.makedirs(f'../kp_3d/')
+    if not os.path.exists(f'../kp_3d_result/'):
+        os.makedirs(f'../kp_3d_result/')
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../kp_3d/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
+    out = cv2.VideoWriter(f'../kp_3d_result/{proj_path}/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
 
     for f in range(framenum):
         kp_3d = data[f]
@@ -369,7 +369,7 @@ def visualize(data):
         # ic(xlim, ylim, zlim)
         fig = plt.figure(figsize=[10, 10])
         axes3 = fig.add_subplot(projection="3d")
-        axes3.view_init(azim=-60, elev=30, roll=15)
+        axes3.view_init(azim=135, elev=-20, roll=-45)
         axes3.set_xlim3d(xlim)
         axes3.set_ylim3d(ylim)
         axes3.set_zlim3d(zlim)
@@ -395,7 +395,7 @@ def visualize(data):
         axes3.add_collection(bow_coll_3d)
         # plt.show()
 
-        plt.savefig(f'../kp_3d/sample{f}.jpg')
+        plt.savefig(f'../kp_3d_result/{proj_path}/sample{f}.jpg')
 
         canvas = fig.canvas
         canvas.draw()
@@ -409,7 +409,8 @@ def visualize(data):
 
 if __name__ == "__main__":
 
-    cam_file = "./camera.json"
+    cam_file = "jsons/cello_1113_scale_camera.json"
+    proj_dir = "cello_1113_scale"
     cam_param = json.load(open(cam_file))
     R = np.array(cam_param['cam0']['R']).reshape([3, 3])
     T = np.array(cam_param['cam0']['T'])
@@ -421,8 +422,9 @@ if __name__ == "__main__":
                  'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
                  'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
 
-    start_frame = 121
-    end_frame = 660
+    start_frame = 128
+    end_frame = 839
+    # end_frame = 129
 
     kp_3d_all = []
     for ff in range(start_frame, end_frame+1):
@@ -430,34 +432,36 @@ if __name__ == "__main__":
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                joint = f"../kp_2d/cello_0926_{CAM_DICT[cc]}/{ff}.json"
-                joint_2d_cc_ff = np.array(json.load(open(joint)))
+                human_joint = f"../human_2d_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json"
+                human_2d_cc_ff = np.array(json.load(open(human_joint)))
             except FileNotFoundError as e:
                 # remove camera that drop frames
                 cam_ff.remove(cc)
                 continue
             cello_2d_cc_ff = np.zeros([11, 3])  # 11 cello key points in total (default score 0 will not be used)
             try:
-                labelme_path = f'../cello_kp_2d/camera_{CAM_DICT[cc]}/camera_{CAM_DICT[cc]}_{ff}.json'
-                labelme = json.load(open(labelme_path))
+                cello_json_path = f'../cello_2d_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json'
+                cello_keypoints = json.load(open(cello_json_path))
                 # Resolve XML
-                for each_ann in labelme['shapes']:
-                    if each_ann['shape_type'] == 'point':
-                        kpt_label = each_ann['label']
-                        kpt_idx = CELLO_DICT[kpt_label]
-                        kpt_xy = each_ann['points'][0]
-                        cello_2d_cc_ff[kpt_idx] = [kpt_xy[0], kpt_xy[1], 1]  # set the human-label score to be 1
-                kp_2d_cc_ff = np.concatenate([joint_2d_cc_ff, cello_2d_cc_ff], axis=0)
+                # for each_ann in labelme['shapes']:  # manually labelled
+                #     if each_ann['shape_type'] == 'point':
+                #         kpt_label = each_ann['label']
+                #         kpt_idx = CELLO_DICT[kpt_label]
+                #         kpt_xy = each_ann['points'][0]
+                #         cello_2d_cc_ff[kpt_idx] = [kpt_xy[0], kpt_xy[1], 1]  # set the human-label score to be 1
+                for idx, cello_keypoint in enumerate(cello_keypoints):
+                    cello_2d_cc_ff[idx] = [cello_keypoint[0], cello_keypoint[1], 1]  # fully trust the label
+                kp_2d_cc_ff = np.concatenate([human_2d_cc_ff, cello_2d_cc_ff], axis=0)
                 kp_2d_all_cams.append(kp_2d_cc_ff)
             except FileNotFoundError as e:
-                kp_2d_cc_ff = np.concatenate([joint_2d_cc_ff, cello_2d_cc_ff], axis=0)
+                kp_2d_cc_ff = np.concatenate([human_2d_cc_ff, cello_2d_cc_ff], axis=0)
                 kp_2d_all_cams.append(kp_2d_cc_ff)
                 continue
         # make projection matrix using filtered camera
         proj_mat = make_projection_matrix(cam_param, cams=cam_ff)
         kp_2d_all_cams = np.array(kp_2d_all_cams)
         # kp_3d = triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, kpt_thr=0.6)
-        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=KPT_NUM, niter=20, epsilon=40, kpt_thr=0.6)
+        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=KPT_NUM, niter=20, epsilon=20, kpt_thr=0.6)
         # kp_3d_all[ff] = kp_3d
         kp_3d_all.append(kp_3d)
         print(f'Frame {ff} triangulation done.')
@@ -467,11 +471,12 @@ if __name__ == "__main__":
 
     # kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
     kp_3d_smooth = Savgol_Filter(kp_3d_all, KPT_NUM)
+    # kp_3d_smooth = kp_3d_all
 
-    visualize(kp_3d_smooth)
+    visualize(kp_3d_smooth, proj_dir)
 
     data_dict = {'kp_3d_smooth': kp_3d_smooth.tolist()}
-    with open('../kp_3d/kp_3d_smooth.json', 'w') as f:
+    with open(f'../kp_3d_result/{proj_dir}/kp_3d_smooth.json', 'w') as f:
         json.dump(data_dict, f)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0

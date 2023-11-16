@@ -208,12 +208,13 @@ if __name__ == '__main__':
 
     # Load the video
     # video_name = 'out37.mp4' #The path of the input video
+    proj_dir = 'cello_1113_scale'
     video_name = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334181.avi'
     cam_num = video_name.split('_')[-1].split('.')[0]
     parent_folder = os.path.dirname(video_name)
     base_name = os.path.basename(video_name)
     file_name = base_name.split('.')[0] + '_' + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
-    save_sub_dir = '_'.join(base_name.split('_')[:2])
+    # save_sub_dir = '_'.join(base_name.split('_')[:2])
     save_folder_path = '../cello_2d_result'
     video = imageio.get_reader(os.path.abspath(video_name), 'ffmpeg')
     iter_frames = 300  # Number of iteration frames per model insertion <=video.count_frames()
@@ -223,6 +224,10 @@ if __name__ == '__main__':
     frames = None
     tracks = None
     track_result = None
+
+    cello_keypoints = ['scroll_top', 'nut_l', 'nut_r', 'neck_bottom_l', 'neck_bottom_r', 'bridge_l',
+                       'bridge_r', 'tail_gut', 'end_pin']
+    bow_keypoints = ['tip_plate', 'frog']
 
     '''
         Labelled json file should be loaded as np.array to the variable "query_points", or you should manually set it.
@@ -240,12 +245,7 @@ if __name__ == '__main__':
     # The path of your keypoints -> (camera_{cameraID}_{start_frame_index}). We use labelme to label them, or you can
     # use other tools to give the array of keypoints position information manually.
 
-    if os.path.exists(os.path.abspath(parent_folder) + os.sep + file_name + '.json'):
-        # Read some inferred information from *.json
-        with open(os.path.abspath(parent_folder) + os.sep + file_name + '.json', 'r') as f:
-            readfile = np.asarray(json.load(f))
-        f.close()
-    else:
+    if not os.path.exists(f'{save_folder_path}/{proj_dir}/{cam_num}'):
         print('Loading frames and Inferring...')
         for num in tqdm(range(video.count_frames()), desc="Loading frames"):
             if num >= start_frame_idx - 1:
@@ -271,10 +271,6 @@ if __name__ == '__main__':
                             labelled_info = json.load(f)
                         f.close()
 
-                        cello_keypoints = ['scroll_top', 'nut_l', 'nut_r', 'neck_bottom_l', 'neck_bottom_r', 'bridge_l',
-                                           'bridge_r', 'tail_gut', 'end_pin']
-                        bow_keypoints = ['tip_plate', 'frog']
-
                         kpdict = {}
                         for item in labelled_info['shapes']:
                             if item['label'] in cello_keypoints + bow_keypoints:
@@ -284,7 +280,7 @@ if __name__ == '__main__':
                         kpdict = dict(sorted(kpdict.items(), key=lambda item: item[0], reverse=False))
                         # query_points = np.concatenate((np.zeros((len(kpdict),1)),np.flip(list(kpdict.values()))),axis =1)
                         query_points = np.concatenate(
-                            (np.ones((len(kpdict), 1)) * (num + 1), np.flip(list(kpdict.values()))), axis=1)
+                            (np.ones((len(kpdict), 1)) * 0, np.flip(list(kpdict.values()), axis=1)), axis=1)
 
                         '''
                         query_points = np.array([[   0,  419, 1257],
@@ -343,7 +339,7 @@ if __name__ == '__main__':
 
         if not os.path.exists(save_folder_path):
             os.mkdir(save_folder_path)
-        save_sub_dir_path = save_folder_path + os.sep + save_sub_dir
+        save_sub_dir_path = save_folder_path + os.sep + proj_dir
         if not os.path.exists(save_sub_dir_path):
             os.mkdir(save_sub_dir_path)
         save_sub_sub_dir_path = save_sub_dir_path + os.sep + cam_num
@@ -351,7 +347,7 @@ if __name__ == '__main__':
             os.mkdir(save_sub_sub_dir_path)
 
         for idx, frame in enumerate(tracks_result):
-            with open(f'{save_folder_path}/{save_sub_dir}/{cam_num}/{start_frame_idx + idx}.json', 'w') as f:
+            with open(f'{save_folder_path}/{proj_dir}/{cam_num}/{start_frame_idx + idx}.json', 'w') as f:
                 f.write(json.dumps(frame.tolist()))
             f.close()
 
@@ -362,23 +358,27 @@ if __name__ == '__main__':
 
         readfile = tracks_result
 
-    colormap = viz_utils.get_colors(readfile.shape[1])
+    colormap = viz_utils.get_colors(len(cello_keypoints + bow_keypoints))
 
     print('Generate a video...')
     plot_flag = False  # plot_flag = True -> Use matplotlib.pyplot to visualize
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    framesize = tuple(np.flip(video.get_data(0).shape)[1:])  # turple->(width,height)
-    out = cv2.VideoWriter('pointtracking3_output.avi', fourcc, fps=30, frameSize=np.flip(framesize))
+    frame_size = tuple(np.flip(video.get_data(0).shape)[1:])  # tuple->(width,height)
+    out = cv2.VideoWriter(f'{file_name}.avi', fourcc, fps=30, frameSize=np.flip(frame_size))
 
     # Visualize and generate a video.
     for num in tqdm(range(video.count_frames())):
         if num >= start_frame_idx - 1:
             image = np.asarray(video.get_data(num), dtype=np.uint8)
             image = frame_rotate(cam_num, image)
+            with open(f'{save_folder_path}/{proj_dir}/{cam_num}/{num + 1}.json', 'r') as f:
+                xyloc = np.asarray(json.load(f))
+            f.close()
+
             for j, color in enumerate(colormap):
                 frame = cv2.circle(image,
-                                   tuple(np.array(np.round(readfile[num - start_frame_idx + 1][j]),
+                                   tuple(np.array(np.round(xyloc[j]),
                                                   dtype=np.int16)), 1, color, 10)
             if plot_flag:
                 plt.imshow(frame)
