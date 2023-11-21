@@ -49,7 +49,7 @@ CELLO_DICT = {
             'tip_plate': 10,
 }
 
-KPT_NUM = 144
+KPT_NUM = 142
 
 """skeleton define"""
 HUMAN_LINKS = [[15, 13],
@@ -123,12 +123,10 @@ CELLO_LINKS = [[133, 134],
                [134, 136],
                [135, 137],
                [136, 138],
-               [137, 139],
-               [138, 140],
-               [139, 140],
-               [140, 141]]
+               [137, 138],
+               [138, 139]]
 
-BOW_LINKS = [[142, 143]]
+BOW_LINKS = [[140, 141]]
 
 
 def get_all_combinations(cams):
@@ -424,7 +422,7 @@ if __name__ == "__main__":
 
     start_frame = 128
     end_frame = 839
-    # end_frame = 129
+    # end_frame = 188
 
     kp_3d_all = []
     for ff in range(start_frame, end_frame+1):
@@ -438,7 +436,7 @@ if __name__ == "__main__":
                 # remove camera that drop frames
                 cam_ff.remove(cc)
                 continue
-            cello_2d_cc_ff = np.zeros([11, 3])  # 11 cello key points in total (default score 0 will not be used)
+            cello_2d_cc_ff = np.zeros([9, 3])  # 9 cello key points in total (default score 0 will not be used)
             try:
                 cello_json_path = f'../cello_2d_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
