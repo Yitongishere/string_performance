@@ -85,32 +85,6 @@
       "flags": {}
     },
     {
-      "label": "neck_bottom_l",
-      "points": [
-        [
-          1218.0851063829787,
-          1225.5319148936169
-        ]
-      ],
-      "group_id": null,
-      "description": "",
-      "shape_type": "point",
-      "flags": {}
-    },
-    {
-      "label": "neck_bottom_r",
-      "points": [
-        [
-          1261.7021276595744,
-          1228.723404255319
-        ]
-      ],
-      "group_id": null,
-      "description": "",
-      "shape_type": "point",
-      "flags": {}
-    },
-    {
       "label": "bridge_l",
       "points": [
         [

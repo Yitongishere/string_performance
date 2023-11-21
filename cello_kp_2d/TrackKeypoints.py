@@ -209,7 +209,7 @@ if __name__ == '__main__':
     # Load the video
     # video_name = 'out37.mp4' #The path of the input video
     proj_dir = 'cello_1113_scale'
-    video_name = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334181.avi'
+    video_name = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334190.avi'
     cam_num = video_name.split('_')[-1].split('.')[0]
     parent_folder = os.path.dirname(video_name)
     base_name = os.path.basename(video_name)
@@ -225,8 +225,7 @@ if __name__ == '__main__':
     tracks = None
     track_result = None
 
-    cello_keypoints = ['scroll_top', 'nut_l', 'nut_r', 'neck_bottom_l', 'neck_bottom_r', 'bridge_l',
-                       'bridge_r', 'tail_gut', 'end_pin']
+    cello_keypoints = ['scroll_top', 'nut_l', 'nut_r', 'bridge_l', 'bridge_r', 'tail_gut', 'end_pin']
     bow_keypoints = ['tip_plate', 'frog']
 
     '''
@@ -241,7 +240,7 @@ if __name__ == '__main__':
                           [   0, 2539,  994]])
             The second and the third elements of this array are positions "Y (height)" and "X (width)"  of the pixels.
     '''
-    labelled_json = f'{proj_dir}_21334181_{start_frame_idx}.json'
+    labeled_json = f'labeled_jsons/{proj_dir}_{cam_num}_{start_frame_idx}.json'
     # The path of your keypoints -> (camera_{cameraID}_{start_frame_index}). We use labelme to label them, or you can
     # use other tools to give the array of keypoints position information manually.
 
@@ -267,7 +266,7 @@ if __name__ == '__main__':
                 if (num + 1) % iter_frames == 0 or num == video.count_frames() - 1:
                     print('\n Round [%d] is starting!' % ((num + 1) // iter_frames + int((num + 1) % iter_frames > 0)))
                     if ((num + 1) // iter_frames + int((num + 1) % iter_frames > 0)) == 1:
-                        with open(labelled_json, 'r') as f:
+                        with open(labeled_json, 'r') as f:
                             labelled_info = json.load(f)
                         f.close()
 

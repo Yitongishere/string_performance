@@ -3,58 +3,15 @@
   "flags": {},
   "shapes": [
     {
-      "label": "cello",
-      "points": [
-        [
-          730.0,
-          399.8750000000001
-        ],
-        [
-          1960.0,
-          2528.625
-        ]
-      ],
-      "group_id": null,
-      "description": "",
-      "shape_type": "rectangle",
-      "flags": {}
-    },
-    {
       "label": "scroll_top",
       "points": [
         [
-          1311.7845117845118,
-          427.27272727272725
+          1458.4415584415583,
+          544.8051948051948
         ]
       ],
       "group_id": null,
-      "description": "",
-      "shape_type": "point",
-      "flags": {}
-    },
-    {
-      "label": "frog",
-      "points": [
-        [
-          1011.4942528735633,
-          1204.5977011494253
-        ]
-      ],
-      "group_id": null,
-      "description": "",
-      "shape_type": "point",
-      "flags": {}
-    },
-    {
-      "label": "tip_plate",
-      "points": [
-        [
-          1936.7483296213807,
-          1391.314031180401
-        ]
-      ],
-      "group_id": null,
-      "description": "",
+      "description": null,
       "shape_type": "point",
       "flags": {}
     },
@@ -62,8 +19,8 @@
       "label": "nut_l",
       "points": [
         [
-          1262.9629629629628,
-          556.5656565656566
+          1332.183908045977,
+          732.7586206896552
         ]
       ],
       "group_id": null,
@@ -75,34 +32,8 @@
       "label": "nut_r",
       "points": [
         [
-          1292.9292929292928,
-          554.2087542087542
-        ]
-      ],
-      "group_id": null,
-      "description": "",
-      "shape_type": "point",
-      "flags": {}
-    },
-    {
-      "label": "neck_bottom_l",
-      "points": [
-        [
-          1187.5420875420875,
-          906.060606060606
-        ]
-      ],
-      "group_id": null,
-      "description": "",
-      "shape_type": "point",
-      "flags": {}
-    },
-    {
-      "label": "neck_bottom_r",
-      "points": [
-        [
-          1230.3030303030303,
-          902.3569023569023
+          1355.7377049180327,
+          737.9726775956285
         ]
       ],
       "group_id": null,
@@ -114,8 +45,8 @@
       "label": "bridge_l",
       "points": [
         [
-          1081.9338422391857,
-          1335.8778625954199
+          937.7235772357723,
+          1526.1788617886177
         ]
       ],
       "group_id": null,
@@ -127,8 +58,8 @@
       "label": "bridge_r",
       "points": [
         [
-          1152.7989821882952,
-          1334.7328244274809
+          976.910569105691,
+          1551.382113821138
         ]
       ],
       "group_id": null,
@@ -140,8 +71,8 @@
       "label": "tail_gut",
       "points": [
         [
-          1110.9375,
-          1937.3749999999998
+          912.3577235772357,
+          1943.0894308943089
         ]
       ],
       "group_id": null,
@@ -153,8 +84,34 @@
       "label": "end_pin",
       "points": [
         [
-          1116.923076923077,
-          2467.6153846153848
+          877.8861788617886,
+          2253.008130081301
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {}
+    },
+    {
+      "label": "frog",
+      "points": [
+        [
+          886.4705882352941,
+          1419.4117647058824
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {}
+    },
+    {
+      "label": "tip_plate",
+      "points": [
+        [
+          1673.9361702127658,
+          1747.8723404255318
         ]
       ],
       "group_id": null,
@@ -163,7 +120,7 @@
       "flags": {}
     }
   ],
-  "imagePath": "camera_21334237_128.jpg",
+  "imagePath": "camera_21334190_128.jpg",
   "imageData": null,
   "imageHeight": 2656,
   "imageWidth": 2300
