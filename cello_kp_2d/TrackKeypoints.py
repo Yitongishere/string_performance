@@ -209,7 +209,7 @@ if __name__ == '__main__':
     # Load the video
     # video_name = 'out37.mp4' #The path of the input video
     proj_dir = 'cello_1113_scale'
-    video_name = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334190.avi'
+    video_name = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334211.avi'
     cam_num = video_name.split('_')[-1].split('.')[0]
     parent_folder = os.path.dirname(video_name)
     base_name = os.path.basename(video_name)
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     track_result = None
 
     cello_keypoints = ['scroll_top', 'nut_l', 'nut_r', 'bridge_l', 'bridge_r', 'tail_gut', 'end_pin']
-    bow_keypoints = ['tip_plate', 'frog']
+    bow_keypoints = ['frog', 'tip_plate']
 
     '''
         Labelled json file should be loaded as np.array to the variable "query_points", or you should manually set it.
@@ -324,8 +324,10 @@ if __name__ == '__main__':
                     tracks = transforms.convert_grid_coordinates(tracks, (resize_width, resize_height), (width, height))
                     if ((num + 1) // iter_frames + int((num + 1) % iter_frames > 0)) == 1:
                         tracks_result = tracks
+                        visibles_result = visibles
                     else:
                         tracks_result = np.concatenate((tracks_result, tracks), axis=1)
+                        visibles_result = np.concatenate((visibles_result, visibles), axis=1)
                     frames = None
                     print('-' * 80)
         print('\nCompleted!')
@@ -334,7 +336,8 @@ if __name__ == '__main__':
         print('Save the information of keypoints...')
 
         # change the shape from (keypoints_num, frame_num, 2) into (frame_num, keypoints_num, 2)
-        tracks_result = np.transpose(np.asarray(tracks_result), (1, 0, 2))
+        # tracks_result = np.transpose(np.asarray(tracks_result), (1, 0, 2))
+        pos = np.concatenate((tracks_result, visibles_result[:, :, np.newaxis]), axis=2).transpose(1, 0, 2)
 
         if not os.path.exists(save_folder_path):
             os.mkdir(save_folder_path)
@@ -345,7 +348,7 @@ if __name__ == '__main__':
         if not os.path.exists(save_sub_sub_dir_path):
             os.mkdir(save_sub_sub_dir_path)
 
-        for idx, frame in enumerate(tracks_result):
+        for idx, frame in enumerate(pos):
             with open(f'{save_folder_path}/{proj_dir}/{cam_num}/{start_frame_idx + idx}.json', 'w') as f:
                 f.write(json.dumps(frame.tolist()))
             f.close()
@@ -362,9 +365,11 @@ if __name__ == '__main__':
     print('Generate a video...')
     plot_flag = False  # plot_flag = True -> Use matplotlib.pyplot to visualize
 
+    if not os.path.exists(f'{proj_dir}'):
+        os.mkdir(f'{proj_dir}')
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     frame_size = tuple(np.flip(video.get_data(0).shape)[1:])  # tuple->(width,height)
-    out = cv2.VideoWriter(f'{file_name}.avi', fourcc, fps=30, frameSize=np.flip(frame_size))
+    out = cv2.VideoWriter(f'{proj_dir}/{file_name}.avi', fourcc, fps=30, frameSize=np.flip(frame_size))
 
     # Visualize and generate a video.
     for num in tqdm(range(video.count_frames())):
@@ -372,7 +377,7 @@ if __name__ == '__main__':
             image = np.asarray(video.get_data(num), dtype=np.uint8)
             image = frame_rotate(cam_num, image)
             with open(f'{save_folder_path}/{proj_dir}/{cam_num}/{num + 1}.json', 'r') as f:
-                xyloc = np.asarray(json.load(f))
+                xyloc = np.asarray(json.load(f))[:, :2]
             f.close()
 
             for j, color in enumerate(colormap):
