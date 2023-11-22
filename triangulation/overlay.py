@@ -7,7 +7,13 @@ import matplotlib.pyplot as plt
 import imageio
 from contextlib import contextmanager
 from triangulation import make_projection_matrix
-from triangulation import HUMAN_LINKS, CELLO_LINKS, BOW_LINKS, KPT_NUM
+from triangulation import HUMAN_LINKS, CELLO_LINKS, BOW_LINKS
+
+STRING_LINKS = [[142, 143],
+                [144, 145],
+                [146, 147],
+                [148, 149]]
+
 
 @contextmanager
 def plot_over(img, extent=None, origin="upper", dpi=100):
@@ -53,15 +59,26 @@ def visualize_demo(data):
         fig = plt.figure(figsize=[10, 10])
         axes = fig.add_subplot()
 
-        img = imageio.v2.imread(f"../data/cello_0926/frames/21334181/camera_21334181_{f + 76}.jpg")
+        img = imageio.v2.imread(f"../data/cello_1113/cello_1113_scale/frames/21334181/camera_21334181_{f + 128}.jpg")
         img_with_plot = img.copy()
         with plot_over(img_with_plot) as axes:
             axes.scatter(kp_2d[0:133, 0],
-                          kp_2d[0:133, 1], s=50)
-            axes.scatter(kp_2d[133:142, 0],
-                          kp_2d[133:142, 1], c='saddlebrown', s=50)
-            axes.scatter(kp_2d[142:144, 0],
-                          kp_2d[142:144, 1], c='goldenrod', s=50)
+                         kp_2d[0:133, 1], s=50)
+            axes.scatter(kp_2d[133:140, 0],
+                         kp_2d[133:140, 1], c='saddlebrown', s=50)
+            axes.scatter(kp_2d[140:142, 0],
+                         kp_2d[140:142, 1], c='goldenrod', s=50)
+            axes.scatter(kp_2d[142:150, 0],
+                         kp_2d[142:150, 1], c='w', s=50)
+            if True not in np.isnan(kp_2d[150]):
+                axes.scatter(kp_2d[150, 0],
+                             kp_2d[150, 1], c='r', s=50,
+                             zorder=100)  # zorder must be the biggest so that it would not be occluded
+                axes.scatter(kp_2d[151:155, 0],
+                             kp_2d[151:155, 1], c='orange', s=50,
+                             zorder=99)
+            else:
+                print(f'Frame {f} contact point not exist.')
 
             for human in HUMAN_LINKS:
                 plt.plot([kp_2d[human[0]][0], kp_2d[human[1]][0]], [kp_2d[human[0]][1], kp_2d[human[1]][1]], c='blue')
@@ -71,27 +88,36 @@ def visualize_demo(data):
             for bow in BOW_LINKS:
                 plt.plot([kp_2d[bow[0]][0], kp_2d[bow[1]][0]], [kp_2d[bow[0]][1], kp_2d[bow[1]][1]], c='goldenrod')
 
+            for string in STRING_LINKS:
+                plt.plot([kp_2d[string[0]][0], kp_2d[string[1]][0]], [kp_2d[string[0]][1], kp_2d[string[1]][1]], c='w')
+
         img_with_plot = img_with_plot[:, :, ::-1]
-        frame = cv2.imwrite(f"../reproj_demo/sample{f}.jpg", img_with_plot)
+        cv2.imwrite(f"../reproj_demo/sample{f}.jpg", img_with_plot)
         out.write(img_with_plot)
         plt.close()
 
+
 if __name__ == "__main__":
-    with open('../kp_3d/kp_3d_smooth.json', 'r') as f:
+    # with open('../kp_3d_result/cello_1113_scale/kp_3d_smooth.json', 'r') as f:
+    #     data_dict = json.load(f)
+    # kp_3d_all = np.array(data_dict['kp_3d_smooth'])
+
+    with open('../audio/kp_3d_all_with_cp.json', 'r') as f:
         data_dict = json.load(f)
-    kp_3d_all = np.array(data_dict['kp_3d_smooth'])
+    kp_3d_all = np.array(data_dict['kp_3d_all_with_cp'])
 
     framenum = kp_3d_all.shape[0]
+    kpt_num = kp_3d_all.shape[1]
 
-    cam_file = "jsons/camera.json"
+    cam_file = "jsons/cello_1113_scale_camera.json"
     cam_param = json.load(open(cam_file))
 
     # find reprojection of the specific camera
-    repro_2d = np.empty([framenum, KPT_NUM, 2])
+    repro_2d = np.empty([framenum, kpt_num, 2])
     repro_2d.fill(np.nan)
     proj_mat_cam_x = make_projection_matrix(cam_param, cams=['cam0'])
     for ff in range(framenum):
-        for kpt in range(KPT_NUM):
+        for kpt in range(kpt_num):
             ones = np.ones((1))
             kp4d = np.concatenate([kp_3d_all[ff][kpt], ones], axis=0)
             kp4d = kp4d.reshape(-1)

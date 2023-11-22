@@ -22,11 +22,17 @@ for i in range(1, 128 - 21):
 # ic(NOTE_FREQ)
 
 # 定义每根弦的音域
+# PITCH_RANGES = [
+#     [NOTE_FREQ[57], NOTE_FREQ[84]],  # 一弦  A3: 220.000 Hz --  C6: 1046.502 Hz
+#     [NOTE_FREQ[50], NOTE_FREQ[62]],  # 二弦  D3: 146.832 Hz --  D4: 293.665 Hz
+#     [NOTE_FREQ[43], NOTE_FREQ[55]],  # 三弦  G2: 97.999 Hz  --  G3: 195.998 Hz
+#     [NOTE_FREQ[36], NOTE_FREQ[48]],  # 四弦  C2: 65.406 Hz  --  C3: 130.813 Hz
+# ]
 PITCH_RANGES = [
     [NOTE_FREQ[57], NOTE_FREQ[84]],  # 一弦  A3: 220.000 Hz --  C6: 1046.502 Hz
-    [NOTE_FREQ[50], NOTE_FREQ[62]],  # 二弦  D3: 146.832 Hz --  D4: 293.665 Hz
-    [NOTE_FREQ[43], NOTE_FREQ[55]],  # 三弦  G2: 97.999 Hz  --  G3: 195.998 Hz
-    [NOTE_FREQ[36], NOTE_FREQ[48]],  # 四弦  C2: 65.406 Hz  --  C3: 130.813 Hz
+    [NOTE_FREQ[50], NOTE_FREQ[74]],  # 二弦  D3: 146.832 Hz --  D5: 587.330 Hz
+    [NOTE_FREQ[43], NOTE_FREQ[67]],  # 三弦  G2: 97.999 Hz  --  G4: 391.995 Hz
+    [NOTE_FREQ[36], NOTE_FREQ[60]],  # 四弦  C2: 65.406 Hz  --  C4: 261.626 Hz
 ]
 # ic(PITCH_RANGES)
 
@@ -78,7 +84,7 @@ def _write_raw_index(path, text):
 
 def get_contact_position(pitch_info):
     # 设置音高检测置信度门槛
-    conf_threshold = 0.7
+    conf_threshold = 0.8
     # 空弦判断门槛
     base_threshold = 0.04
     # shape in (n_timesteps, 7)

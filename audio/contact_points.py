@@ -1,3 +1,5 @@
+import json
+import math
 import os.path
 import crepe
 import cv2
@@ -6,9 +8,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from icecream import ic
 import freq_position
+import librosa
 
 
-def draw_fundamental_curve(time_arr, freq_arr, conf_arr, proj):
+def draw_fundamental_curve(time_arr, freq_arr, conf_arr, proj, algo):
     fig = plt.figure(figsize=(10, 8))
     # percentage of axes occupied
     axes = fig.add_axes([0.1, 0.1, 0.9, 0.8])
@@ -21,7 +24,7 @@ def draw_fundamental_curve(time_arr, freq_arr, conf_arr, proj):
         os.mkdir('output')
     if not os.path.exists(f'output/{proj}'):
         os.mkdir(f'output/{proj}')
-    plt.savefig(f'output/{proj}/pitch_curve.jpg')
+    plt.savefig(f'output/{proj}/pitch_curve_{algo}.jpg')
 
 
 def draw_contact_points(data, proj):
@@ -55,10 +58,10 @@ def draw_contact_points(data, proj):
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(f'output/{proj}/virtual_contact_point.avi', fourcc, fps=30, frameSize=[700, 1000])
     for frame_idx, frame in enumerate(data):
-        print(f'Frame {frame_idx+1}...')
+        print(f'Frame {frame_idx + 1}...')
         points = []
         for idx, ratio in enumerate(frame):
-            if ratio > 0:
+            if ratio >= 0:
                 points.append([string_xloc[idx], ratio * string_length + string_low])
 
         # Create a figure and axis without axes
@@ -82,10 +85,10 @@ def draw_contact_points(data, proj):
                 # zorder should be larger than the string number
                 ax.scatter(point[0], point[1], color='r', zorder=5)
         else:
-            print(f'No points detected in Frame {frame_idx+1}')
+            print(f'No points detected in Frame {frame_idx + 1}')
 
         # Add a title and legend
-        ax.set_title(f'Cello Strings (Frame {frame_idx+1})')
+        ax.set_title(f'Cello Strings (Frame {frame_idx + 1})')
         num1, num2, num3, num4 = 1.03, 0, 3, 0
         ax.legend(bbox_to_anchor=(num1, num2), loc=num3, borderaxespad=num4)
 
@@ -105,24 +108,182 @@ def draw_contact_points(data, proj):
         plt.close()
 
 
-def pitch_detect(proj, audio_path='wavs/background.wav', ):
+def pitch_detect_crepe(proj, center, audio_path='wavs/background.wav'):
     sr, audio = wavfile.read(audio_path)
     # viterbi: smoothing for the pitch curve
     # step_size: 10 milliseconds
     # center: False, don't need to pad!
+    sample_num = audio.shape[0]
+    ic(audio.shape)
+    ic(sr)
+    frame_num = math.floor(sample_num / sr * 30)
     time, frequency, confidence, activation = crepe.predict(
-        audio, sr, viterbi=True, step_size=33.33, model_capacity='full', center=False)
-    draw_fundamental_curve(time, frequency, confidence, proj)
+        audio, sr, viterbi=True, step_size=100 / 3, model_capacity='full', center=center)
+    draw_fundamental_curve(time, frequency, confidence, proj, 'crepe')
     pitch_results = np.stack((time, frequency, confidence), axis=1)
     # Pitch Data Persistence
     # np.savetxt("pitch.csv", pitch_results, delimiter=",")
+    ic(pitch_results.shape)
+    pitch_results = pitch_results[:frame_num, :]
+    # ic(pitch_results)
     return pitch_results
+
+
+def pitch_detect_pyin(proj, audio_path='wavs/background.wav'):
+    # sr, audio = wavfile.read(audio_path)
+    y, sr = librosa.load(audio_path, sr=None)
+    # viterbi: smoothing for the pitch curve
+    # step_size: 10 milliseconds
+    # center: False, don't need to pad!
+    sample_num = y.shape[0]
+    ic(y.shape)
+    ic(sr)
+    frame_num = math.floor(sample_num / sr * 30)
+    ic(frame_num)
+    f0, voiced_flag, voiced_probs = librosa.pyin(y, sr=sr, frame_length=1600, hop_length=1600, center=True,
+                                                 fmin=librosa.note_to_hz('B1'), fmax=librosa.note_to_hz('C6'))
+    time = librosa.times_like(f0)
+    draw_fundamental_curve(time, f0, voiced_probs, proj, 'pyin')
+    pitch_results = np.stack((time, f0, voiced_probs), axis=1)
+    # Pitch Data Persistence
+    # np.savetxt("pitch.csv", pitch_results, delimiter=",")
+    ic(pitch_results.shape)
+    pitch_results = pitch_results[:frame_num, :]
+    ic(pitch_results)
+    return pitch_results
+
+
+def cal_dist(point1, point2):
+    return np.sqrt(np.sum(np.square(point1 - point2)))
+
+
+def mapping(proj_dir, positions):
+    """
+    positions: n * 4
+    """
+    with open(f'../kp_3d_result/{proj_dir}/kp_3d_smooth.json', 'r') as f:
+        data_dict = json.load(f)
+    kp_3d_all = np.array(data_dict['kp_3d_smooth'])
+    ic(kp_3d_all.shape)
+
+    # positions = np.ones([712, 4]) * -1  # n, 4
+    # positions[0] = np.array([-1, 0, 1 / 2, -1])
+    # positions[1] = np.array([-1, 1 / 2, 1 / 3, -1])
+    kp_3d_all_with_cp = kp_3d_all.copy().tolist()
+    last_freq = np.inf
+    used_finger_index = -1
+
+    for frame, kp_3d in enumerate(kp_3d_all):
+        # ic(kp_3d.shape)
+        finger_board = []
+        string_4_top = kp_3d[134, :]
+        string_1_top = kp_3d[135, :]
+        string_4_bottom = kp_3d[136, :]
+        string_1_bottom = kp_3d[137, :]
+        string_3_top = string_4_top + (string_1_top - string_4_top) * 1 / 3
+        string_3_bottom = string_4_bottom + (string_1_bottom - string_4_bottom) * 1 / 3
+        string_2_top = string_4_top + (string_1_top - string_4_top) * 2 / 3
+        string_2_bottom = string_4_bottom + (string_1_bottom - string_4_bottom) * 2 / 3
+        finger_board.append(string_1_top - string_1_bottom)
+        finger_board.append(string_2_top - string_2_bottom)
+        finger_board.append(string_3_top - string_3_bottom)
+        finger_board.append(string_4_top - string_4_bottom)
+
+        position = positions[frame]
+        # ic(position)
+        # Used to filter out the contact point closest to the playing wrist
+        # TODO： if ratio == 0, how to calculate the distance?
+        left_wrist = kp_3d[91, :]
+
+        index_mcp = kp_3d[96, :]
+        middle_mcp = kp_3d[100, :]
+        ring_mcp = kp_3d[104, :]
+        pinky_mcp = kp_3d[108, :]
+
+        index_pip = kp_3d[97, :]
+        middle_pip = kp_3d[101, :]
+        ring_pip = kp_3d[105, :]
+        pinky_pip = kp_3d[109, :]
+
+        index_dip = kp_3d[98, :]
+        middle_dip = kp_3d[102, :]
+        ring_dip = kp_3d[106, :]
+        pinky_dip = kp_3d[110, :]
+
+        index_tip = kp_3d[99, :]
+        middle_tip = kp_3d[103, :]
+        ring_tip = kp_3d[107, :]
+        pinky_tip = kp_3d[111, :]
+
+        rf_middle = middle_mcp + (middle_pip - middle_mcp) * 0.5
+        rf_ring = ring_mcp + (ring_pip - ring_mcp) * 0.5
+        rf = rf_middle + (rf_ring - rf_middle) * 0.5
+
+        mcps = [index_mcp, middle_mcp, ring_mcp, pinky_mcp]
+        pips = [index_pip, middle_pip, ring_pip, pinky_pip]
+        dips = [index_dip, middle_dip, ring_dip, pinky_dip]
+        tips = [index_tip, middle_tip, ring_tip, pinky_tip]
+
+        contact_point = [np.inf, np.inf, np.inf]
+        dist = np.inf
+        current_freq = np.inf
+        for pos_idx, ratio in enumerate(position):
+            if ratio > 0:
+                temp_contact_point = finger_board[pos_idx] * ratio + locals()[f'string_{pos_idx + 1}_bottom']
+                temp_dist = cal_dist(rf, temp_contact_point)
+                if temp_dist < dist:
+                    dist = temp_dist
+                    contact_point = temp_contact_point
+                    string_fund_freq = freq_position.PITCH_RANGES[pos_idx][0]
+                    current_freq = freq_position.positon2freq(string_fund_freq, ratio)
+        used_finger_mcp = [np.inf, np.inf, np.inf]
+        used_finger_pip = [np.inf, np.inf, np.inf]
+        used_finger_dip = [np.inf, np.inf, np.inf]
+        used_finger_tip = [np.inf, np.inf, np.inf]
+        if not np.isinf(current_freq):
+            if freq_position.cent_dev(last_freq, -30) < current_freq < freq_position.cent_dev(last_freq, 30):
+                # finger not changed
+                used_finger_mcp = mcps[used_finger_index]
+                used_finger_pip = pips[used_finger_index]
+                used_finger_dip = dips[used_finger_index]
+                used_finger_tip = tips[used_finger_index]
+            else:
+                # finger changed
+                if True not in np.isinf(contact_point):
+                    dist_tip_cp = np.inf
+                    for finger_id, tip in enumerate(tips):
+                        temp_dist_tip_cp = cal_dist(tip, contact_point)
+                        if temp_dist_tip_cp < dist_tip_cp:
+                            dist_tip_cp = temp_dist_tip_cp
+                            used_finger_mcp = mcps[finger_id]
+                            used_finger_pip = pips[finger_id]
+                            used_finger_dip = dips[finger_id]
+                            used_finger_tip = tips[finger_id]
+                            used_finger_index = finger_id
+                    print(f'Frame {frame} change to finger {used_finger_index + 1}.')
+            last_freq = current_freq
+
+        # ic(contact_point)
+        temp_list = kp_3d_all_with_cp[frame]
+        # index from 142 to 150
+        temp_list.extend(
+            [list(string_4_top), list(string_4_bottom), list(string_3_top), list(string_3_bottom), list(string_2_top),
+             list(string_2_bottom), list(string_1_top), list(string_1_bottom), list(contact_point),
+             list(used_finger_mcp), list(used_finger_pip), list(used_finger_dip), list(used_finger_tip)])
+        kp_3d_all_with_cp[frame] = temp_list
+    ic(np.array(kp_3d_all_with_cp).shape)
+    data_dict = {'kp_3d_all_with_cp': kp_3d_all_with_cp}
+    with open(f'kp_3d_all_with_cp.json', 'w') as f:
+        json.dump(data_dict, f)
 
 
 if __name__ == '__main__':
     proj_dir = 'cello_1113_scale'
-    pitch_results = pitch_detect(proj_dir, 'wavs/scale.wav')
+    pitch_results = pitch_detect_crepe(proj_dir, True, 'wavs/scale.wav')
+    # pitch_results = pitch_detect_pyin(proj_dir, 'wavs/scale.wav')
     pitch_with_positions = freq_position.get_contact_position(pitch_results)
     ic(pitch_with_positions.shape)
     positions = pitch_with_positions[:, -4:]
-    draw_contact_points(positions, proj_dir)
+    ic(positions.shape)
+    # draw_contact_points(positions, proj_dir)
+    mapping(proj_dir, positions)
