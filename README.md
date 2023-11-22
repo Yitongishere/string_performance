@@ -45,11 +45,13 @@ Please refer to [CREPE Documentation](https://github.com/marl/crepe)
 If you want to track the cello key points using [TAPIR](https://deepmind-tapir.github.io/), you can either
 follow the instructions below or the [official guide](https://github.com/google-deepmind/tapnet#live-demo) provided by google.
 
-5.1. Please first switch to the working directory for tapnet:
+5.1. Install requirements for inference:
+`pip install -r requirements_inference.txt`
+
+5.2. Please first switch to the working directory for tapnet:
 `cd cello_kp_2d\tapnet`
 
-5.2. Install requirements for inference:
-`pip install -r requirements_inference.txt`
+
 
 If you want to use the GPU/TPU version of Jax:
 
@@ -65,6 +67,7 @@ We use the jaxlib-0.3.22+cuda11.cudnn82-cp38-cp38-win_amd64.whl with the configu
 
 5.3. Download the checkpoint: (Optional, TrackKeypoints.py could automatically download it)
 ```
+mkdir checkpoints
 cd checkpoints
 wget -P checkpoints https://storage.googleapis.com/dm-tapnet/causal_tapir_checkpoint.npy
 ```
