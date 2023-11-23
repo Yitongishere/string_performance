@@ -171,6 +171,7 @@ def mapping(proj_dir, positions):
     # positions[1] = np.array([-1, 1 / 2, 1 / 3, -1])
     kp_3d_all_with_cp = kp_3d_all.copy().tolist()
     last_freq = np.inf
+    vibrato_freq_list = []
     used_finger_index = -1
 
     for frame, kp_3d in enumerate(kp_3d_all):
@@ -227,6 +228,7 @@ def mapping(proj_dir, positions):
         contact_point = [np.inf, np.inf, np.inf]
         dist = np.inf
         current_freq = np.inf
+
         for pos_idx, ratio in enumerate(position):
             if ratio > 0:
                 temp_contact_point = finger_board[pos_idx] * ratio + locals()[f'string_{pos_idx + 1}_bottom']
@@ -240,27 +242,40 @@ def mapping(proj_dir, positions):
         used_finger_pip = [np.inf, np.inf, np.inf]
         used_finger_dip = [np.inf, np.inf, np.inf]
         used_finger_tip = [np.inf, np.inf, np.inf]
+        within_mean_range = False
         if not np.isinf(current_freq):
-            if freq_position.cent_dev(last_freq, -30) < current_freq < freq_position.cent_dev(last_freq, 30):
-                # finger not changed
-                used_finger_mcp = mcps[used_finger_index]
-                used_finger_pip = pips[used_finger_index]
-                used_finger_dip = dips[used_finger_index]
-                used_finger_tip = tips[used_finger_index]
-            else:
-                # finger changed
-                if True not in np.isinf(contact_point):
-                    dist_tip_cp = np.inf
-                    for finger_id, tip in enumerate(tips):
-                        temp_dist_tip_cp = cal_dist(tip, contact_point)
-                        if temp_dist_tip_cp < dist_tip_cp:
-                            dist_tip_cp = temp_dist_tip_cp
-                            used_finger_mcp = mcps[finger_id]
-                            used_finger_pip = pips[finger_id]
-                            used_finger_dip = dips[finger_id]
-                            used_finger_tip = tips[finger_id]
-                            used_finger_index = finger_id
-                    print(f'Frame {frame} change to finger {used_finger_index + 1}.')
+            within_last_range = freq_position.cent_dev(last_freq, -30) < current_freq < freq_position.cent_dev(last_freq, 30)
+            if within_last_range:
+                # Potential Vibrato Detected
+                vibrato_freq_list.append(current_freq)
+                vibrato_freq_mean = np.mean(vibrato_freq_list)
+                within_mean_range = freq_position.cent_dev(vibrato_freq_mean, -30) < current_freq < freq_position.cent_dev(vibrato_freq_mean, 30)
+                if within_mean_range:
+                    # Vibrato Detected and Finger Not Changed
+                    used_finger_mcp = mcps[used_finger_index]
+                    used_finger_pip = pips[used_finger_index]
+                    used_finger_dip = dips[used_finger_index]
+                    used_finger_tip = tips[used_finger_index]
+                # if frame in [i for i in range(352, 360)]:
+                #     for finger_id, tip in enumerate(tips):
+                #         temp_dist_tip_cp = cal_dist(tip, contact_point)
+                #         print(frame, finger_id, temp_dist_tip_cp)
+            elif not within_last_range or (within_last_range and not within_mean_range):
+                # Finger Changed
+                dist_tip_cp = np.inf
+                for finger_id, tip in enumerate(tips):
+                    temp_dist_tip_cp = cal_dist(tip, contact_point)
+                    # if frame in [i for i in range(352, 360)]:
+                    #     print(frame, finger_id, temp_dist_tip_cp)
+                    if temp_dist_tip_cp < dist_tip_cp:
+                        dist_tip_cp = temp_dist_tip_cp
+                        used_finger_mcp = mcps[finger_id]
+                        used_finger_pip = pips[finger_id]
+                        used_finger_dip = dips[finger_id]
+                        used_finger_tip = tips[finger_id]
+                        used_finger_index = finger_id
+                print(f'Frame {frame} change to finger {used_finger_index + 1}.')
+                vibrato_freq_list = []
             last_freq = current_freq
 
         # ic(contact_point)
@@ -280,6 +295,7 @@ def mapping(proj_dir, positions):
 if __name__ == '__main__':
     proj_dir = 'cello_1113_scale'
     pitch_results = pitch_detect_crepe(proj_dir, True, 'wavs/scale.wav')
+    # ic(pitch_results[352:360])
     # pitch_results = pitch_detect_pyin(proj_dir, 'wavs/scale.wav')
     pitch_with_positions = freq_position.get_contact_position(pitch_results)
     ic(pitch_with_positions.shape)

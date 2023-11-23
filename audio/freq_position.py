@@ -114,3 +114,5 @@ def get_contact_position(pitch_info):
     # index_text = 'time, frequency, confidence, string1_pos, string2_pos, string3_pos, string4_pos'
     # _write_raw_index(path="info_all.csv", text=index_text)
     return info_all
+
+ic(cent_dev(162.417, 30))
