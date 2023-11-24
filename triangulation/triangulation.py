@@ -351,7 +351,7 @@ def compute_axis_lim(triangulated_points):
     return xlim, ylim, zlim
 
 
-def visualize(data, proj_path, file_path='tri_3d'):
+def visualize_3d(data, proj_path, file_path='tri_3d'):
     xlim, ylim, zlim = None, None, None
     framenum = data.shape[0]
     key_points_num = data.shape[1]
@@ -499,7 +499,7 @@ if __name__ == "__main__":
     # kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
     # kp_3d_smooth = Savgol_Filter(kp_3d_all, KPT_NUM)
 
-    visualize(kp_3d_all, proj_dir)
+    visualize_3d(kp_3d_all, proj_dir)
 
     data_dict = {'kp_3d_all': kp_3d_all.tolist()}
     with open(f'../kp_3d_result/{proj_dir}/kp_3d_all.json', 'w') as f:

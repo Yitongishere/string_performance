@@ -10,7 +10,7 @@ from icecream import ic
 import freq_position
 import librosa
 from triangulation.smooth import Savgol_Filter
-from triangulation.triangulation import visualize
+from triangulation.triangulation import visualize_3d
 
 
 def draw_fundamental_curve(time_arr, freq_arr, conf_arr, proj, algo):
@@ -232,15 +232,36 @@ def mapping(proj_dir, positions):
         dist = np.inf
         current_freq = np.nan
 
+        contact_point_list = []
+        dist_list = []
+        current_freq_list = []
+
         for pos_idx, ratio in enumerate(position):
             if ratio > 0:
-                temp_contact_point = finger_board[pos_idx] * ratio + locals()[f'string_{pos_idx + 1}_bottom']
-                temp_dist = cal_dist(rf, temp_contact_point)
-                if temp_dist < dist:
-                    dist = temp_dist
-                    contact_point = temp_contact_point
-                    string_fund_freq = freq_position.PITCH_RANGES[pos_idx][0]
-                    current_freq = freq_position.positon2freq(string_fund_freq, ratio)
+                # temp_contact_point = finger_board[pos_idx] * ratio + locals()[f'string_{pos_idx + 1}_bottom']
+                # temp_dist = cal_dist(rf, temp_contact_point)
+                # if temp_dist < dist:
+                #     dist = temp_dist
+                #     contact_point = temp_contact_point
+                #     string_fund_freq = freq_position.PITCH_RANGES[pos_idx][0]
+                #     current_freq = freq_position.positon2freq(string_fund_freq, ratio)
+                potential_contact_point = finger_board[pos_idx] * ratio + locals()[f'string_{pos_idx + 1}_bottom']
+                potential_dist = cal_dist(rf, potential_contact_point)
+                dist_list.append(potential_dist)
+                contact_point_list.append(potential_contact_point)
+                string_fund_freq = freq_position.PITCH_RANGES[pos_idx][0]
+                current_freq_list.append(freq_position.positon2freq(string_fund_freq, ratio))
+        
+        smallest_dist = np.inf
+        for i in np.argsort(dist_list)[:2]:  # Obtain two closest potential contact points
+            for tip in dips:
+                temp_dist = cal_dist(tip, contact_point_list[i])
+                if temp_dist < smallest_dist:
+                    smallest_dist = temp_dist
+                    dist = dist_list[i]
+                    contact_point = contact_point_list[i]
+                    current_freq = current_freq_list[i]
+        
         used_finger_mcp = [np.nan, np.nan, np.nan]
         used_finger_pip = [np.nan, np.nan, np.nan]
         used_finger_dip = [np.nan, np.nan, np.nan]
@@ -259,10 +280,6 @@ def mapping(proj_dir, positions):
                     used_finger_pip = pips[used_finger_index]
                     used_finger_dip = dips[used_finger_index]
                     used_finger_tip = tips[used_finger_index]
-                # if frame in [i for i in range(352, 360)]:
-                #     for finger_id, tip in enumerate(tips):
-                #         temp_dist_tip_cp = cal_dist(tip, contact_point)
-                #         print(frame, finger_id, temp_dist_tip_cp)
             elif not within_last_range or (within_last_range and not within_mean_range):
                 # Finger Changed
                 dist_tip_cp = np.inf
@@ -304,7 +321,7 @@ def mapping(proj_dir, positions):
             for i in range(96, 100):
                 kp_3d_all_with_cp_smooth[frame_num][finger + i] = kp_3d_all_with_cp[frame_num][finger + i]
     ic(kp_3d_all_with_cp_smooth.shape)
-    visualize(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d')
+    visualize_3d(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d')
     data_dict = {'kp_3d_all_with_cp_smooth': kp_3d_all_with_cp_smooth.tolist()}
     with open(f'kp_3d_all_with_cp_smooth.json', 'w') as f:
         json.dump(data_dict, f)

@@ -39,17 +39,17 @@ def plot_over(img, extent=None, origin="upper", dpi=100):
     img[...] = ((255 - alpha) * img.astype(np.uint16) + alpha * rgb.astype(np.uint16)) // 255
 
 
-def visualize_demo(proj_path, data):
+def visualize_overlay(proj_path, data):
     framenum = data.shape[0]
 
-    if not os.path.exists(f'../reproj_demo/'):
-        os.makedirs(f'../reproj_demo/')
+    if not os.path.exists(f'../reproj_result/'):
+        os.makedirs(f'../reproj_result/')
 
-    if not os.path.exists(f'../reproj_demo/{proj_path}/'):
-        os.makedirs(f'../reproj_demo/{proj_path}/')
+    if not os.path.exists(f'../reproj_result/{proj_path}/'):
+        os.makedirs(f'../reproj_result/{proj_path}/')
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../reproj_demo/{proj_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
+    out = cv2.VideoWriter(f'../reproj_result/{proj_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
 
     for f in range(framenum):
         ic(f)
@@ -90,7 +90,7 @@ def visualize_demo(proj_path, data):
                 plt.plot([kp_2d[string[0]][0], kp_2d[string[1]][0]], [kp_2d[string[0]][1], kp_2d[string[1]][1]], c='w')
 
         img_with_plot = img_with_plot[:, :, ::-1]
-        cv2.imwrite(f"../reproj_demo/{proj_path}/{f}.jpg", img_with_plot)
+        cv2.imwrite(f"../reproj_result/{proj_path}/{f}.jpg", img_with_plot)
         out.write(img_with_plot)
         plt.close()
 
@@ -126,4 +126,4 @@ if __name__ == "__main__":
             kp2d = kp2d / kp2d[2:3]
             repro_2d[ff, kpt, :] = kp2d[:2]
 
-    visualize_demo(proj_dir, repro_2d)
+    visualize_overlay(proj_dir, repro_2d)
