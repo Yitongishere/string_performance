@@ -1,15 +1,12 @@
-import os.path
-import cv2
-from icecream import ic
-import json
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import itertools
-from smooth import Kalman_filter
-from smooth import Lowpass_Filter
-from smooth import Savgol_Filter
+import json
+import os.path
 
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+from icecream import ic
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 CAM_DICT = {
             'cam0': 21334181,
@@ -128,6 +125,10 @@ CELLO_LINKS = [[133, 134],
 
 BOW_LINKS = [[140, 141]]
 
+STRING_LINKS = [[142, 143],
+                [144, 145],
+                [146, 147],
+                [148, 149]]
 
 def get_all_combinations(cams):
     cams_num = len(cams)
@@ -334,7 +335,7 @@ def compute_axis_lim(triangulated_points):
     # triangulated_points in shape [num_frame, num_keypoint, 3 axis]
     xlim, ylim, zlim = None, None, None
     # ic(triangulated_points.shape)
-    minmax = np.nanpercentile(triangulated_points, q=[0, 100], axis=(0)).T
+    minmax = np.nanpercentile(triangulated_points, q=[0, 100], axis=0).T
     # ic(minmax)
     minmax *= 1.
     minmax_range = (minmax[:, 1] - minmax[:, 0]).max() / 2
@@ -350,15 +351,22 @@ def compute_axis_lim(triangulated_points):
     return xlim, ylim, zlim
 
 
-def visualize(data, proj_path):
+def visualize(data, proj_path, file_path='tri_3d'):
     xlim, ylim, zlim = None, None, None
     framenum = data.shape[0]
+    key_points_num = data.shape[1]
 
     if not os.path.exists(f'../kp_3d_result/'):
         os.makedirs(f'../kp_3d_result/')
 
+    if not os.path.exists(f'../kp_3d_result/{proj_path}/'):
+        os.makedirs(f'../kp_3d_result/{proj_path}/')
+
+    if not os.path.exists(f'../kp_3d_result/{proj_path}/{file_path}'):
+        os.makedirs(f'../kp_3d_result/{proj_path}/{file_path}')
+
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../kp_3d_result/{proj_path}/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
+    out = cv2.VideoWriter(f'../kp_3d_result/{proj_path}/{file_path}/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
 
     for f in range(framenum):
         kp_3d = data[f]
@@ -366,7 +374,7 @@ def visualize(data, proj_path):
             xlim, ylim, zlim = compute_axis_lim(data[f])
         # ic(xlim, ylim, zlim)
         fig = plt.figure(figsize=[10, 10])
-        axes3 = fig.add_subplot(projection="3d")
+        axes3 = fig.add_subplot(projection="3d", computed_zorder=False)
         axes3.view_init(azim=135, elev=-20, roll=-45)
         axes3.set_xlim3d(xlim)
         axes3.set_ylim3d(ylim)
@@ -374,26 +382,44 @@ def visualize(data, proj_path):
         axes3.set_box_aspect((1, 1, 1))
         axes3.scatter(kp_3d[0:133, 0],
                       kp_3d[0:133, 1],
-                      kp_3d[0:133, 2], s=5)
-        axes3.scatter(kp_3d[133:142, 0],
-                      kp_3d[133:142, 1],
-                      kp_3d[133:142, 2], c='saddlebrown', s=5)
-        axes3.scatter(kp_3d[142:144, 0],
-                      kp_3d[142:144, 1],
-                      kp_3d[142:144, 2], c='goldenrod', s=5)
+                      kp_3d[0:133, 2], s=5, zorder=1)
+        axes3.scatter(kp_3d[133:140, 0],
+                      kp_3d[133:140, 1],
+                      kp_3d[133:140, 2], c='saddlebrown', s=5, zorder=1)
+        axes3.scatter(kp_3d[140:142, 0],
+                      kp_3d[140:142, 1],
+                      kp_3d[140:142, 2], c='goldenrod', s=5, zorder=1)
+        if key_points_num > 142:
+            axes3.scatter(kp_3d[142:150, 0],
+                          kp_3d[142:150, 1],
+                          kp_3d[142:150, 2], c='black', s=5, zorder=2)
+            string_segs3d = kp_3d[tuple([STRING_LINKS])]
+            string_coll_3d = Line3DCollection(string_segs3d, edgecolors='black', linewidths=1, zorder=2)
+            axes3.add_collection(string_coll_3d)
+            if True not in np.isnan(kp_3d[150]):
+                axes3.scatter(kp_3d[150, 0],
+                              kp_3d[150, 1],
+                              kp_3d[150, 2], c='r', s=5,
+                              zorder=100)  # zorder must be the biggest so that it would not be occluded
+                axes3.scatter(kp_3d[151:155, 0],
+                              kp_3d[151:155, 1],
+                              kp_3d[151:155, 2], c='yellow', s=5, zorder=99)
 
         human_segs3d = kp_3d[tuple([HUMAN_LINKS])]
         cello_segs3d = kp_3d[tuple([CELLO_LINKS])]
         bow_segs3d = kp_3d[tuple([BOW_LINKS])]
-        human_coll_3d = Line3DCollection(human_segs3d, linewidths=1)
-        cello_coll_3d = Line3DCollection(cello_segs3d, edgecolors='saddlebrown', linewidths=1)
-        bow_coll_3d = Line3DCollection(bow_segs3d, edgecolors='goldenrod', linewidths=1)
+
+        human_coll_3d = Line3DCollection(human_segs3d, linewidths=1, zorder=1)
+        cello_coll_3d = Line3DCollection(cello_segs3d, edgecolors='saddlebrown', linewidths=1, zorder=1)
+        bow_coll_3d = Line3DCollection(bow_segs3d, edgecolors='goldenrod', linewidths=1, zorder=1)
+
         axes3.add_collection(human_coll_3d)
         axes3.add_collection(cello_coll_3d)
         axes3.add_collection(bow_coll_3d)
+
         # plt.show()
 
-        plt.savefig(f'../kp_3d_result/{proj_path}/sample{f}.jpg')
+        plt.savefig(f'../kp_3d_result/{proj_path}/{file_path}/{f}.jpg')
 
         canvas = fig.canvas
         canvas.draw()
@@ -402,6 +428,9 @@ def visualize(data, proj_path):
         image_array = image_array.reshape(height, width, 3)
         image_array = image_array[:, :, ::-1]  # rgb to bgr
         out.write(image_array)
+
+        print(f'{file_path} frame {f} graph generated.')
+
         plt.close()
 
 
@@ -422,7 +451,7 @@ if __name__ == "__main__":
 
     start_frame = 128
     end_frame = 839
-    # end_frame = 188
+    # end_frame = 129
 
     kp_3d_all = []
     for ff in range(start_frame, end_frame+1):
@@ -448,7 +477,7 @@ if __name__ == "__main__":
                 #         kpt_xy = each_ann['points'][0]
                 #         cello_2d_cc_ff[kpt_idx] = [kpt_xy[0], kpt_xy[1], 1]  # set the human-label score to be 1
                 for idx, cello_keypoint in enumerate(cello_keypoints):
-                    cello_2d_cc_ff[idx] = [cello_keypoint[0], cello_keypoint[1], 1]  # fully trust the label
+                    cello_2d_cc_ff[idx] = [cello_keypoint[0], cello_keypoint[1], cello_keypoint[2]]
                 kp_2d_cc_ff = np.concatenate([human_2d_cc_ff, cello_2d_cc_ff], axis=0)
                 kp_2d_all_cams.append(kp_2d_cc_ff)
             except FileNotFoundError as e:
@@ -468,13 +497,12 @@ if __name__ == "__main__":
     # visualize(kp_3d_all)
 
     # kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
-    kp_3d_smooth = Savgol_Filter(kp_3d_all, KPT_NUM)
-    # kp_3d_smooth = kp_3d_all
+    # kp_3d_smooth = Savgol_Filter(kp_3d_all, KPT_NUM)
 
-    visualize(kp_3d_smooth, proj_dir)
+    visualize(kp_3d_all, proj_dir)
 
-    data_dict = {'kp_3d_smooth': kp_3d_smooth.tolist()}
-    with open(f'../kp_3d_result/{proj_dir}/kp_3d_smooth.json', 'w') as f:
+    data_dict = {'kp_3d_all': kp_3d_all.tolist()}
+    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all.json', 'w') as f:
         json.dump(data_dict, f)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0

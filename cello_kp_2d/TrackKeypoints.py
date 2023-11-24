@@ -207,16 +207,15 @@ if __name__ == '__main__':
     resize_width = 1024
 
     # Load the video
-    # video_name = 'out37.mp4' #The path of the input video
     proj_dir = 'cello_1113_scale'
-    video_name = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334211.avi'
-    cam_num = video_name.split('_')[-1].split('.')[0]
-    parent_folder = os.path.dirname(video_name)
-    base_name = os.path.basename(video_name)
-    file_name = proj_dir + '_' + cam_num + '_' + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
+    video_path = r'../data/cello_1113/cello_1113_scale/video/cello_1113_21334237.avi'
+    cam_num = video_path.split('_')[-1].split('.')[0]
+    parent_folder = os.path.dirname(video_path)
+    base_name = os.path.basename(video_path)
+    file_name = cam_num + '_' + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
     # save_sub_dir = '_'.join(base_name.split('_')[:2])
     save_folder_path = '../cello_2d_result'
-    video = imageio.get_reader(os.path.abspath(video_name), 'ffmpeg')
+    video = imageio.get_reader(os.path.abspath(video_path), 'ffmpeg')
     iter_frames = 300  # Number of iteration frames per model insertion <=video.count_frames()
 
     start_frame_idx = 128
