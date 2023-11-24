@@ -50,10 +50,13 @@ def Lowpass_Filter(data, jointnum, LowPassParam=0.1):
 #     savgol_result[:, 11, 2] = signal.savgol_filter(data[:, 11, 2], 27, 3)
 #     return savgol_result
 
-def Savgol_Filter(data, jointnum, WindowLength=[11, 22, 44], PolyOrder=[6, 4, 2]):
-    """Enhancing smoothing process with longer WindowLength or lower PolyOrder"""
+def Savgol_Filter(data, point_num, WindowLength=[11, 22, 44], PolyOrder=[6, 4, 2]):
+    """
+    Enhancing smoothing process with longer WindowLength or lower PolyOrder
+    point_num: key points number to be smoothed
+    """
 
-    all_kps = [i for i in range(jointnum)]
+    all_kps = [i for i in range(point_num)]
     fine_kps = [i for i in range(91, 112)]  # left hand
     fine_kps.append(9)  # left wrist
     ordinary_kps = list(set(all_kps).difference(set(fine_kps)))

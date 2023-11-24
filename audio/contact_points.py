@@ -9,6 +9,8 @@ import numpy as np
 from icecream import ic
 import freq_position
 import librosa
+from triangulation.smooth import Savgol_Filter
+from triangulation.triangulation import visualize
 
 
 def draw_fundamental_curve(time_arr, freq_arr, conf_arr, proj, algo):
@@ -161,18 +163,19 @@ def mapping(proj_dir, positions):
     """
     positions: n * 4
     """
-    with open(f'../kp_3d_result/{proj_dir}/kp_3d_smooth.json', 'r') as f:
+    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all.json', 'r') as f:
         data_dict = json.load(f)
-    kp_3d_all = np.array(data_dict['kp_3d_smooth'])
+    kp_3d_all = np.array(data_dict['kp_3d_all'])
     ic(kp_3d_all.shape)
 
     # positions = np.ones([712, 4]) * -1  # n, 4
     # positions[0] = np.array([-1, 0, 1 / 2, -1])
     # positions[1] = np.array([-1, 1 / 2, 1 / 3, -1])
     kp_3d_all_with_cp = kp_3d_all.copy().tolist()
-    last_freq = np.inf
+    last_freq = np.nan
     vibrato_freq_list = []
-    used_finger_index = -1
+    used_finger_index = np.nan
+    used_finger = []
 
     for frame, kp_3d in enumerate(kp_3d_all):
         # ic(kp_3d.shape)
@@ -225,9 +228,9 @@ def mapping(proj_dir, positions):
         dips = [index_dip, middle_dip, ring_dip, pinky_dip]
         tips = [index_tip, middle_tip, ring_tip, pinky_tip]
 
-        contact_point = [np.inf, np.inf, np.inf]
+        contact_point = [np.nan, np.nan, np.nan]
         dist = np.inf
-        current_freq = np.inf
+        current_freq = np.nan
 
         for pos_idx, ratio in enumerate(position):
             if ratio > 0:
@@ -238,12 +241,12 @@ def mapping(proj_dir, positions):
                     contact_point = temp_contact_point
                     string_fund_freq = freq_position.PITCH_RANGES[pos_idx][0]
                     current_freq = freq_position.positon2freq(string_fund_freq, ratio)
-        used_finger_mcp = [np.inf, np.inf, np.inf]
-        used_finger_pip = [np.inf, np.inf, np.inf]
-        used_finger_dip = [np.inf, np.inf, np.inf]
-        used_finger_tip = [np.inf, np.inf, np.inf]
+        used_finger_mcp = [np.nan, np.nan, np.nan]
+        used_finger_pip = [np.nan, np.nan, np.nan]
+        used_finger_dip = [np.nan, np.nan, np.nan]
+        used_finger_tip = [np.nan, np.nan, np.nan]
         within_mean_range = False
-        if not np.isinf(current_freq):
+        if not np.isnan(current_freq):
             within_last_range = freq_position.cent_dev(last_freq, -30) < current_freq < freq_position.cent_dev(last_freq, 30)
             if within_last_range:
                 # Potential Vibrato Detected
@@ -280,15 +283,30 @@ def mapping(proj_dir, positions):
 
         # ic(contact_point)
         temp_list = kp_3d_all_with_cp[frame]
-        # index from 142 to 150
+        # index from 142 to 154
         temp_list.extend(
             [list(string_4_top), list(string_4_bottom), list(string_3_top), list(string_3_bottom), list(string_2_top),
              list(string_2_bottom), list(string_1_top), list(string_1_bottom), list(contact_point),
              list(used_finger_mcp), list(used_finger_pip), list(used_finger_dip), list(used_finger_tip)])
+        used_finger.append(used_finger_index)
         kp_3d_all_with_cp[frame] = temp_list
-    ic(np.array(kp_3d_all_with_cp).shape)
-    data_dict = {'kp_3d_all_with_cp': kp_3d_all_with_cp}
-    with open(f'kp_3d_all_with_cp.json', 'w') as f:
+
+    kp_3d_all_with_cp = np.array(kp_3d_all_with_cp)
+    ic(kp_3d_all_with_cp.shape)
+    # Bow Points are currently not available, otherwise index should be set to 142
+    kp_3d_all = kp_3d_all_with_cp[:, :140, :]
+    kp_3d_all_smooth = Savgol_Filter(kp_3d_all, 140)
+    ic(kp_3d_all_smooth.shape)
+    cp = kp_3d_all_with_cp[:, 140:, :]
+    kp_3d_all_with_cp_smooth = np.concatenate((kp_3d_all_smooth, cp), axis=1)
+    for frame_num, finger in enumerate(used_finger):
+        if True not in np.isnan(kp_3d_all_with_cp[frame_num][150]):  # whether contact point (index: 150) exists
+            for i in range(96, 100):
+                kp_3d_all_with_cp_smooth[frame_num][finger + i] = kp_3d_all_with_cp[frame_num][finger + i]
+    ic(kp_3d_all_with_cp_smooth.shape)
+    visualize(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d')
+    data_dict = {'kp_3d_all_with_cp_smooth': kp_3d_all_with_cp_smooth.tolist()}
+    with open(f'kp_3d_all_with_cp_smooth.json', 'w') as f:
         json.dump(data_dict, f)
 
 

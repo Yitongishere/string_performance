@@ -7,12 +7,7 @@ import matplotlib.pyplot as plt
 import imageio
 from contextlib import contextmanager
 from triangulation import make_projection_matrix
-from triangulation import HUMAN_LINKS, CELLO_LINKS, BOW_LINKS
-
-STRING_LINKS = [[142, 143],
-                [144, 145],
-                [146, 147],
-                [148, 149]]
+from triangulation import HUMAN_LINKS, CELLO_LINKS, BOW_LINKS, STRING_LINKS
 
 
 @contextmanager
@@ -44,14 +39,17 @@ def plot_over(img, extent=None, origin="upper", dpi=100):
     img[...] = ((255 - alpha) * img.astype(np.uint16) + alpha * rgb.astype(np.uint16)) // 255
 
 
-def visualize_demo(data):
+def visualize_demo(proj_path, data):
     framenum = data.shape[0]
 
     if not os.path.exists(f'../reproj_demo/'):
         os.makedirs(f'../reproj_demo/')
 
+    if not os.path.exists(f'../reproj_demo/{proj_path}/'):
+        os.makedirs(f'../reproj_demo/{proj_path}/')
+
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../reproj_demo/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
+    out = cv2.VideoWriter(f'../reproj_demo/{proj_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
 
     for f in range(framenum):
         ic(f)
@@ -92,7 +90,7 @@ def visualize_demo(data):
                 plt.plot([kp_2d[string[0]][0], kp_2d[string[1]][0]], [kp_2d[string[0]][1], kp_2d[string[1]][1]], c='w')
 
         img_with_plot = img_with_plot[:, :, ::-1]
-        cv2.imwrite(f"../reproj_demo/sample{f}.jpg", img_with_plot)
+        cv2.imwrite(f"../reproj_demo/{proj_path}/{f}.jpg", img_with_plot)
         out.write(img_with_plot)
         plt.close()
 
@@ -101,10 +99,11 @@ if __name__ == "__main__":
     # with open('../kp_3d_result/cello_1113_scale/kp_3d_smooth.json', 'r') as f:
     #     data_dict = json.load(f)
     # kp_3d_all = np.array(data_dict['kp_3d_smooth'])
+    proj_dir = 'cello_1113_scale'
 
-    with open('../audio/kp_3d_all_with_cp.json', 'r') as f:
+    with open('../audio/kp_3d_all_with_cp_smooth.json', 'r') as f:
         data_dict = json.load(f)
-    kp_3d_all = np.array(data_dict['kp_3d_all_with_cp'])
+    kp_3d_all = np.array(data_dict['kp_3d_all_with_cp_smooth'])
 
     framenum = kp_3d_all.shape[0]
     kpt_num = kp_3d_all.shape[1]
@@ -127,4 +126,4 @@ if __name__ == "__main__":
             kp2d = kp2d / kp2d[2:3]
             repro_2d[ff, kpt, :] = kp2d[:2]
 
-    visualize_demo(repro_2d)
+    visualize_demo(proj_dir, repro_2d)
