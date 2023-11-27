@@ -54,6 +54,8 @@ def download_checkpoints(ck_url='https://storage.googleapis.com/dm-tapnet/causal
             'Please download the checkpoint file at "https://storage.googleapis.com/dm-tapnet/causal_tapir_checkpoint'
             '.npy" and put it into the folder "tapnet/checkpoints" manually!')
         return None
+    if not os.path.exists('tapnet/checkpoints/'):
+        os.mkdir('tapnet/checkpoints/')
     with open(os.path.abspath('tapnet/checkpoints/' + ck_url.split(r'/')[-1]), 'wb') as f:
         f.write(checkpoint)
     f.close()
@@ -240,6 +242,7 @@ if __name__ == '__main__':
             The second and the third elements of this array are positions "Y (height)" and "X (width)"  of the pixels.
     '''
     labeled_json = f'labeled_jsons/{proj_dir}_{cam_num}_{start_frame_idx}.json'
+    assert open(labeled_json)
     # The path of your keypoints -> (camera_{cameraID}_{start_frame_index}). We use labelme to label them, or you can
     # use other tools to give the array of keypoints position information manually.
 
