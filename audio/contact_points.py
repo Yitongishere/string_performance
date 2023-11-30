@@ -159,6 +159,10 @@ def cal_dist(point1, point2):
     return np.sqrt(np.sum(np.square(point1 - point2)))
 
 
+def point_init():
+    return np.array([np.nan, np.nan, np.nan])
+
+
 def mapping(proj_dir, positions):
     """
     positions: n * 4
@@ -228,7 +232,7 @@ def mapping(proj_dir, positions):
         dips = [index_dip, middle_dip, ring_dip, pinky_dip]
         tips = [index_tip, middle_tip, ring_tip, pinky_tip]
 
-        contact_point = [np.nan, np.nan, np.nan]
+        contact_point = point_init()
         dist = np.inf
         current_freq = np.nan
 
@@ -262,10 +266,10 @@ def mapping(proj_dir, positions):
                     contact_point = contact_point_list[i]
                     current_freq = current_freq_list[i]
         
-        used_finger_mcp = [np.nan, np.nan, np.nan]
-        used_finger_pip = [np.nan, np.nan, np.nan]
-        used_finger_dip = [np.nan, np.nan, np.nan]
-        used_finger_tip = [np.nan, np.nan, np.nan]
+        used_finger_mcp = point_init()
+        used_finger_pip = point_init()
+        used_finger_dip = point_init()
+        used_finger_tip = point_init()
         within_mean_range = False
         if not np.isnan(current_freq):
             within_last_range = freq_position.cent_dev(last_freq, -30) < current_freq < freq_position.cent_dev(last_freq, 30)
@@ -297,6 +301,19 @@ def mapping(proj_dir, positions):
                 print(f'Frame {frame} change to finger {used_finger_index + 1}.')
                 vibrato_freq_list = []
             last_freq = current_freq
+
+        # The distance between contact point and fingertip should be limited.
+        # The cello body still vibrates even after the finger no longer presses the string.
+        if not np.isnan(contact_point).any():
+            dist_tip_cp = cal_dist(contact_point, used_finger_tip)
+            # threshold that finger is lifted
+            dist_tip_pip = cal_dist(used_finger_tip, used_finger_pip)
+            if dist_tip_cp > dist_tip_pip:  # used finger lifted
+                contact_point = point_init()
+                used_finger_mcp = point_init()
+                used_finger_pip = point_init()
+                used_finger_dip = point_init()
+                used_finger_tip = point_init()
 
         # ic(contact_point)
         temp_list = kp_3d_all_with_cp[frame]
