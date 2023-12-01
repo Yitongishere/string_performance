@@ -29,7 +29,7 @@ def draw_fundamental_curve(time_arr, freq_arr, conf_arr, proj, algo):
     plt.savefig(f'output/{proj}/pitch_curve_{algo}.jpg')
 
 
-def draw_contact_points(data, proj):
+def draw_contact_points(data, proj, file_name):
     """
     data: [n, 4], n: frame number, 4: string number
     """
@@ -58,7 +58,7 @@ def draw_contact_points(data, proj):
         os.mkdir(f'output{proj}')
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'output/{proj}/virtual_contact_point.avi', fourcc, fps=30, frameSize=[700, 1000])
+    out = cv2.VideoWriter(f'output/{proj}/{file_name}.avi', fourcc, fps=30, frameSize=[700, 1000])
     for frame_idx, frame in enumerate(data):
         print(f'Frame {frame_idx + 1}...')
         points = []
@@ -180,6 +180,7 @@ def mapping(proj_dir, positions):
     vibrato_freq_list = []
     used_finger_index = np.nan
     used_finger = []
+    filtered_positions = []
 
     for frame, kp_3d in enumerate(kp_3d_all):
         # ic(kp_3d.shape)
@@ -239,6 +240,7 @@ def mapping(proj_dir, positions):
         contact_point_list = []
         dist_list = []
         current_freq_list = []
+        pressed_string_id_list = []
 
         for pos_idx, ratio in enumerate(position):
             if ratio > 0:
@@ -255,8 +257,10 @@ def mapping(proj_dir, positions):
                 contact_point_list.append(potential_contact_point)
                 string_fund_freq = freq_position.PITCH_RANGES[pos_idx][0]
                 current_freq_list.append(freq_position.positon2freq(string_fund_freq, ratio))
-        
+                pressed_string_id_list.append(pos_idx)
+
         smallest_dist = np.inf
+        pressed_string_id = -1
         for i in np.argsort(dist_list)[:2]:  # Obtain two closest potential contact points
             for tip in dips:
                 temp_dist = cal_dist(tip, contact_point_list[i])
@@ -265,6 +269,9 @@ def mapping(proj_dir, positions):
                     dist = dist_list[i]
                     contact_point = contact_point_list[i]
                     current_freq = current_freq_list[i]
+                    pressed_string_id = pressed_string_id_list[i]
+                    ic(pressed_string_id)
+                    ic(i)
         
         used_finger_mcp = point_init()
         used_finger_pip = point_init()
@@ -307,13 +314,20 @@ def mapping(proj_dir, positions):
         if not np.isnan(contact_point).any():
             dist_tip_cp = cal_dist(contact_point, used_finger_tip)
             # threshold that finger is lifted
-            dist_tip_pip = cal_dist(used_finger_tip, used_finger_pip)
+            dist_tip_pip = cal_dist(used_finger_tip, used_finger_mcp)
             if dist_tip_cp > dist_tip_pip:  # used finger lifted
                 contact_point = point_init()
                 used_finger_mcp = point_init()
                 used_finger_pip = point_init()
                 used_finger_dip = point_init()
                 used_finger_tip = point_init()
+
+        filtered_position = [-1, -1, -1, -1]
+        if not np.isnan(contact_point).any():
+            filtered_position[pressed_string_id] = position[pressed_string_id]
+            filtered_positions.append(filtered_position)
+        else:
+            filtered_positions.append(filtered_position)
 
         # ic(contact_point)
         temp_list = kp_3d_all_with_cp[frame]
@@ -338,10 +352,11 @@ def mapping(proj_dir, positions):
             for i in range(96, 100):
                 kp_3d_all_with_cp_smooth[frame_num][finger + i] = kp_3d_all_with_cp[frame_num][finger + i]
     ic(kp_3d_all_with_cp_smooth.shape)
-    visualize_3d(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d')
+    # visualize_3d(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d')
     data_dict = {'kp_3d_all_with_cp_smooth': kp_3d_all_with_cp_smooth.tolist()}
     with open(f'kp_3d_all_with_cp_smooth.json', 'w') as f:
         json.dump(data_dict, f)
+    return filtered_positions
 
 
 if __name__ == '__main__':
@@ -353,5 +368,6 @@ if __name__ == '__main__':
     ic(pitch_with_positions.shape)
     positions = pitch_with_positions[:, -4:]
     ic(positions.shape)
-    # draw_contact_points(positions, proj_dir)
-    mapping(proj_dir, positions)
+    # draw_contact_points(positions, proj_dir, 'virtual_contact_point')
+    new_positions = mapping(proj_dir, positions)
+    draw_contact_points(new_positions, proj_dir, 'virtual_contact_point_filtered')
