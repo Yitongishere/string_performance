@@ -9,41 +9,41 @@ from icecream import ic
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 CAM_DICT = {
-            'cam0': 21334181,
-            'cam1': 21334237,
-            'cam2': 21334180,
-            'cam3': 21334209,
-            'cam4': 21334208,
-            'cam5': 21334186,
-            'cam6': 21293326,
-            'cam7': 21293325,
-            'cam8': 21293324,
-            'cam9': 21334206,
-            'cam10': 21334220,
-            'cam11': 21334183,
-            'cam12': 21334207,
-            'cam13': 21334191,
-            'cam14': 21334184,
-            'cam15': 21334238,
-            'cam16': 21334221,
-            'cam17': 21334219,
-            'cam18': 21334190,
-            'cam19': 21334211
-            }
+    'cam0': 21334181,
+    'cam1': 21334237,
+    'cam2': 21334180,
+    'cam3': 21334209,
+    'cam4': 21334208,
+    'cam5': 21334186,
+    'cam6': 21293326,
+    'cam7': 21293325,
+    'cam8': 21293324,
+    'cam9': 21334206,
+    'cam10': 21334220,
+    'cam11': 21334183,
+    'cam12': 21334207,
+    'cam13': 21334191,
+    'cam14': 21334184,
+    'cam15': 21334238,
+    'cam16': 21334221,
+    'cam17': 21334219,
+    'cam18': 21334190,
+    'cam19': 21334211
+}
 
 """cello keypoint dict define"""
 CELLO_DICT = {
-            'scroll_top': 0,
-            'nut_l': 1,
-            'nut_r': 2,
-            'neck_bottom_l': 3,
-            'neck_bottom_r': 4,
-            'bridge_l': 5,
-            'bridge_r': 6,
-            'tail_gut': 7,
-            'end_pin': 8,
-            'frog': 9,
-            'tip_plate': 10,
+    'scroll_top': 0,
+    'nut_l': 1,
+    'nut_r': 2,
+    'neck_bottom_l': 3,
+    'neck_bottom_r': 4,
+    'bridge_l': 5,
+    'bridge_r': 6,
+    'tail_gut': 7,
+    'end_pin': 8,
+    'frog': 9,
+    'tip_plate': 10,
 }
 
 KPT_NUM = 142
@@ -115,6 +115,29 @@ HUMAN_LINKS = [[15, 13],
                [130, 131],
                [131, 132]]
 
+LEFT_HAND_LINKS = [[5, 7],
+                   [7, 9],
+                   [91, 92],
+                   [92, 93],
+                   [93, 94],
+                   [94, 95],
+                   [91, 96],
+                   [96, 97],
+                   [97, 98],
+                   [98, 99],
+                   [91, 100],
+                   [100, 101],
+                   [101, 102],
+                   [102, 103],
+                   [91, 104],
+                   [104, 105],
+                   [105, 106],
+                   [106, 107],
+                   [91, 108],
+                   [108, 109],
+                   [109, 110],
+                   [110, 111]]
+
 CELLO_LINKS = [[133, 134],
                [133, 135],
                [134, 136],
@@ -129,6 +152,7 @@ STRING_LINKS = [[142, 143],
                 [144, 145],
                 [146, 147],
                 [148, 149]]
+
 
 def get_all_combinations(cams):
     cams_num = len(cams)
@@ -330,7 +354,7 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, nit
     return keypoints_3d
 
 
-def compute_axis_lim(triangulated_points):
+def compute_axis_lim(triangulated_points, scale_factor=1):
     # ic(triangulated_points.shape)
     # triangulated_points in shape [num_frame, num_keypoint, 3 axis]
     xlim, ylim, zlim = None, None, None
@@ -341,17 +365,17 @@ def compute_axis_lim(triangulated_points):
     minmax_range = (minmax[:, 1] - minmax[:, 0]).max() / 2
     if xlim is None:
         mid_x = np.mean(minmax[0])
-        xlim = mid_x - minmax_range, mid_x + minmax_range
+        xlim = mid_x - minmax_range / scale_factor, mid_x + minmax_range / scale_factor
     if ylim is None:
         mid_y = np.mean(minmax[1])
-        ylim = mid_y - minmax_range, mid_y + minmax_range
+        ylim = mid_y - minmax_range / scale_factor, mid_y + minmax_range / scale_factor
     if zlim is None:
         mid_z = np.mean(minmax[2])
-        zlim = mid_z - minmax_range, mid_z + minmax_range
+        zlim = mid_z - minmax_range / scale_factor, mid_z + minmax_range / scale_factor
     return xlim, ylim, zlim
 
 
-def visualize_3d(data, proj_path, file_path='tri_3d'):
+def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
     xlim, ylim, zlim = None, None, None
     framenum = data.shape[0]
     key_points_num = data.shape[1]
@@ -366,58 +390,104 @@ def visualize_3d(data, proj_path, file_path='tri_3d'):
         os.makedirs(f'../kp_3d_result/{proj_path}/{file_path}')
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../kp_3d_result/{proj_path}/{file_path}/output.avi', fourcc, fps=30, frameSize=[1000, 1000])
+    out = cv2.VideoWriter(f'../kp_3d_result/{proj_path}/{file_path}/output_{view_angle}.avi', fourcc, fps=30,
+                          frameSize=[1000, 1000])
 
+    zoom_in = view_angle == 'finger'
     for f in range(framenum):
         kp_3d = data[f]
-        if xlim is None:
-            xlim, ylim, zlim = compute_axis_lim(data[f])
-        # ic(xlim, ylim, zlim)
         fig = plt.figure(figsize=[10, 10])
         axes3 = fig.add_subplot(projection="3d", computed_zorder=False)
-        axes3.view_init(azim=135, elev=-20, roll=-45)
+        if xlim is None:
+            if zoom_in:
+                string_data = data[f][142:155]
+                left_arm_data = data[f][5:10:2]
+                string_with_arm = np.concatenate((string_data, left_arm_data), axis=0)
+                xlim, ylim, zlim = compute_axis_lim(string_with_arm, scale_factor=1.5)
+            else:
+                xlim, ylim, zlim = compute_axis_lim(data[f])
+
+        if zoom_in:
+            axes3.view_init(azim=90, elev=30, roll=-45)
+        else:
+            axes3.view_init(azim=135, elev=-20, roll=-45)
+        # ic(xlim, ylim, zlim)
+        # axes3.set_box_aspect(aspect=[5, 5, 5])
+
         axes3.set_xlim3d(xlim)
         axes3.set_ylim3d(ylim)
         axes3.set_zlim3d(zlim)
         axes3.set_box_aspect((1, 1, 1))
-        axes3.scatter(kp_3d[0:133, 0],
-                      kp_3d[0:133, 1],
-                      kp_3d[0:133, 2], s=5, zorder=1)
-        axes3.scatter(kp_3d[133:140, 0],
-                      kp_3d[133:140, 1],
-                      kp_3d[133:140, 2], c='saddlebrown', s=5, zorder=1)
-        axes3.scatter(kp_3d[140:142, 0],
-                      kp_3d[140:142, 1],
-                      kp_3d[140:142, 2], c='goldenrod', s=5, zorder=1)
-        if key_points_num > 142:
-            axes3.scatter(kp_3d[142:150, 0],
-                          kp_3d[142:150, 1],
-                          kp_3d[142:150, 2], c='black', s=5, zorder=2)
-            string_segs3d = kp_3d[tuple([STRING_LINKS])]
-            string_coll_3d = Line3DCollection(string_segs3d, edgecolors='black', linewidths=1, zorder=2)
-            axes3.add_collection(string_coll_3d)
-            if True not in np.isnan(kp_3d[150]):
-                axes3.scatter(kp_3d[150, 0],
-                              kp_3d[150, 1],
-                              kp_3d[150, 2], c='r', s=5,
-                              zorder=100)  # zorder must be the biggest so that it would not be occluded
-                axes3.scatter(kp_3d[151:155, 0],
-                              kp_3d[151:155, 1],
-                              kp_3d[151:155, 2], c='yellow', s=5, zorder=99)
 
         human_segs3d = kp_3d[tuple([HUMAN_LINKS])]
         cello_segs3d = kp_3d[tuple([CELLO_LINKS])]
         bow_segs3d = kp_3d[tuple([BOW_LINKS])]
+        left_hand_segs3d = kp_3d[tuple([LEFT_HAND_LINKS])]
 
-        human_coll_3d = Line3DCollection(human_segs3d, linewidths=1, zorder=1)
-        cello_coll_3d = Line3DCollection(cello_segs3d, edgecolors='saddlebrown', linewidths=1, zorder=1)
-        bow_coll_3d = Line3DCollection(bow_segs3d, edgecolors='goldenrod', linewidths=1, zorder=1)
 
-        axes3.add_collection(human_coll_3d)
-        axes3.add_collection(cello_coll_3d)
-        axes3.add_collection(bow_coll_3d)
+        if zoom_in:
+            if key_points_num > 142:
+                string_segs3d = kp_3d[tuple([STRING_LINKS])]
+                string_coll_3d = Line3DCollection(string_segs3d, edgecolors='black', linewidths=1, zorder=98)
+            left_hand_coll_3d = Line3DCollection(left_hand_segs3d, linewidths=1, zorder=1)
+            axes3.add_collection(left_hand_coll_3d)
+            axes3.add_collection(string_coll_3d)
+            # left hand
+            axes3.scatter(kp_3d[91:111, 0],
+                          kp_3d[91:111, 1],
+                          kp_3d[91:111, 2], s=5, c='#1f77b4', zorder=1)
+            # left arm
+            axes3.scatter(kp_3d[5:10:2, 0],
+                          kp_3d[5:10:2, 1],
+                          kp_3d[5:10:2, 2], s=5, c='#1f77b4', zorder=1)
+            if key_points_num > 142:
+                axes3.scatter(kp_3d[142:150, 0],
+                              kp_3d[142:150, 1],
+                              kp_3d[142:150, 2], c='black', s=5, zorder=98)
+            if True not in np.isnan(kp_3d[150]):
+                axes3.scatter(kp_3d[150, 0],
+                              kp_3d[150, 1],
+                              kp_3d[150, 2], c='r', s=30,
+                              zorder=100)  # zorder must be the biggest so that it would not be occluded
+                axes3.scatter(kp_3d[151:155, 0],
+                              kp_3d[151:155, 1],
+                              kp_3d[151:155, 2], c='orange', s=30, zorder=99)
 
-        # plt.show()
+        else:
+            human_coll_3d = Line3DCollection(human_segs3d, linewidths=1, zorder=1)
+            cello_coll_3d = Line3DCollection(cello_segs3d, edgecolors='saddlebrown', linewidths=1, zorder=1)
+            bow_coll_3d = Line3DCollection(bow_segs3d, edgecolors='goldenrod', linewidths=1, zorder=1)
+
+            axes3.add_collection(human_coll_3d)
+            axes3.add_collection(cello_coll_3d)
+            axes3.add_collection(bow_coll_3d)
+
+            axes3.scatter(kp_3d[0:133, 0],
+                          kp_3d[0:133, 1],
+                          kp_3d[0:133, 2], s=5, zorder=1)
+            axes3.scatter(kp_3d[133:140, 0],
+                          kp_3d[133:140, 1],
+                          kp_3d[133:140, 2], c='saddlebrown', s=5, zorder=1)
+            axes3.scatter(kp_3d[140:142, 0],
+                          kp_3d[140:142, 1],
+                          kp_3d[140:142, 2], c='goldenrod', s=5, zorder=1)
+            if key_points_num > 142:
+                axes3.scatter(kp_3d[142:150, 0],
+                              kp_3d[142:150, 1],
+                              kp_3d[142:150, 2], c='black', s=5, zorder=98)
+                string_coll_3d = Line3DCollection(string_segs3d, edgecolors='black', linewidths=1, zorder=98)
+                axes3.add_collection(string_coll_3d)
+                if True not in np.isnan(kp_3d[150]):
+                    axes3.scatter(kp_3d[150, 0],
+                                  kp_3d[150, 1],
+                                  kp_3d[150, 2], c='r', s=5,
+                                  zorder=100)  # zorder must be the biggest so that it would not be occluded
+                    axes3.scatter(kp_3d[151:155, 0],
+                                  kp_3d[151:155, 1],
+                                  kp_3d[151:155, 2], c='orange', s=5, zorder=99)
+
+        # axes3.grid(None)
+        # axes3.axis('off')
 
         plt.savefig(f'../kp_3d_result/{proj_path}/{file_path}/{f}.jpg')
 
@@ -454,7 +524,7 @@ if __name__ == "__main__":
     # end_frame = 129
 
     kp_3d_all = []
-    for ff in range(start_frame, end_frame+1):
+    for ff in range(start_frame, end_frame + 1):
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
         for cc in used_cams:

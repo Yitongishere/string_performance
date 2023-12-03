@@ -352,7 +352,7 @@ def mapping(proj_dir, positions):
             for i in range(96, 100):
                 kp_3d_all_with_cp_smooth[frame_num][finger + i] = kp_3d_all_with_cp[frame_num][finger + i]
     ic(kp_3d_all_with_cp_smooth.shape)
-    # visualize_3d(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d')
+    visualize_3d(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d', 'finger')
     data_dict = {'kp_3d_all_with_cp_smooth': kp_3d_all_with_cp_smooth.tolist()}
     with open(f'kp_3d_all_with_cp_smooth.json', 'w') as f:
         json.dump(data_dict, f)
@@ -370,4 +370,4 @@ if __name__ == '__main__':
     ic(positions.shape)
     # draw_contact_points(positions, proj_dir, 'virtual_contact_point')
     new_positions = mapping(proj_dir, positions)
-    draw_contact_points(new_positions, proj_dir, 'virtual_contact_point_filtered')
+    # draw_contact_points(new_positions, proj_dir, 'virtual_contact_point_filtered')
