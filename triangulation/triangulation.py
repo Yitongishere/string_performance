@@ -475,6 +475,7 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
                 axes3.scatter(kp_3d[142:150, 0],
                               kp_3d[142:150, 1],
                               kp_3d[142:150, 2], c='black', s=5, zorder=98)
+                string_segs3d = kp_3d[tuple([STRING_LINKS])]
                 string_coll_3d = Line3DCollection(string_segs3d, edgecolors='black', linewidths=1, zorder=98)
                 axes3.add_collection(string_coll_3d)
                 if True not in np.isnan(kp_3d[150]):
