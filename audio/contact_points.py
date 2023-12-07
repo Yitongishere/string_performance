@@ -270,8 +270,8 @@ def mapping(proj_dir, positions):
                     contact_point = contact_point_list[i]
                     current_freq = current_freq_list[i]
                     pressed_string_id = pressed_string_id_list[i]
-                    ic(pressed_string_id)
-                    ic(i)
+                    # ic(pressed_string_id)
+                    # ic(i)
         
         used_finger_mcp = point_init()
         used_finger_pip = point_init()
@@ -352,16 +352,18 @@ def mapping(proj_dir, positions):
             for i in range(96, 100):
                 kp_3d_all_with_cp_smooth[frame_num][finger + i] = kp_3d_all_with_cp[frame_num][finger + i]
     ic(kp_3d_all_with_cp_smooth.shape)
-    visualize_3d(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d', 'finger')
+    visualize_3d(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d', 'whole')
     data_dict = {'kp_3d_all_with_cp_smooth': kp_3d_all_with_cp_smooth.tolist()}
-    with open(f'kp_3d_all_with_cp_smooth.json', 'w') as f:
+    if not os.path.exists(proj_dir):
+        os.mkdir(proj_dir)
+    with open(f'{proj_dir}/kp_3d_all_with_cp_smooth.json', 'w') as f:
         json.dump(data_dict, f)
     return filtered_positions
 
 
 if __name__ == '__main__':
-    proj_dir = 'cello_1113_scale'
-    pitch_results = pitch_detect_crepe(proj_dir, True, 'wavs/scale.wav')
+    proj_dir = 'cello_1113_pgy'
+    pitch_results = pitch_detect_crepe(proj_dir, True, 'wavs/pgy.wav')
     # ic(pitch_results[352:360])
     # pitch_results = pitch_detect_pyin(proj_dir, 'wavs/scale.wav')
     pitch_with_positions = freq_position.get_contact_position(pitch_results)
