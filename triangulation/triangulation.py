@@ -295,7 +295,7 @@ def triangulate_joints(keypoints_mview, projection_matrices, num_joint, kpt_thr)
     return keypoints_3d
 
 
-def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, niter=50, epsilon=150, kpt_thr=0.6):
+def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, epsilon=150, kpt_thr=0.6):
     """
     perform ransac triangulation on the multiview mmpose estimation results for a frame
     keypoints_mview: [num_cams, num_kpt, 3], [x, y, score]
@@ -424,14 +424,14 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
         bow_segs3d = kp_3d[tuple([BOW_LINKS])]
         left_hand_segs3d = kp_3d[tuple([LEFT_HAND_LINKS])]
 
-
         if zoom_in:
             if key_points_num > 142:
                 string_segs3d = kp_3d[tuple([STRING_LINKS])]
                 string_coll_3d = Line3DCollection(string_segs3d, edgecolors='black', linewidths=1, zorder=98)
+                axes3.add_collection(string_coll_3d)
             left_hand_coll_3d = Line3DCollection(left_hand_segs3d, linewidths=1, zorder=1)
             axes3.add_collection(left_hand_coll_3d)
-            axes3.add_collection(string_coll_3d)
+
             # left hand
             axes3.scatter(kp_3d[91:111, 0],
                           kp_3d[91:111, 1],
@@ -558,7 +558,7 @@ if __name__ == "__main__":
         proj_mat = make_projection_matrix(cam_param, cams=cam_ff)
         kp_2d_all_cams = np.array(kp_2d_all_cams)
         # kp_3d = triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, kpt_thr=0.6)
-        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=KPT_NUM, niter=20, epsilon=20, kpt_thr=0.6)
+        kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=KPT_NUM, epsilon=20, kpt_thr=0.6)
         # kp_3d_all[ff] = kp_3d
         kp_3d_all.append(kp_3d)
         print(f'Frame {ff} triangulation done.')
