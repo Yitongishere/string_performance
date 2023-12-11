@@ -2,6 +2,16 @@ import numpy as np
 from pyquaternion import Quaternion
 from icecream import ic
 
+def get6d_from_txt(filepath):
+    with open(filepath) as f:
+        lines = f.readlines()
+
+    lh = np.array([float(x) for x in lines[1].rstrip().split(' ')]).reshape(16, 6)
+    rh = np.array([float(x) for x in lines[3].rstrip().split(' ')]).reshape(16, 6)
+
+    f.close()
+    return lh, rh
+
 
 def is_orthogonal(matrix):
     transpose_matrix = np.transpose(matrix)
@@ -24,11 +34,7 @@ def rotation_6d_to_R(d6):
 if __name__ == "__main__":
     filepath = "./1113_scale/cello_1113_21293325/1.txt"
 
-    with open(filepath) as f:
-        lines = f.readlines()
-
-    lh = np.array([float(x) for x in lines[1].rstrip().split(' ')]).reshape(16, 6)
-    rh = np.array([float(x) for x in lines[3].rstrip().split(' ')]).reshape(16, 6)
+    lh, rh = get6d_from_txt(filepath)
 
     R_lh = rotation_6d_to_R(lh)
     R_rh = rotation_6d_to_R(rh)
