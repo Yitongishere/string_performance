@@ -165,11 +165,11 @@ def extract_frames_interval(files_path, output_path, start, end):
 if __name__ == "__main__":
     # path of videos to be extracted
     # files_path = f"../data/cello_1113/cello_1113_pgy/video/*.avi"
-    files_path = f"../data/cello_1113/cello_1113_scale/video/cello_1113_21334181.avi"
+    files_path = f"../data/cello_1113/cello_1113_pgy/video/cello_1113_pgy_21334211.avi"
 
     # output path for extracted frames
     # output_path = f"../data/cello_1113/cello_1113_pgy/frames"
-    output_path = f"../data/cello_1113/cello_1113_scale/frames"
+    output_path = f"../data/cello_1113/cello_1113_pgy/frames"
 
-    extract_frames_interval(files_path, output_path, 1, 2)  # For camera calibration
+    extract_frames_interval(files_path, output_path, 125, 126)  # For camera calibration
     # extract_frames_interval(files_path, output_path, 70, 800)
