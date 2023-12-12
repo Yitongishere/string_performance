@@ -1,6 +1,8 @@
+import os
 import numpy as np
 from pyquaternion import Quaternion
 from icecream import ic
+import json
 
 def get6d_from_txt(filepath):
     with open(filepath) as f:
@@ -30,17 +32,72 @@ def rotation_6d_to_R(d6):
 
     return R
 
+def rotationR_to_Q(rotation_matrix):
+    Q = np.full((16, 4), np.nan)
+    if not np.isnan(rotation_matrix).any():
+        for i in range(len(rotation_matrix)):
+            Q[i] = np.array(list(Quaternion(matrix=rotation_matrix[i])))
+    return Q
+
+
+def numpy_arrays_to_lists(dic):
+    for key, value in dic.items():
+        if isinstance(value, np.ndarray):
+            # 如果值是 NumPy 数组，转换为列表
+            dic[key] = value.tolist()
+        elif isinstance(value, dict):
+            # 如果值是嵌套字典，递归调用此函数
+            dic[key] = numpy_arrays_to_lists(value)
+    return dic
+
 
 if __name__ == "__main__":
-    filepath = "./1113_scale/cello_1113_21293325/1.txt"
 
-    lh, rh = get6d_from_txt(filepath)
+    proj_dir = "./1113_scale"
+    cam_dirs = os.listdir(proj_dir)
+    frame = 5
 
-    R_lh = rotation_6d_to_R(lh)
-    R_rh = rotation_6d_to_R(rh)
-    # ic(R_lh)
-    ic(R_lh.shape)
+    start_frame = 1
+    end_frame = 83
 
-    for i in range(len(R_lh)):
-        ic(is_orthogonal(R_lh[i]))
-        ic(is_orthogonal(R_rh[i]))
+    data_all = {}
+    for frame in range(start_frame, end_frame+1):
+
+        data_f = {}
+        cams = []
+        for cam_dir in cam_dirs:
+            cam_num = cam_dir.split('_')[-1]
+            cams.append(cam_num)
+
+            filepath = os.path.join(proj_dir, cam_dir, f'{frame}.txt')
+            # ic(filepath)
+
+            lh, rh = get6d_from_txt(filepath)
+
+            R_lh = rotation_6d_to_R(lh)
+            R_rh = rotation_6d_to_R(rh)
+
+            Q_lh = rotationR_to_Q(R_lh)
+            Q_rh = rotationR_to_Q(R_rh)
+
+
+            data_f[f'{cam_num}'] = {'R_lh': R_lh,
+                                    'R_rh': R_rh,
+                                    'Q_lh': Q_lh,
+                                    'Q_rh': Q_rh}
+
+        data_all[f'{frame}'] = data_f
+
+
+    data_all = numpy_arrays_to_lists(data_all)
+    with open('output.json', 'w') as json_file:
+        json.dump(data_all, json_file, indent=4)
+
+    # target_frame = '1'
+    # for cam in cams:
+    #     res = data_all[target_frame][cam]['Q_lh']
+    #     print(f'The frame {target_frame}: Q_lh for cam {cam} is {res}')
+
+
+
+
