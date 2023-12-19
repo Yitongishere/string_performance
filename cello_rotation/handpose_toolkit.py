@@ -2,8 +2,6 @@ import numpy as np
 import os
 import json
 from icecream import ic
-from preprocess_6d import (get_mano_init, get_joint_positions,
-                            get_frame_info, weighted_average_quaternion)
 from scipy.spatial.transform import Rotation, Slerp
 from triangulation.triangulation import visualize_3d, CAM_DICT
 import matplotlib.pyplot as plt
@@ -65,19 +63,22 @@ def cal_dist(point1, point2):
 
 def get_joint_positions(positions, rotations, bone_lengths, parent_indices):
 
+    positions_original = positions.copy()
     for i in range(1, 21):
         parent_index = parent_indices[i]
         parent_position = positions[parent_index]
+
         R = rotations[parent_index]
         while parent_index != 0:
             parent_index = parent_indices[parent_index]
             R = np.dot(rotations[parent_index], R)
 
-        bone_length = bone_lengths[i-1]
-        self_position = positions[i]
+        bone_length = bone_lengths[i - 1]
+        original_parent_position = positions_original[parent_index]
+        original_self_position = positions_original[i]
+        original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
 
         # 计算相对于父关节的位移
-        original_vector = bone_length * normalize_vector(self_position - parent_position)
         relative_position = np.dot(R, original_vector)
 
         # 累加得到全局位置
@@ -193,12 +194,12 @@ def get_averaged_R(dir_6d, frame_num, R0_cam, cam_weights_lh, cam_weights_rh):
     cam_num = str(CAM_DICT[R0_cam])
 
     R0_lh = frame_info[cam_num]['R_lh'][0]
-    converted_R0_lh = get_converted_R0(R0_cam, R0_lh)
-    R_matrix_lh = np.vstack((converted_R0_lh, R_matrix_lh))
+    R0_lh_converted = get_converted_R0(R0_cam, R0_lh)
+    R_matrix_lh = np.vstack((R0_lh_converted, R_matrix_lh))
 
     R0_rh = frame_info[cam_num]['R_rh'][0]
-    converted_R0_rh = get_converted_R0(R0_cam, R0_rh)
-    R_matrix_rh = np.vstack((converted_R0_rh, R_matrix_rh))
+    R0_rh_converted = get_converted_R0(R0_cam, R0_rh)
+    R_matrix_rh = np.vstack((R0_rh_converted, R_matrix_rh))
 
 
     return R_matrix_lh, R_matrix_rh
