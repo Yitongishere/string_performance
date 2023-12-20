@@ -61,9 +61,35 @@ def normalize_vector(v):
 def cal_dist(point1, point2):
     return np.sqrt(np.sum(np.square(point1 - point2)))
 
-def get_joint_positions(positions, rotations, bone_lengths, parent_indices):
+# def get_joint_positions(positions, rotations, bone_lengths, parent_indices):
+#
+#     positions_original = positions.copy()
+#     for i in range(1, 21):
+#         parent_index = parent_indices[i]
+#         parent_position = positions[parent_index]
+#
+#         R = rotations[parent_index]
+#         while parent_index != 0:
+#             parent_index = parent_indices[parent_index]
+#             R = np.dot(rotations[parent_index], R)
+#
+#         bone_length = bone_lengths[i - 1]
+#         original_parent_position = positions_original[parent_index]
+#         original_self_position = positions_original[i]
+#         original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
+#
+#         # 计算相对于父关节的位移
+#         relative_position = np.dot(R, original_vector)
+#
+#         # 累加得到全局位置
+#         positions[i] = relative_position + parent_position
+#
+#     return positions
 
-    positions_original = positions.copy()
+
+def get_joint_positions(init_positions, rotations, bone_lengths, parent_indices):
+
+    positions = init_positions.copy()
     for i in range(1, 21):
         parent_index = parent_indices[i]
         parent_position = positions[parent_index]
@@ -74,8 +100,8 @@ def get_joint_positions(positions, rotations, bone_lengths, parent_indices):
             R = np.dot(rotations[parent_index], R)
 
         bone_length = bone_lengths[i - 1]
-        original_parent_position = positions_original[parent_index]
-        original_self_position = positions_original[i]
+        original_parent_position = init_positions[parent_index]
+        original_self_position = init_positions[i]
         original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
 
         # 计算相对于父关节的位移
