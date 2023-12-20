@@ -163,19 +163,19 @@ def point_init():
     return np.array([np.nan, np.nan, np.nan])
 
 
-def mapping(proj_dir, positions):
+def mapping(proj_dir, positions, visualize=False):
     """
     positions: n * 4
     """
-    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all.json', 'r') as f:
+    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'r') as f:
         data_dict = json.load(f)
-    kp_3d_all = np.array(data_dict['kp_3d_all'])
+    kp_3d_all = np.array(data_dict['kp_3d_all_dw'])
     ic(kp_3d_all.shape)
 
     # positions = np.ones([712, 4]) * -1  # n, 4
     # positions[0] = np.array([-1, 0, 1 / 2, -1])
     # positions[1] = np.array([-1, 1 / 2, 1 / 3, -1])
-    kp_3d_all_with_cp = kp_3d_all.copy().tolist()
+    kp_3d_all_cp = kp_3d_all.copy().tolist()
     last_freq = np.nan
     vibrato_freq_list = []
     used_finger_index = np.nan
@@ -330,40 +330,42 @@ def mapping(proj_dir, positions):
             filtered_positions.append(filtered_position)
 
         # ic(contact_point)
-        temp_list = kp_3d_all_with_cp[frame]
+        temp_list = kp_3d_all_cp[frame]
         # index from 142 to 154
         temp_list.extend(
             [list(string_4_top), list(string_4_bottom), list(string_3_top), list(string_3_bottom), list(string_2_top),
              list(string_2_bottom), list(string_1_top), list(string_1_bottom), list(contact_point),
              list(used_finger_mcp), list(used_finger_pip), list(used_finger_dip), list(used_finger_tip)])
         used_finger.append(used_finger_index)
-        kp_3d_all_with_cp[frame] = temp_list
+        kp_3d_all_cp[frame] = temp_list
 
-    kp_3d_all_with_cp = np.array(kp_3d_all_with_cp)
-    ic(kp_3d_all_with_cp.shape)
+    kp_3d_all_cp = np.array(kp_3d_all_cp)
+    ic(kp_3d_all_cp.shape)
     # Bow Points are currently not available, otherwise index should be set to 142
-    kp_3d_all = kp_3d_all_with_cp[:, :140, :]
+    kp_3d_all = kp_3d_all_cp[:, :140, :]
     kp_3d_all_smooth = Savgol_Filter(kp_3d_all, 140)
     ic(kp_3d_all_smooth.shape)
-    cp = kp_3d_all_with_cp[:, 140:, :]
-    kp_3d_all_with_cp_smooth = np.concatenate((kp_3d_all_smooth, cp), axis=1)
+    cp = kp_3d_all_cp[:, 140:, :]
+    kp_3d_all_cp_smooth = np.concatenate((kp_3d_all_smooth, cp), axis=1)
     for frame_num, finger in enumerate(used_finger):
-        if True not in np.isnan(kp_3d_all_with_cp[frame_num][150]):  # whether contact point (index: 150) exists
+        if True not in np.isnan(kp_3d_all_cp[frame_num][150]):  # whether contact point (index: 150) exists
             for i in range(96, 100):
-                kp_3d_all_with_cp_smooth[frame_num][finger + i] = kp_3d_all_with_cp[frame_num][finger + i]
-    ic(kp_3d_all_with_cp_smooth.shape)
-    visualize_3d(kp_3d_all_with_cp_smooth, proj_dir, 'cp_smooth_3d', 'whole')
-    data_dict = {'kp_3d_all_with_cp_smooth': kp_3d_all_with_cp_smooth.tolist()}
+                kp_3d_all_cp_smooth[frame_num][finger + i] = kp_3d_all_cp[frame_num][finger + i]
+    ic(kp_3d_all_cp_smooth.shape)
+    if visualize:
+        visualize_3d(kp_3d_all_cp_smooth, proj_dir, 'dw_cp_smooth_3d', 'finger')
+    data_dict = {'kp_3d_all_dw_cp_smooth': kp_3d_all_cp_smooth.tolist()}
+
     if not os.path.exists(proj_dir):
         os.mkdir(proj_dir)
-    with open(f'{proj_dir}/kp_3d_all_with_cp_smooth.json', 'w') as f:
+    with open(f'{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'w') as f:
         json.dump(data_dict, f)
     return filtered_positions
 
 
 if __name__ == '__main__':
-    proj_dir = 'cello_1113_pgy'
-    pitch_results = pitch_detect_crepe(proj_dir, True, 'wavs/pgy.wav')
+    proj_dir = 'cello_1113_scale'
+    pitch_results = pitch_detect_crepe(proj_dir, True, 'wavs/scale.wav')
     # ic(pitch_results[352:360])
     # pitch_results = pitch_detect_pyin(proj_dir, 'wavs/scale.wav')
     pitch_with_positions = freq_position.get_contact_position(pitch_results)
@@ -371,5 +373,5 @@ if __name__ == '__main__':
     positions = pitch_with_positions[:, -4:]
     ic(positions.shape)
     # draw_contact_points(positions, proj_dir, 'virtual_contact_point')
-    new_positions = mapping(proj_dir, positions)
+    new_positions = mapping(proj_dir, positions, visualize=False)
     # draw_contact_points(new_positions, proj_dir, 'virtual_contact_point_filtered')

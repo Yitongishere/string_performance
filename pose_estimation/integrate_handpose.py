@@ -1,4 +1,6 @@
 import json
+import os.path
+
 import numpy as np
 from icecream import ic
 from handpose_toolkit import (get_mano_init, get_joint_positions,
@@ -106,9 +108,9 @@ if __name__ == "__main__":
     proj_dir = "cello_1113_scale"
     dir_6d = f"./6d_result/{proj_dir}"
 
-    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all.json', 'r') as f:
+    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'r') as f:
         data_dict = json.load(f)
-    kp_3d_all = np.array(data_dict['kp_3d_all'])
+    kp_3d_all = np.array(data_dict['kp_3d_all_dw'])
 
     bone_lengths = get_bone_length_dw(kp_3d_all, 1)
 
@@ -128,8 +130,11 @@ if __name__ == "__main__":
         print(f'Hand pose integrated for frame {frame+1}.')
 
     ic(kp_3d_all.shape)
-    visualize_3d(kp_3d_all, proj_dir, 'tri_3d_pe')
+    # visualize_3d(kp_3d_all, proj_dir, 'tri_3d_pe')
 
-    data_dict = {'kp_3d_all': kp_3d_all.tolist()}
-    with open(f'./{proj_dir}/kp_3d_all.json', 'w') as f:
+    if not os.path.exists(f'./{proj_dir}'):
+        os.mkdir(f'./{proj_dir}')
+
+    data_dict = {'kp_3d_all_pe': kp_3d_all.tolist()}
+    with open(f'./{proj_dir}/kp_3d_all_pe.json', 'w') as f:
         json.dump(data_dict, f)

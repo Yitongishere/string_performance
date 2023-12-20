@@ -57,7 +57,7 @@ def visualize_overlay(proj_path, data):
         fig = plt.figure(figsize=[10, 10])
         axes = fig.add_subplot()
 
-        img = imageio.v2.imread(f"../data/cello_1113/cello_1113_pgy/frames/21334190/camera_21334190_{f + 125}.jpg")
+        img = imageio.v2.imread(f"../data/cello_1113/cello_1113_scale/frames/21334181/camera_21334181_{f + 128}.jpg")
         img_with_plot = img.copy()
         with plot_over(img_with_plot) as axes:
             axes.scatter(kp_2d[0:133, 0],
@@ -99,11 +99,11 @@ if __name__ == "__main__":
     # with open('../kp_3d_result/cello_1113_scale/kp_3d_smooth.json', 'r') as f:
     #     data_dict = json.load(f)
     # kp_3d_all = np.array(data_dict['kp_3d_smooth'])
-    proj_dir = 'cello_1113_pgy'
+    proj_dir = 'cello_1113_scale'
 
-    with open(f'../audio/{proj_dir}/kp_3d_all_with_cp_smooth.json', 'r') as f:
+    with open(f'../audio/{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'r') as f:
         data_dict = json.load(f)
-    kp_3d_all = np.array(data_dict['kp_3d_all_with_cp_smooth'])
+    kp_3d_all = np.array(data_dict['kp_3d_all_dw_cp_smooth'])
 
     framenum = kp_3d_all.shape[0]
     kpt_num = kp_3d_all.shape[1]
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # find reprojection of the specific camera
     repro_2d = np.empty([framenum, kpt_num, 2])
     repro_2d.fill(np.nan)
-    proj_mat_cam_x = make_projection_matrix(cam_param, cams=['cam18']) # change here for various perspectives
+    proj_mat_cam_x = make_projection_matrix(cam_param, cams=['cam0']) # change here for various perspectives
     for ff in range(framenum):
         for kpt in range(kpt_num):
             ones = np.ones((1))

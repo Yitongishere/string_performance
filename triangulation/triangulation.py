@@ -270,7 +270,7 @@ def triangulate(image_coordinates, projection_matrices):
     return u_3d
 
 
-def triangulate_joints(keypoints_mview, projection_matrices, num_joint, kpt_thr):
+def triangulate_joints(keypoints_mview, projection_matrices, num_joint, kpt_thr=0.5):
     """
     perform triangulation on the multiview mmpose estimation results for a frame
     keypoints_mview: [num_cams, num_joints, 3], [x, y, score]
@@ -572,8 +572,8 @@ if __name__ == "__main__":
 
     visualize_3d(kp_3d_all, proj_dir)
 
-    data_dict = {'kp_3d_all': kp_3d_all.tolist()}
-    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all.json', 'w') as f:
+    data_dict = {'kp_3d_all_dw': kp_3d_all.tolist()}
+    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'w') as f:
         json.dump(data_dict, f)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
