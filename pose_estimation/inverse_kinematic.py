@@ -235,8 +235,6 @@ if __name__ == '__main__':
             bls = get_bone_length_dw(kp_3d_pe, 1)
             bl = bls[0]  # IK only involves left hand
 
-            # TODO: get the contact finger index
-
             # lr = 1e-7
             # iter_times = 1
             # iter_pos_dw = start_pos.copy()
@@ -278,8 +276,13 @@ if __name__ == '__main__':
             optimized_rotmat = get_rot_mat(optimized_rotvec)
             optimized_pos_mano = get_joint_positions(init_pos, optimized_rotmat, bl, MANO_PARENTS_INDICES)
             optimized_pos_dw = mano_to_dw(optimized_pos_mano, lh_wrist)
+            optimized_tip = optimized_pos_dw[DW_TIP[finger]]
+            translation = cp - optimized_tip
+            optimized_pos_dw = optimized_pos_dw + translation  # translate to contact point position
+            extracted_frame[9] = optimized_pos_dw[0]  # 9 is also wrist
             extracted_frame[91:112] = optimized_pos_dw
 
+        extracted_frame[112:133] = kp_3d_dw[frame_id][112:133]  # right hand should follow dw result
         extracted_frame = np.vstack((extracted_frame, kp_3d_dw[frame_id][142:]))
 
         cam_file = "../triangulation/jsons/cello_1113_scale_camera.json"
