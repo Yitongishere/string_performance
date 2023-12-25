@@ -172,6 +172,11 @@ def mapping(proj_dir, positions, visualize=False):
     kp_3d_all = np.array(data_dict['kp_3d_all_dw'])
     ic(kp_3d_all.shape)
 
+    # with open(f'../pose_estimation/{proj_dir}/kp_3d_all_pe.json', 'r') as f:
+    #     data_dict = json.load(f)
+    # kp_3d_all = np.array(data_dict['kp_3d_all_pe'])
+    # ic(kp_3d_all.shape)
+
     # positions = np.ones([712, 4]) * -1  # n, 4
     # positions[0] = np.array([-1, 0, 1 / 2, -1])
     # positions[1] = np.array([-1, 1 / 2, 1 / 3, -1])
@@ -291,7 +296,7 @@ def mapping(proj_dir, positions, visualize=False):
                     used_finger_pip = pips[used_finger_index]
                     used_finger_dip = dips[used_finger_index]
                     used_finger_tip = tips[used_finger_index]
-            elif not within_last_range or (within_last_range and not within_mean_range):
+            if (not within_last_range) or (within_last_range and not within_mean_range):
                 # Finger Changed
                 dist_tip_cp = np.inf
                 for finger_id, tip in enumerate(tips):
