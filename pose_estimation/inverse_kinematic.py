@@ -5,9 +5,9 @@ import cv2
 import imageio
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Rotation, Slerp
 from handpose_toolkit import get6d_from_txt, rotation_6d_to_R, get_joint_positions, get_mano_init, get_converted_R0, \
-    cal_dist
+    cal_dist, weighted_average_quaternion
 from integrate_handpose import get_bone_length_dw, MANO_PARENTS_INDICES, LEFT_WRIST_INDEX, MANO_TO_DW
 import json
 from icecream import ic
@@ -79,7 +79,7 @@ def visualize_overlay(proj_dir, kp_2d, frame_id):
                          kp_2d[150, 1], c='r', s=25,
                          zorder=100)  # zorder must be the biggest so that it would not be occluded
             axes.scatter(kp_2d[151:155, 0],
-                         kp_2d[151:155, 1], c='orange', s=25,
+                         kp_2d[151:155, 1], c='orange', s=0,
                          zorder=99)
         else:
             print(f'Frame {f} contact point not exist.')
@@ -183,6 +183,16 @@ def find_finger(frame_num, kp_3d):
     used_finger_id = distances.index(min(distances))
     return used_finger_id
 
+def linear_interpolation(a_frame, a_displacement, b_frame, b_displacement, c_frame):
+    # 计算 a 到 b 的总帧数
+    total_frames = b_frame - a_frame
+    # 计算待求解的帧 c 在总帧数中的位置
+    c_position = c_frame - a_frame
+    # 计算 c 的位移（线性插值）
+    c_displacement = a_displacement + (b_displacement - a_displacement) * (c_position / total_frames)
+    return c_displacement
+
+
 
 DW_TIP = [8, 12, 16, 20]
 MANO_TIP = [16, 17, 19, 18]
@@ -199,15 +209,21 @@ if __name__ == '__main__':
         data_dict = json.load(f)
     kp_3d_pe = np.array(data_dict['kp_3d_all_pe'])
 
+
     if not os.path.exists('./ik_result'):
         os.mkdir('./ik_result')
     if not os.path.exists(f'./ik_result/{proj_dir}'):
         os.mkdir(f'./ik_result/{proj_dir}')
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(f'./ik_result/{proj_dir}/output_ik.avi', fourcc, fps=30, frameSize=[2300, 2656])
-    for frame_id in range(kp_3d_pe.shape[0]):
+
+
+    dir6d_path = '6d_result/cello_1113_scale/cello_1113_21334181/'
+    find_first_cp = 0
+    for e, frame_id in enumerate(range(kp_3d_pe.shape[0])):
+    # for e, frame_id in enumerate([37, 38, 39, 40, 41, 42, 43, 44, 45]):
         ic(frame_id)
-        file_path = f'6d_result/cello_1113_scale/cello_1113_21334181/{128+frame_id}.txt'
+        file_path = os.path.join(dir6d_path, f'{128+frame_id}.txt')
         left_hand, right_hand = get6d_from_txt(file_path)
         lh_rot = rotation_6d_to_R(left_hand)
         R0 = lh_rot[0]
@@ -217,72 +233,162 @@ if __name__ == '__main__':
         # ic(lh_rot_vec.shape)
         lh_rot_vec_wrist = lh_rot_vec[0]
         lh_rot_vec_except_wrist = lh_rot_vec[1:]
-
         lh_wrist = kp_3d_pe[frame_id][LEFT_WRIST_INDEX]
 
         extracted_frame = kp_3d_pe[frame_id]
         start_pos = kp_3d_pe[frame_id][91:112]
-        # ic(start_pos)
-
         init_pos = get_mano_init('left')
 
         cp = kp_3d_dw[frame_id][150]
+        bls = get_bone_length_dw(kp_3d_pe, 1)
+        bl = bls[0]  # IK only involves left hand
+        finger = find_finger(frame_id, kp_3d_dw)
 
+
+        ik_flag = 0
+        frame_next = frame_id
+        # 对于有cp的帧
         if not np.isnan(cp).any():
-
-            # ic(cp)
-
-            bls = get_bone_length_dw(kp_3d_pe, 1)
-            bl = bls[0]  # IK only involves left hand
-
-            # lr = 1e-7
-            # iter_times = 1
-            # iter_pos_dw = start_pos.copy()
-            # iter_rot_vec = lh_rot_vec.copy()  # iteration init for rotation vector
-            # prev_r = [np.inf, np.inf, np.inf]
-            # for i in range(iter_times):
-            #     tip = iter_pos_dw[DW_TIP[0]]
-            #     r = abs(cp - tip)
-            #     ic(r)
-            #     # if i % 5 == 0 and np.linalg.norm(prev_r) < np.linalg.norm(r):
-            #     #     print(i)
-            #     #     break
-            #     prev_r = r
-            #     jm = construct_jacobian(init_pos, iter_rot_vec, 0, bl)
-            #     # ic(jm)
-            #     # ic(np.linalg.inv(jm))
-            #     delta_rot_vec = np.matmul(np.linalg.inv(jm), r)
-            #     ic(lr * delta_rot_vec)
-            #     iter_rot_vec[0] = iter_rot_vec[0] - lr * delta_rot_vec  # Update R0
-            #     iter_rot_mat = get_rot_mat(iter_rot_vec)
-            #     iter_pos_mano = get_joint_positions(init_pos, iter_rot_mat, bone_lengths=bl, parent_indices=MANO_PARENTS_INDICES)
-            #     iter_pos_dw = mano_to_dw(iter_pos_mano, lh_wrist)
-                # iter_pos_dw = iter_pos_mano.copy()
-                # for dict_id, mano_id in enumerate(MANO_TO_DW):
-                #     iter_pos_dw[dict_id, :] = iter_pos_mano[mano_id, :]
-                #     iter_pos_dw[dict_id, :] = iter_pos_mano[mano_id, :]
-                # iter_pos_dw += lh_wrist
-
-            # extracted_frame[91:112] = iter_pos_dw
-            # ic(extracted_frame.shape)
-
-            finger = find_finger(frame_id, kp_3d_dw)
-
+            if e == 0: find_first_cp = 1
+            print(f"frame {frame_id} have cp")
+            ik_flag = 1
             result = minimize(obj_func, lh_rot_vec_wrist,
                               args=(lh_rot_vec_except_wrist, lh_wrist, cp, finger, bl),
                               method='L-BFGS-B')
             optimized_rotvec_wrist = result.x
-            optimized_rotvec = np.vstack((optimized_rotvec_wrist, lh_rot_vec_except_wrist))
-            optimized_rotmat = get_rot_mat(optimized_rotvec)
-            optimized_pos_mano = get_joint_positions(init_pos, optimized_rotmat, bl, MANO_PARENTS_INDICES)
-            optimized_pos_dw = mano_to_dw(optimized_pos_mano, lh_wrist)
-            optimized_tip = optimized_pos_dw[DW_TIP[finger]]
-            translation = cp - optimized_tip
-            optimized_pos_dw = optimized_pos_dw + translation  # translate to contact point position
-            extracted_frame[9] = optimized_pos_dw[0]  # 9 is also wrist
-            extracted_frame[91:112] = optimized_pos_dw
 
+            init_R0 = Rotation.from_rotvec(lh_rot_vec_wrist).as_matrix()
+            final_R0 = Rotation.from_rotvec(optimized_rotvec_wrist).as_matrix()
+            diff_R0 = np.dot(final_R0, init_R0.T)
+
+            frame_previous = frame_id
+            previous_diff_R0 = diff_R0
+            previous_rotvec = Rotation.from_matrix(final_R0).as_rotvec()
+
+
+        # 对于没有cp的帧操作
+        cp_n = 0
+        while not ik_flag:
+            print(f"frame {frame_id} does not have cp")
+            frame_next += 1
+            # ic(frame_next)
+            # 对于结尾帧
+            if frame_next == kp_3d_pe.shape[0]:
+                current_diff_R0 = previous_diff_R0
+                # 当前帧的手腕旋转信息
+                lh_rot_mat_wrist = Rotation.from_rotvec(lh_rot_vec_wrist).as_matrix()
+                current_final_R0 = np.dot(current_diff_R0, lh_rot_mat_wrist)
+                optimized_rotvec_wrist = Rotation.from_matrix(current_final_R0).as_rotvec()
+                break
+            cp_next = kp_3d_dw[frame_next][150]
+            if not np.isnan(cp_next).any():
+                # 找到了下一个有cp的帧，此时的frame_next
+                ik_flag = 1
+                file_path_next = os.path.join(dir6d_path, f'{128+frame_next}.txt')
+                left_hand_next, _ = get6d_from_txt(file_path_next)
+                lh_rot_next = rotation_6d_to_R(left_hand_next)
+                R0_next = lh_rot_next[0]
+                converted_R0_next = get_converted_R0('cam0', R0_next)
+                lh_rot_next[0] = converted_R0_next
+                lh_rot_vec_next = get_rot_vec(lh_rot_next)
+                lh_rot_vec_wrist_next = lh_rot_vec_next[0]
+                lh_rot_vec_except_wrist_next = lh_rot_vec_next[1:]
+                lh_wrist_next = kp_3d_pe[frame_next][LEFT_WRIST_INDEX]
+                cp_next = kp_3d_dw[frame_next][150]
+                finger_next = find_finger(frame_next, kp_3d_dw)
+
+                result_next = minimize(obj_func, lh_rot_vec_wrist_next,
+                              args=(lh_rot_vec_except_wrist_next, lh_wrist_next, cp_next, finger_next, bl),
+                              method='L-BFGS-B')
+                optimized_rotvec_wrist_next = result_next.x
+
+                init_R0_next = Rotation.from_rotvec(lh_rot_vec_wrist_next).as_matrix()
+                final_R0_next = Rotation.from_rotvec(optimized_rotvec_wrist_next).as_matrix()
+                diff_R0_next = np.dot(final_R0_next, init_R0_next.T)
+                next_diff_R0 = diff_R0_next
+                next_rotvec = Rotation.from_matrix(final_R0_next).as_rotvec()
+
+                # 提前记录frame_next的位移，为插值translation准备
+                next_finger = find_finger(frame_next, kp_3d_dw)
+                next_optimized_rotvec = np.vstack((next_rotvec, lh_rot_vec_except_wrist))
+                next_optimized_rotmat = get_rot_mat(next_optimized_rotvec)
+                next_optimized_pos_mano = get_joint_positions(init_pos, next_optimized_rotmat, bl, MANO_PARENTS_INDICES)
+                next_optimized_pos_dw = mano_to_dw(next_optimized_pos_mano, lh_wrist)
+                next_optimized_tip = next_optimized_pos_dw[DW_TIP[finger_next]]
+                next_translation = cp_next - next_optimized_tip
+
+
+                # 非视频开头，现在有了 previous_diff_R0 和 next_diff_R0，基于当前帧frame_id,转换为Q做插值
+                if find_first_cp:
+                    previous_diff_Q = Rotation.from_matrix(previous_diff_R0).as_quat()
+                    next_diff_Q = Rotation.from_matrix(next_diff_R0).as_quat()
+                    current_diff_Q = weighted_average_quaternion(previous_diff_Q, next_diff_Q, frame_previous,
+                                                                 frame_next, frame_id)
+                    print(
+                        f"No cp in frame {frame_id}, then interpolated rotation between {frame_previous} and {frame_next}.")
+                    current_diff_R0 = Rotation.from_quat(current_diff_Q).as_matrix()
+                    # 当前无cp帧的手腕旋转信息
+                    lh_rot_mat_wrist = Rotation.from_rotvec(lh_rot_vec_wrist).as_matrix()
+                    current_final_R0 = np.dot(current_diff_R0, lh_rot_mat_wrist)
+                    optimized_rotvec_wrist = Rotation.from_matrix(current_final_R0).as_rotvec()
+                    print(f"front base of interpolation frame {frame_previous} is {previous_rotvec}")
+                    print(f"interpolated rotvec for frame {frame_id} is {optimized_rotvec_wrist}")
+                    print(f"end base of interpolation frame {frame_next} is {next_rotvec}")
+
+                # 对于视频开头第一个cp帧的之前帧
+                frames_before_cp = []
+                while (not find_first_cp and cp_n != 2):
+                    ic(cp_n)
+                    cp_n += 1
+                    if cp_n == 1:
+                        ik_flag = 0
+                        diff_R0_cp1 = diff_R0_next
+                        break
+                    if cp_n == 2:
+                        # ik_flag = 1
+                        diff_R0_cp2 = diff_R0_next
+                    # 计算第一帧cp和第二帧cp间，旋转变化差多少
+                    diff_diff_cp1cp2_R = np.dot(diff_R0_cp2, diff_R0_cp1.T)
+                    base_R_final = diff_R0_cp1
+                    for i in range(frame_next - frame_id - 1):
+                        current_diff_R0 = np.dot(base_R_final, diff_diff_cp1cp2_R.T)
+                        base_R_final = current_diff_R0
+                    # 当前无cp帧的手腕旋转信息
+                    lh_rot_mat_wrist = Rotation.from_rotvec(lh_rot_vec_wrist).as_matrix()
+                    current_final_R0 = np.dot(current_diff_R0, lh_rot_mat_wrist)
+                    optimized_rotvec_wrist = Rotation.from_matrix(current_final_R0).as_rotvec()
+                    frames_before_cp.append(frame_id)
+                    if frame_next - frame_id == 2:
+                        frames_before_first_cp = frame_id
+                        print(f"第一个cp出现前有{frames_before_first_cp}帧")
+                        find_first_cp = 1
+
+        optimized_rotvec = np.vstack((optimized_rotvec_wrist, lh_rot_vec_except_wrist))
+        optimized_rotmat = get_rot_mat(optimized_rotvec)
+        optimized_pos_mano = get_joint_positions(init_pos, optimized_rotmat, bl, MANO_PARENTS_INDICES)
+        optimized_pos_dw = mano_to_dw(optimized_pos_mano, lh_wrist)
+        optimized_tip = optimized_pos_dw[DW_TIP[finger]]
+
+
+        # 开头第一个cp前的帧
+        if frame_id in frames_before_cp:
+            cp = optimized_tip
+        # 中间无cp帧
+        if np.isnan(cp).any():
+            pre_translation = translation
+            translation = linear_interpolation(frame_previous, pre_translation, frame_next, next_translation, frame_id)
+        # 有cp帧
+        else:
+            translation = cp - optimized_tip
+
+        optimized_pos_dw = optimized_pos_dw + translation  # translate to contact point position
+
+        # # ic(optimized_pos_dw)
+        extracted_frame[9] = optimized_pos_dw[0]  # 9 is also wrist
+        extracted_frame[91:112] = optimized_pos_dw
         extracted_frame[112:133] = kp_3d_dw[frame_id][112:133]  # right hand should follow dw result
+
+
         extracted_frame = np.vstack((extracted_frame, kp_3d_dw[frame_id][142:]))
 
         cam_file = "../triangulation/jsons/cello_1113_scale_camera.json"
