@@ -136,11 +136,11 @@ def get_frame_info(proj_dir, frame_num):
 
     return frame_info
 
-def weighted_average_quaternion(q1, q2, w):
+def weighted_average_quaternion(q1, q2, q1_t, q2_t, w):
     key_rots = Rotation.from_quat((q1, q2))
 
     # 创建 Slerp 对象
-    slerp = Slerp([0, 1], key_rots)
+    slerp = Slerp([q1_t, q2_t], key_rots)
 
     # 进行球面线性插值
     interpolated_quaternion = slerp(w)
@@ -185,9 +185,9 @@ def get_averaged_R(dir_6d, frame_num, R0_cam, cam_weights_lh, cam_weights_rh):
             alpha_rh = cam_weights_rh[cams[c]] / (weights_rh + cam_weights_rh[cams[c]])
 
             if not np.isnan(q_next_lh).any():
-                q_current_lh = weighted_average_quaternion(q_current_lh, q_next_lh, alpha_lh)
+                q_current_lh = weighted_average_quaternion(q_current_lh, q_next_lh, 0, 1, alpha_lh)
             if not np.isnan(q_next_rh).any():
-                q_current_rh = weighted_average_quaternion(q_current_rh, q_next_rh, alpha_rh)
+                q_current_rh = weighted_average_quaternion(q_current_rh, q_next_rh, 0, 1, alpha_rh)
 
             weights_lh += cam_weights_lh[cams[c]]
             weights_rh += cam_weights_rh[cams[c]]
@@ -202,16 +202,16 @@ def get_averaged_R(dir_6d, frame_num, R0_cam, cam_weights_lh, cam_weights_rh):
 
     # 直接用cam0-181的所有R参数, 注释掉则用averaged R
     #===========================================================
-    R_matrix_lh = []
-    R_matrix_rh = []
-    for i in range(15):
-        joint_index = i + 1
-        R_lh_181 = frame_info[cams[0]]['R_lh'][joint_index]
-        R_rh_181 = frame_info[cams[0]]['R_rh'][joint_index]
-        R_matrix_lh.append(R_lh_181)
-        R_matrix_rh.append(R_rh_181)
-    R_matrix_lh = np.array(R_matrix_lh)
-    R_matrix_rh = np.array(R_matrix_rh)
+    # R_matrix_lh = []
+    # R_matrix_rh = []
+    # for i in range(15):
+    #     joint_index = i + 1
+    #     R_lh_181 = frame_info[cams[0]]['R_lh'][joint_index]
+    #     R_rh_181 = frame_info[cams[0]]['R_rh'][joint_index]
+    #     R_matrix_lh.append(R_lh_181)
+    #     R_matrix_rh.append(R_rh_181)
+    # R_matrix_lh = np.array(R_matrix_lh)
+    # R_matrix_rh = np.array(R_matrix_rh)
     # ic(R_matrix_lh.shape)
     #===========================================================
 

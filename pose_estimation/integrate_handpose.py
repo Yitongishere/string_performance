@@ -5,7 +5,6 @@ import numpy as np
 from icecream import ic
 from handpose_toolkit import (get_mano_init, get_joint_positions,
                             cal_dist, get_averaged_R, visualize_hand,)
-from triangulation.triangulation import visualize_3d
 
 
 def get_bone_length_dw(kp_3d_all, frame_num):
@@ -132,9 +131,9 @@ if __name__ == "__main__":
     ic(kp_3d_all.shape)
     # visualize_3d(kp_3d_all, proj_dir, 'tri_3d_pe')
 
-    if not os.path.exists(f'./{proj_dir}'):
-        os.mkdir(f'./{proj_dir}')
+    if not os.path.exists(f'../kp_3d_result/{proj_dir}'):
+        os.mkdir(f'../kp_3d_result/{proj_dir}')
 
     data_dict = {'kp_3d_all_pe': kp_3d_all.tolist()}
-    with open(f'./{proj_dir}/kp_3d_all_pe.json', 'w') as f:
+    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all_pe.json', 'w') as f:
         json.dump(data_dict, f)
