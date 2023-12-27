@@ -319,7 +319,7 @@ def mapping(proj_dir, positions, visualize=False):
         if not np.isnan(contact_point).any():
             dist_tip_cp = cal_dist(contact_point, used_finger_tip)
             # threshold that finger is lifted
-            dist_tip_pip = cal_dist(used_finger_tip, used_finger_mcp)
+            dist_tip_pip = cal_dist(used_finger_tip, used_finger_pip)
             if dist_tip_cp > dist_tip_pip:  # used finger lifted
                 contact_point = point_init()
                 used_finger_mcp = point_init()
@@ -352,11 +352,12 @@ def mapping(proj_dir, positions, visualize=False):
     ic(kp_3d_all_smooth.shape)
     cp = kp_3d_all_cp[:, 140:, :]
     kp_3d_all_cp_smooth = np.concatenate((kp_3d_all_smooth, cp), axis=1)
-    for frame_num, finger in enumerate(used_finger):
-        if True not in np.isnan(kp_3d_all_cp[frame_num][150]):  # whether contact point (index: 150) exists
-            for i in range(96, 100):
-                kp_3d_all_cp_smooth[frame_num][finger + i] = kp_3d_all_cp[frame_num][finger + i]
-    ic(kp_3d_all_cp_smooth.shape)
+    # print(used_finger)
+    # for frame_num, finger in enumerate(used_finger):
+    #     if True not in np.isnan(kp_3d_all_cp[frame_num][150]):  # whether contact point (index: 150) exists
+    #         for i in range(96, 100):
+    #             kp_3d_all_cp_smooth[frame_num][finger + i] = kp_3d_all_cp[frame_num][finger + i]
+    # ic(kp_3d_all_cp_smooth.shape)
     if visualize:
         visualize_3d(kp_3d_all_cp_smooth, proj_dir, 'dw_cp_smooth_3d', 'finger')
     data_dict = {'kp_3d_all_dw_cp_smooth': kp_3d_all_cp_smooth.tolist()}
