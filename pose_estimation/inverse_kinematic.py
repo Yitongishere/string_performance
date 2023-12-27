@@ -389,7 +389,7 @@ if __name__ == '__main__':
             translation = cp - optimized_tip
 
         # 平移操作
-        # optimized_pos_dw = optimized_pos_dw + translation  # translate to contact point position
+        optimized_pos_dw = optimized_pos_dw + translation  # translate to contact point position
 
         # # ic(optimized_pos_dw)
         extracted_frame[9] = optimized_pos_dw[0]  # 9 is also wrist
