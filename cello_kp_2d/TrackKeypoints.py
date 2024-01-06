@@ -205,8 +205,8 @@ if __name__ == '__main__':
 
     # The default modification size is (256,256),and you'd better set it to the power of 2.
     # We found that using larger sized images as input can greatly improve accuracy.
-    resize_height = 1024
-    resize_width = 1024
+    resize_height = 2048
+    resize_width = 2048
 
     # Load the video
     proj_dir = 'cello_1113_scale'
@@ -216,7 +216,8 @@ if __name__ == '__main__':
     base_name = os.path.basename(video_path)
     file_name = cam_num + '_' + str(resize_height) + 'x' + str(resize_width) + '_keypoints'
     # save_sub_dir = '_'.join(base_name.split('_')[:2])
-    save_folder_path = '../cello_2d_result'
+    # save_folder_path = '../cello_2d_result'
+    save_folder_path = './kp_result'
     video = imageio.get_reader(os.path.abspath(video_path), 'ffmpeg')
     iter_frames = 300  # Number of iteration frames per model insertion <=video.count_frames()
 
@@ -241,12 +242,12 @@ if __name__ == '__main__':
                           [   0, 2539,  994]])
             The second and the third elements of this array are positions "Y (height)" and "X (width)"  of the pixels.
     '''
-    labeled_json = f'labeled_jsons/{proj_dir}_{cam_num}_{start_frame_idx}.json'
+    labeled_json = f'labeled_jsons/{proj_dir}/{cam_num}_{start_frame_idx}.json'
     assert open(labeled_json)
     # The path of your keypoints -> (camera_{cameraID}_{start_frame_index}). We use labelme to label them, or you can
     # use other tools to give the array of keypoints position information manually.
 
-    if not os.path.exists(f'{save_folder_path}/{proj_dir}/{cam_num}'):
+    if not os.path.exists(f'./{save_folder_path}/{proj_dir}/{cam_num}'):
         print('Loading frames and Inferring...')
         for num in tqdm(range(video.count_frames()), desc="Loading frames"):
             if num >= start_frame_idx - 1:
@@ -341,14 +342,18 @@ if __name__ == '__main__':
         # tracks_result = np.transpose(np.asarray(tracks_result), (1, 0, 2))
         pos = np.concatenate((tracks_result, visibles_result[:, :, np.newaxis]), axis=2).transpose(1, 0, 2)
 
-        if not os.path.exists(save_folder_path):
-            os.mkdir(save_folder_path)
-        save_sub_dir_path = save_folder_path + os.sep + proj_dir
-        if not os.path.exists(save_sub_dir_path):
-            os.mkdir(save_sub_dir_path)
-        save_sub_sub_dir_path = save_sub_dir_path + os.sep + cam_num
+        # if not os.path.exists(save_folder_path):
+        #     os.mkdir(save_folder_path)
+        # save_sub_dir_path = save_folder_path + os.sep + proj_dir
+        # if not os.path.exists(save_sub_dir_path):
+        #     os.mkdir(save_sub_dir_path)
+        # save_sub_sub_dir_path = save_sub_dir_path + os.sep + cam_num
+        # if not os.path.exists(save_sub_sub_dir_path):
+        #     os.mkdir(save_sub_sub_dir_path)
+
+        save_sub_sub_dir_path = save_folder_path + os.sep + proj_dir + os.sep + cam_num
         if not os.path.exists(save_sub_sub_dir_path):
-            os.mkdir(save_sub_sub_dir_path)
+            os.makedirs(save_sub_sub_dir_path, exist_ok=True)
 
         for idx, frame in enumerate(pos):
             with open(f'{save_folder_path}/{proj_dir}/{cam_num}/{start_frame_idx + idx}.json', 'w') as f:
@@ -367,11 +372,9 @@ if __name__ == '__main__':
     print('Generate a video...')
     plot_flag = False  # plot_flag = True -> Use matplotlib.pyplot to visualize
 
-    if not os.path.exists(f'{proj_dir}'):
-        os.mkdir(f'{proj_dir}')
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     frame_size = tuple(np.flip(video.get_data(0).shape)[1:])  # tuple->(width,height)
-    out = cv2.VideoWriter(f'{proj_dir}/{file_name}.avi', fourcc, fps=30, frameSize=np.flip(frame_size))
+    out = cv2.VideoWriter(f'{save_folder_path}/{proj_dir}/{file_name}.avi', fourcc, fps=30, frameSize=np.flip(frame_size))
 
     # Visualize and generate a video.
     for num in tqdm(range(video.count_frames())):
