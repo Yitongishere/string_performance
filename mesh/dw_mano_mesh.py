@@ -1,4 +1,5 @@
 import json
+import os
 
 import cv2
 import numpy as np
@@ -9,18 +10,16 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection, Poly3DCollection
 from scipy.spatial.transform import Rotation
 from triangulation.triangulation import compute_axis_lim, STRING_LINKS, HUMAN_LINKS, CELLO_LINKS, BOW_LINKS, \
     LEFT_HAND_LINKS
-from mesh.minimal_ik.armatures import *
-from mesh.minimal_ik.models import *
 from mesh.manopth.manolayer import ManoLayer
-from mesh.minimal_ik import config
-from pose_estimation.handpose_toolkit import get_mano_init
+from pose_estimation.handpose_toolkit import get_mano_init, cal_dist
 from triangulation.triangulation import compute_axis_lim
 
-MANO_CONNECTIONS = [(0, 1), (1, 2), (2, 3), (3, 16),
-                    (0, 4), (4, 5), (5, 6), (6, 17),
-                    (0, 7), (7, 8), (8, 9), (9, 18),
-                    (0, 10), (10, 11), (11, 12), (12, 19),
-                    (0, 13), (13, 14), (14, 15), (15, 20)]
+MANO_CONNECTIONS = [(0, 1), (1, 2), (2, 3),
+                    (0, 4), (4, 5), (5, 6),
+                    (0, 7), (7, 8), (8, 9),
+                    (0, 10), (10, 11), (11, 12),
+                    (0, 13), (13, 14), (14, 15),
+                    (3, 16), (6, 17), (9, 18), (12, 19), (15, 20)]
 
 DW_CONNECTIONS = [(0, 1), (1, 2), (2, 3), (3, 4),
                   (0, 5), (5, 6), (6, 7), (7, 8),
@@ -35,6 +34,8 @@ DW_CHILD_INDICES = [1, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 16, 18, 19, 20]
 ROT_DW_TO_MANO = [0, 4, 5, 6, 7, 8, 9, 13, 14, 15, 10, 11, 12, 1, 2, 3]
 
 DW_ROT_TO_POS = [0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19]
+
+MANO_TO_DW = [0, 13, 14, 15, 20, 1, 2, 3, 16, 4, 5, 6, 17, 10, 11, 12, 19, 7, 8, 9, 18]
 
 
 # def visualize_3d_mesh(data, vertices, triangles):
@@ -125,7 +126,7 @@ def visualize_3d_mesh(data, vertices, triangles, view_angle='whole'):
     key_points_num = data.shape[0]
 
     zoom_in = view_angle == 'finger'
-    fig = plt.figure(figsize=[10, 10])
+    fig = plt.figure(figsize=[10, 12])
     axes3 = fig.add_subplot(projection="3d", computed_zorder=False)
     if xlim is None:
         if zoom_in:
@@ -137,7 +138,7 @@ def visualize_3d_mesh(data, vertices, triangles, view_angle='whole'):
             xlim, ylim, zlim = compute_axis_lim(data)
 
     if zoom_in:
-        axes3.view_init(azim=90, elev=30, roll=-45)
+        axes3.view_init(azim=100, elev=15, roll=-45)
     else:
         axes3.view_init(azim=135, elev=-20, roll=-45)
     # ic(xlim, ylim, zlim)
@@ -158,8 +159,8 @@ def visualize_3d_mesh(data, vertices, triangles, view_angle='whole'):
             string_segs3d = data[tuple([STRING_LINKS])]
             string_coll_3d = Line3DCollection(string_segs3d, edgecolors='black', linewidths=1, zorder=98)
             axes3.add_collection(string_coll_3d)
-        # left_hand_coll_3d = Line3DCollection(left_hand_segs3d, linewidths=1, zorder=1)
-        # axes3.add_collection(left_hand_coll_3d)
+        left_hand_coll_3d = Line3DCollection(left_hand_segs3d, linewidths=1, zorder=1)
+        axes3.add_collection(left_hand_coll_3d)
         # axes3.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], alpha=0.1)
         mesh = Poly3DCollection(vertices[triangles], alpha=0.2)
         # face_color = (141 / 255, 184 / 255, 226 / 255)
@@ -169,23 +170,23 @@ def visualize_3d_mesh(data, vertices, triangles, view_angle='whole'):
         mesh.set_edgecolor(edge_color)
         mesh.set_facecolor(face_color)
         axes3.add_collection3d(mesh)
-        # # left hand
-        # axes3.scatter(data[91:112, 0],
-        #               data[91:112, 1],
-        #               data[91:112, 2], s=5, c='#1f77b4', zorder=1)
-        # # left arm
-        # axes3.scatter(data[5:10:2, 0],
-        #               data[5:10:2, 1],
-        #               data[5:10:2, 2], s=5, c='#1f77b4', zorder=1)
+        # left hand
+        axes3.scatter(data[91:112, 0],
+                      data[91:112, 1],
+                      data[91:112, 2], s=5, c='#1f77b4', zorder=1)
+        # left arm
+        axes3.scatter(data[5:10:2, 0],
+                      data[5:10:2, 1],
+                      data[5:10:2, 2], s=5, c='#1f77b4', zorder=1)
         if key_points_num > 142:
             axes3.scatter(data[142:150, 0],
                           data[142:150, 1],
                           data[142:150, 2], c='black', s=5, zorder=98)
-        if True not in np.isnan(data[150]):
-            axes3.scatter(data[150, 0],
-                          data[150, 1],
-                          data[150, 2], c='r', s=30,
-                          zorder=100)  # zorder must be the biggest so that it would not be occluded
+        # if True not in np.isnan(data[150]):
+        #     axes3.scatter(data[150, 0],
+        #                   data[150, 1],
+        #                   data[150, 2], c='r', s=30,
+        #                   zorder=100)  # zorder must be the biggest so that it would not be occluded
             # axes3.scatter(kp_3d[151:155, 0],
             #               kp_3d[151:155, 1],
             #               kp_3d[151:155, 2], c='orange', s=30, zorder=99)
@@ -232,7 +233,7 @@ def visualize_3d_mesh(data, vertices, triangles, view_angle='whole'):
                 axes3.scatter(data[151:155, 0],
                               data[151:155, 1],
                               data[151:155, 2], c='orange', s=5, zorder=99)
-
+    plt.axis('off')
     # plt.show()
 
     canvas = fig.canvas
@@ -328,6 +329,21 @@ def get_joint_rot(init_pos, target_pos, wrist_rot, parent_indices, child_indices
     return joint_rot
 
 
+def get_bone_length_dw(hands_dw):
+
+    hands_mano = hands_dw.copy()
+    for dict_id, mano_id in enumerate(MANO_TO_DW):
+        hands_mano[mano_id] = hands_dw[dict_id]
+
+    bone_lengths = np.zeros([20])
+    for idx, connection in enumerate(MANO_CONNECTIONS):
+        point1 = hands_mano[connection[0]]
+        point2 = hands_mano[connection[1]]
+        bone_lengths[idx] = cal_dist(point1, point2)
+
+    return bone_lengths
+
+
 if __name__ == '__main__':
 
     proj_dir = "cello_1113_scale"
@@ -347,7 +363,7 @@ if __name__ == '__main__':
     out = cv2.VideoWriter(f'./mesh_result/{proj_dir}/{mesh_type}/output_{mesh_type}_{view}.avi', fourcc, fps=30,
                           frameSize=[1000, 1000])
 
-    with open(f'../audio/{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'r') as f:
+    with open(f'../audio/cp_result/{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_dw = np.array(data_dict['kp_3d_all_dw_cp_smooth'])
 
@@ -401,6 +417,12 @@ if __name__ == '__main__':
 
         hand_verts_est = hand_verts_est + trans
         hand_joints_est = hand_joints_est + trans
+
+        # bone_length = get_bone_length_dw(hand_joints_0)
+        # print(bone_length.round(8).squeeze().tolist())
+
+        kp_3d[91:112] = hand_joints_est
+        kp_3d[9] = hand_joints_est[0]  # unify wrist coordinate
 
         # ic(hand_joints_est)
         # visualize(hand_joints_est)
