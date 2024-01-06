@@ -1,7 +1,7 @@
 import itertools
 import json
 import os.path
-
+import sys
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -380,17 +380,17 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
     framenum = data.shape[0]
     key_points_num = data.shape[1]
 
-    if not os.path.exists(f'../kp_3d_result/'):
-        os.makedirs(f'../kp_3d_result/')
+    # if not os.path.exists(f'../kp_3d_result/'):
+    #     os.makedirs(f'../kp_3d_result/')
+    #
+    # if not os.path.exists(f'../kp_3d_result/{proj_path}/'):
+    #     os.makedirs(f'../kp_3d_result/{proj_path}/')
 
-    if not os.path.exists(f'../kp_3d_result/{proj_path}/'):
-        os.makedirs(f'../kp_3d_result/{proj_path}/')
-
-    if not os.path.exists(f'../kp_3d_result/{proj_path}/{file_path}'):
-        os.makedirs(f'../kp_3d_result/{proj_path}/{file_path}')
+    if not os.path.exists(f'./kp_3d_result/{proj_path}/{file_path}'):
+        os.makedirs(f'./kp_3d_result/{proj_path}/{file_path}', exist_ok=True)
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../kp_3d_result/{proj_path}/{file_path}/output_{view_angle}.avi', fourcc, fps=30,
+    out = cv2.VideoWriter(f'./kp_3d_result/{proj_path}/{file_path}/output_{view_angle}.avi', fourcc, fps=30,
                           frameSize=[1000, 1000])
 
     zoom_in = view_angle == 'finger'
@@ -433,9 +433,9 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
             axes3.add_collection(left_hand_coll_3d)
 
             # left hand
-            axes3.scatter(kp_3d[91:111, 0],
-                          kp_3d[91:111, 1],
-                          kp_3d[91:111, 2], s=5, c='#1f77b4', zorder=1)
+            axes3.scatter(kp_3d[91:112, 0],
+                          kp_3d[91:112, 1],
+                          kp_3d[91:112, 2], s=5, c='#1f77b4', zorder=1)
             # left arm
             axes3.scatter(kp_3d[5:10:2, 0],
                           kp_3d[5:10:2, 1],
@@ -449,9 +449,9 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
                               kp_3d[150, 1],
                               kp_3d[150, 2], c='r', s=30,
                               zorder=100)  # zorder must be the biggest so that it would not be occluded
-                axes3.scatter(kp_3d[151:155, 0],
-                              kp_3d[151:155, 1],
-                              kp_3d[151:155, 2], c='orange', s=30, zorder=99)
+                # axes3.scatter(kp_3d[151:155, 0],
+                #               kp_3d[151:155, 1],
+                #               kp_3d[151:155, 2], c='orange', s=30, zorder=99)
 
         else:
             human_coll_3d = Line3DCollection(human_segs3d, linewidths=1, zorder=1)
@@ -490,7 +490,7 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
         # axes3.grid(None)
         # axes3.axis('off')
 
-        plt.savefig(f'../kp_3d_result/{proj_path}/{file_path}/{f}.jpg')
+        plt.savefig(f'./kp_3d_result/{proj_path}/{file_path}/{f}.jpg')
 
         canvas = fig.canvas
         canvas.draw()
@@ -530,7 +530,7 @@ if __name__ == "__main__":
         cam_ff = used_cams.copy()
         for cc in used_cams:
             try:
-                human_joint = f"../human_2d_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json"
+                human_joint = f'../human_kp_2d/kp_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json'
                 human_2d_cc_ff = np.array(json.load(open(human_joint)))
             except FileNotFoundError as e:
                 # remove camera that drop frames
@@ -538,7 +538,7 @@ if __name__ == "__main__":
                 continue
             cello_2d_cc_ff = np.zeros([9, 3])  # 9 cello key points in total (default score 0 will not be used)
             try:
-                cello_json_path = f'../cello_2d_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json'
+                cello_json_path = f'../cello_kp_2d/kp_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
                 # Resolve XML
                 # for each_ann in labelme['shapes']:  # manually labelled
@@ -573,7 +573,7 @@ if __name__ == "__main__":
     visualize_3d(kp_3d_all, proj_dir)
 
     data_dict = {'kp_3d_all_dw': kp_3d_all.tolist()}
-    with open(f'../kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'w') as f:
+    with open(f'./kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'w') as f:
         json.dump(data_dict, f)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
