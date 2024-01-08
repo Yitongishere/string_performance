@@ -267,7 +267,7 @@ def mapping(proj_dir, positions, visualize=False):
         smallest_dist = np.inf
         pressed_string_id = -1
         for i in np.argsort(dist_list)[:2]:  # Obtain two closest potential contact points
-            for tip in dips:
+            for tip in tips:
                 temp_dist = cal_dist(tip, contact_point_list[i])
                 if temp_dist < smallest_dist:
                     smallest_dist = temp_dist
@@ -345,11 +345,11 @@ def mapping(proj_dir, positions, visualize=False):
         kp_3d_all_cp[frame] = temp_list
 
     kp_3d_all_cp = np.array(kp_3d_all_cp)
-    ic(kp_3d_all_cp.shape)
+    # ic(kp_3d_all_cp.shape)
     # Bow Points are currently not available, otherwise index should be set to 142
     kp_3d_all = kp_3d_all_cp[:, :140, :]
     kp_3d_all_smooth = Savgol_Filter(kp_3d_all, 140)
-    ic(kp_3d_all_smooth.shape)
+    # ic(kp_3d_all_smooth.shape)
     cp = kp_3d_all_cp[:, 140:, :]
     kp_3d_all_cp_smooth = np.concatenate((kp_3d_all_smooth, cp), axis=1)
     # print(used_finger)
@@ -360,12 +360,20 @@ def mapping(proj_dir, positions, visualize=False):
     # ic(kp_3d_all_cp_smooth.shape)
     if visualize:
         visualize_3d(kp_3d_all_cp_smooth, proj_dir, 'dw_cp_smooth_3d', 'finger')
-    data_dict = {'kp_3d_all_dw_cp_smooth': kp_3d_all_cp_smooth.tolist()}
 
-    if not os.path.exists(proj_dir):
-        os.mkdir(proj_dir)
-    with open(f'{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'w') as f:
-        json.dump(data_dict, f)
+    # Smooth one is the final result of pure dwpose result
+    # Origin one will be sent to further processing
+    data_dict_smooth = {'kp_3d_all_dw_cp_smooth': kp_3d_all_cp_smooth.tolist()}
+    data_dict_origin = {'kp_3d_all_dw_cp': kp_3d_all_cp.tolist()}
+
+    if not os.path.exists('cp_result'):
+        os.mkdir('cp_result')
+    if not os.path.exists(f'cp_result/{proj_dir}'):
+        os.mkdir(f'cp_result/{proj_dir}')
+    with open(f'cp_result/{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'w') as f:
+        json.dump(data_dict_smooth, f)
+    with open(f'cp_result/{proj_dir}/kp_3d_all_dw_cp.json', 'w') as f:
+        json.dump(data_dict_origin, f)
     return filtered_positions
 
 
