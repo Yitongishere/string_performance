@@ -42,14 +42,14 @@ def plot_over(img, extent=None, origin="upper", dpi=100):
 def visualize_overlay(proj_path, data):
     framenum = data.shape[0]
 
-    if not os.path.exists(f'../reproj_result/'):
-        os.makedirs(f'../reproj_result/')
+    # if not os.path.exists(f'../reproj_result/'):
+    #     os.makedirs(f'../reproj_result/')
 
-    if not os.path.exists(f'../reproj_result/{proj_path}/'):
-        os.makedirs(f'../reproj_result/{proj_path}/')
+    if not os.path.exists(f'./reproj_result/{proj_path}/'):
+        os.makedirs(f'./reproj_result/{proj_path}/', exist_ok=True)
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'../reproj_result/{proj_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
+    out = cv2.VideoWriter(f'./reproj_result/{proj_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
 
     for f in range(framenum):
         ic(f)
@@ -90,7 +90,7 @@ def visualize_overlay(proj_path, data):
                 plt.plot([kp_2d[string[0]][0], kp_2d[string[1]][0]], [kp_2d[string[0]][1], kp_2d[string[1]][1]], c='w')
 
         img_with_plot = img_with_plot[:, :, ::-1]
-        cv2.imwrite(f"../reproj_result/{proj_path}/{f}.jpg", img_with_plot)
+        cv2.imwrite(f"./reproj_result/{proj_path}/{f}.jpg", img_with_plot)
         out.write(img_with_plot)
         plt.close()
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     # kp_3d_all = np.array(data_dict['kp_3d_smooth'])
     proj_dir = 'cello_1113_scale'
 
-    with open(f'../audio/{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'r') as f:
+    with open(f'../audio/cp_result/{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_all_dw_cp_smooth'])
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # find reprojection of the specific camera
     repro_2d = np.empty([framenum, kpt_num, 2])
     repro_2d.fill(np.nan)
-    proj_mat_cam_x = make_projection_matrix(cam_param, cams=['cam0']) # change here for various perspectives
+    proj_mat_cam_x = make_projection_matrix(cam_param, cams=['cam0'])  # change here for various perspectives
     for ff in range(framenum):
         for kpt in range(kpt_num):
             ones = np.ones((1))
