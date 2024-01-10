@@ -46,6 +46,14 @@ def camera_sort(label):
         return 18
     elif re.search('21334211', label):
         return 19
+    elif re.search('21334218', label):
+        return 20
+    elif re.search('21334182', label):
+        return 21
+    elif re.search('21334236', label):
+        return 22
+    elif re.search('21334210', label):
+        return 23
 
 
 def getIntrinsics(sensors):
