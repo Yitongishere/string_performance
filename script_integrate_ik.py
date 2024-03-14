@@ -39,13 +39,13 @@ INVERSE KINEMATIC
 Integrated handposes are iked based on contact points.
 """
 
-# ik_command = f'python inverse_kinematic_pipeline.py ' \
-#                         f'--cam_file {cam_file} ' \
-#                         f'--parent_dir {parent_dir} ' \
-#                         f'--proj_dir {proj_dir} ' \
-#                         f'--start_frame {start_frame_idx}'
-#
-# if visualize:
-#     ik_command += f' --visualize --cam_num {cam_num}'
-#
-# os.system(ik_command)
+ik_command = f'python inverse_kinematic_pipeline.py ' \
+                        f'--cam_file {cam_file} ' \
+                        f'--parent_dir {parent_dir} ' \
+                        f'--proj_dir {proj_dir} ' \
+                        f'--start_frame {start_frame_idx}'
+
+if visualize:
+    ik_command += f' --visualize --cam_num {cam_num}'
+
+os.system(ik_command)
