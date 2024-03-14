@@ -17,7 +17,6 @@ Modules included:
   or a dictionary object.
 
 '''
-import os
 
 
 def ready_arguments(fname_or_dict, posekey4vposed='pose'):
@@ -25,7 +24,7 @@ def ready_arguments(fname_or_dict, posekey4vposed='pose'):
     import pickle
     import chumpy as ch
     from chumpy.ch import MatVecMult
-    from mesh.mano.webuser.posemapper import posemap
+    from pose_estimation.mano.webuser.posemapper import posemap
 
     if not isinstance(fname_or_dict, dict):
         dd = pickle.load(open(fname_or_dict, 'rb'), encoding='latin1')

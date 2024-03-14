@@ -9,7 +9,7 @@ from torch.autograd import gradcheck
 import torch
 from torch.autograd import Variable
 
-from mesh.manopth import argutils
+from pose_estimation.manopth import argutils
 
 
 def quat2mat(quat):

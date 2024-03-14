@@ -119,7 +119,7 @@ def get_frame_info(proj_dir, frame_num):
     frame_info = {}
     for cam_dir in cam_dirs:
         cam_num = cam_dir.split('_')[-1]
-        filepath = os.path.join(proj_dir, cam_dir, f'{frame_num+127}.txt')
+        filepath = os.path.join(proj_dir, cam_dir, f'{frame_num}.txt')
 
         lh, rh = get6d_from_txt(filepath)
 
@@ -147,10 +147,10 @@ def weighted_average_quaternion(q1, q2, q1_t, q2_t, w):
 
     return interpolated_quaternion.as_quat()
 
-def get_converted_R0(R0_cam, R0):
-    cam_R_path = '../triangulation/jsons/cello_1113_scale_camera.json'
+def get_converted_R0(R0_cam, R0, cam_file_path):
+    # cam_R_path = '../triangulation/jsons/cello_1113_scale_camera.json'
 
-    with open(cam_R_path, 'r') as f:
+    with open(cam_file_path, 'r') as f:
         data_dict = json.load(f)
 
     cam_R = np.array(data_dict[R0_cam]['R']).reshape(3, 3)
@@ -161,7 +161,7 @@ def get_converted_R0(R0_cam, R0):
     return converted_R0
 
 
-def get_averaged_R(dir_6d, frame_num, R0_cam, cam_weights_lh, cam_weights_rh):
+def get_averaged_R(dir_6d, frame_num, R0_cam, cam_weights_lh, cam_weights_rh, cam_file_path):
     cams = list(cam_weights_lh.keys())
     frame_info = get_frame_info(dir_6d, frame_num)
 
@@ -220,11 +220,11 @@ def get_averaged_R(dir_6d, frame_num, R0_cam, cam_weights_lh, cam_weights_rh):
     cam_num = str(CAM_DICT[R0_cam])
 
     R0_lh = frame_info[cam_num]['R_lh'][0]
-    R0_lh_converted = get_converted_R0(R0_cam, R0_lh)
+    R0_lh_converted = get_converted_R0(R0_cam, R0_lh, cam_file_path)
     R_matrix_lh = np.vstack((R0_lh_converted, R_matrix_lh))
 
     R0_rh = frame_info[cam_num]['R_rh'][0]
-    R0_rh_converted = get_converted_R0(R0_cam, R0_rh)
+    R0_rh_converted = get_converted_R0(R0_cam, R0_rh, cam_file_path)
     R_matrix_rh = np.vstack((R0_rh_converted, R_matrix_rh))
 
 

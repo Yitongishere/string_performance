@@ -4,9 +4,9 @@ import numpy as np
 import torch
 from torch.nn import Module
 
-from mesh.mano.webuser.smpl_handpca_wrapper_HAND_only import ready_arguments
-from mesh.manopth import rodrigues_layer, rotproj, rot6d
-from mesh.manopth.tensutils import (th_posemap_axisang, th_with_zeros, subtract_flat_id)
+from pose_estimation.mano.webuser.smpl_handpca_wrapper_HAND_only import ready_arguments
+from pose_estimation.manopth import rotproj, rot6d, rodrigues_layer
+from pose_estimation.manopth.tensutils import (th_posemap_axisang, th_with_zeros, subtract_flat_id)
 
 
 class ManoLayer(Module):

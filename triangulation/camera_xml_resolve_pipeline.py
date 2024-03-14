@@ -1,3 +1,4 @@
+import argparse
 from xml.dom.minidom import parse
 from collections import defaultdict
 import re
@@ -119,11 +120,19 @@ def getIntrinsics(sensors):
 
 
 if __name__ == '__main__':
-    input_xml_path = 'xmls/cello_1113_scale_camera.xml'
-    output_json_path = "jsons/cello_1113_scale_camera.json"
+    parser = argparse.ArgumentParser(prog='cam_xml_resolve_pipeline')
+    parser.add_argument('--xml_path', default='xmls/cello_0111_camera.xml', type=str, required=True)
+    parser.add_argument('--json_path', default="jsons/cello_0111_camera.json", type=str, required=True)
+
+    args = parser.parse_args()
+    xml_path = args.xml_path
+    json_path = args.json_path
+
+    # xml_path = 'xmls/cello_0111_camera.xml'
+    # json_path = "jsons/cello_0111_camera.json"
 
 
-    dom = parse(input_xml_path)
+    dom = parse(xml_path)
     elem = dom.documentElement
     sensors = elem.getElementsByTagName('calibration')
 
@@ -172,7 +181,7 @@ if __name__ == '__main__':
 
         out['cam' + str(cam_num)] = parameters
 
-        with open(output_json_path, "w", encoding='utf-8') as f:
+        with open(json_path, "w", encoding='utf-8') as f:
             json.dump(out, f, indent=4)
 
 
