@@ -13,7 +13,8 @@ proj_dir = 'cello_1113_pgy'
 wave_file = 'wavs/pgy_133_647.wav'
 visualize = False  # whether to visualize the 3D representation of smoothed dw outcomes
 draw_cps = False  # whether to draw contact points on virtual finger board
-draw_filtered_cps = True  # whether to draw filtered contact points on virtual finger board
+draw_filtered_cps = False  # whether to draw filtered contact points on virtual finger board
+save_position = True  # whether to save the position of filtered position
 
 # parent_dir = 'cello_0111'
 # proj_dir = 'aidelizan'
@@ -38,5 +39,7 @@ if draw_cps:
     cp_detection_command += ' --draw_cps'
 if draw_filtered_cps:
     cp_detection_command += ' --draw_filtered_cps'
+if save_position:
+    cp_detection_command += ' --save_position'
 
 os.system(cp_detection_command)

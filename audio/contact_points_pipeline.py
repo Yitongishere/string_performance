@@ -396,12 +396,14 @@ if __name__ == '__main__':
     parser.add_argument('--visualize', default=False, required=False, action='store_true')
     parser.add_argument('--draw_cps', default=False, required=False, action='store_true')
     parser.add_argument('--draw_filtered_cps', default=False, required=False, action='store_true')
+    parser.add_argument('--save_position', default=False, required=False, action='store_true')
     args = parser.parse_args()
     wav_path = args.wav_path
     proj_dir = args.proj_dir
     visualize = args.visualize
     draw_cps = args.draw_cps
     draw_filtered_cps = args.draw_filtered_cps
+    save_position = args.save_position
 
     # proj_dir = 'aidelizan'
     # wav_path = 'wavs/cello_0111_aidelizan_excerpt.wav'
@@ -415,6 +417,7 @@ if __name__ == '__main__':
     if draw_cps:
         draw_contact_points(positions, proj_dir, 'virtual_contact_point')
     new_positions = mapping(proj_dir, positions, visualize=visualize)
-    # np.savetxt(f'positions_{proj_dir}', new_positions)
+    if save_position:
+        np.savetxt(f'positions_{proj_dir}', new_positions)
     if draw_filtered_cps:
         draw_contact_points(new_positions, proj_dir, 'virtual_contact_point_filtered')
