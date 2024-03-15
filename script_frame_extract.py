@@ -23,6 +23,11 @@ extract_frames = [start_frame_idx]
 
 extract_frames = [i for i in range(start_frame_idx, end_frame_idx+1)]  # for overlay
 
+extract_frames_str = ''
+for frame in extract_frames:
+    extract_frames_str += str(frame)
+    extract_frames_str += ' '
+
 """
 FRAME EXTRACT
 cello cameras: 21334181, 21334190, 21334237(optional, could be out of focus)
@@ -31,14 +36,16 @@ Extracted frames are used to track key points on the instrument.
 """
 
 for extract_cam in extract_cams:
-    for extract_frame in extract_frames:
-        files_path = f'{current_path}/data/{parent_dir}/{proj_dir}/videos/{proj_dir}_{extract_cam}.avi'
-        output_path = f'{current_path}/data/{parent_dir}/{proj_dir}/frames'
-        # output_path = f'{current_path}/cello_kp_2d/labeled_jsons/{proj_dir}'
+    files_path = f'{current_path}/data/{parent_dir}/{proj_dir}/videos/{proj_dir}_{extract_cam}.avi'
+    output_path = f'{current_path}/data/{parent_dir}/{proj_dir}/frames'
+    # output_path = f'{current_path}/cello_kp_2d/labeled_jsons/{proj_dir}'
 
-        frame_extract_command = f'python ./tools/frame_extract_pipeline.py ' \
-                                f'--files_path {files_path} ' \
-                                f'--output_path {output_path} ' \
-                                f'--start_frame_idx {extract_frame} ' \
-                                f'--end_frame_idx {extract_frame+1}'
-        os.system(frame_extract_command)
+    frame_extract_command = f'python ./tools/frame_extract_pipeline.py ' \
+                            f'--files_path {files_path} ' \
+                            f'--output_path {output_path} ' \
+                            f'--extract_frames {extract_frames_str}'
+                            # f'--start_frame_idx {extract_frame} ' \
+                            # f'--end_frame_idx {extract_frame+1}'
+    print(frame_extract_command)
+
+    os.system(frame_extract_command)
