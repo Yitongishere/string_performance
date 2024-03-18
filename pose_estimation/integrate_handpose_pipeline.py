@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from icecream import ic
 from handpose_toolkit import (get_mano_init, get_joint_positions,
-                              cal_dist, get_averaged_R, visualize_hand, )
+                              cal_dist, get_averaged_R, visualize_hand, get_frame_info, )
 from pose_estimation.manopth.manolayer import ManoLayer
 
 
@@ -54,25 +54,49 @@ def get_hands_joints(dir_6d, frame, bone_lengths, cam_file_path, show_cam, instr
     else:
         cam_weight_lh = CAM_WEIGHTS_LH_VIOLIN.copy()
         cam_weight_rh = CAM_WEIGHTS_RH_VIOLIN.copy()
-    keys = list(CAM_WEIGHTS_LH_CELLO.keys())
-    values = list(CAM_WEIGHTS_LH_CELLO.values())
+    keys = list(cam_weight_lh.keys())
+    values = list(cam_weight_rh.values())
+    frame_num_dict = {}
     for key in keys:
+        actual_frame = frame
+        frame_num_dict[f'{key}'] = actual_frame
         try:
             frame_drop_path = f'../data/{parent_dir}/{proj_dir}/videos/{key}_FrameDropIDLog.txt'
             drop_frames = np.array(open(frame_drop_path).readlines(), dtype=int)
-            if frame in drop_frames:
-                print(f'Remove cam {key} for frame {frame}!')
-                values.remove(cam_weight_lh[key])
-                cam_weight_lh[key] = 0
-                for k, v in cam_weight_lh.items():
-                    cam_weight_lh[k] = v / sum(values)
-                values = list(cam_weight_lh.values())
+            dropped = 0
+            for drop_frame in drop_frames:
+                if drop_frame < frame:
+                    dropped += 1
+                elif drop_frame == frame:
+                    print(f'Remove cam {key} for frame {frame}!')
+                    values.remove(cam_weight_lh[key])
+                    cam_weight_lh[key] = 0
+                    for k, v in cam_weight_lh.items():
+                        cam_weight_lh[k] = v / sum(values)
+                    values = list(cam_weight_lh.values())
+                    break
+                elif drop_frame > frame:
+                    break
+            actual_frame -= dropped
+            frame_num_dict[f'{key}'] = actual_frame
+            # if frame in drop_frames:
+            #     print(f'Remove cam {key} for frame {frame}!')
+            #     values.remove(cam_weight_lh[key])
+            #     cam_weight_lh[key] = 0
+            #     for k, v in cam_weight_lh.items():
+            #         cam_weight_lh[k] = v / sum(values)
+            #     values = list(cam_weight_lh.values())
         except FileNotFoundError as e:
             pass
 
     cam_weight_lh = dict(sorted(cam_weight_lh.items(), key=lambda x: x[1], reverse=True))
 
-    lh_rot_averaged, rh_rot_averaged = get_averaged_R(dir_6d, frame, show_cam, cam_weight_lh, cam_weight_rh,
+    frame_info = get_frame_info(dir_6d, frame_num_dict)
+
+    ic(cam_weight_lh)
+    ic(frame_num_dict)
+
+    lh_rot_averaged, rh_rot_averaged = get_averaged_R(frame_info, show_cam, cam_weight_lh, cam_weight_rh,
                                                       cam_file_path)
 
     lh_bone_length = bone_lengths[0]

@@ -119,7 +119,7 @@ def get_frame_info(proj_dir, frame_num):
     frame_info = {}
     for cam_dir in cam_dirs:
         cam_num = cam_dir.split('_')[-1]
-        filepath = os.path.join(proj_dir, cam_dir, f'{frame_num}.txt')
+        filepath = os.path.join(proj_dir, cam_dir, f'{frame_num[cam_num]}.txt')
 
         lh, rh = get6d_from_txt(filepath)
 
@@ -161,9 +161,8 @@ def get_converted_R0(R0_cam, R0, cam_file_path):
     return converted_R0
 
 
-def get_averaged_R(dir_6d, frame_num, R0_cam, cam_weights_lh, cam_weights_rh, cam_file_path):
+def get_averaged_R(frame_info, R0_cam, cam_weights_lh, cam_weights_rh, cam_file_path):
     cams = list(cam_weights_lh.keys())
-    frame_info = get_frame_info(dir_6d, frame_num)
 
     averaged_Qs_lh = []
     averaged_Qs_rh = []

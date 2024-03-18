@@ -14,13 +14,7 @@ wave_file = 'wavs/pgy_133_647.wav'
 visualize = False  # whether to visualize the 3D representation of smoothed dw outcomes
 draw_cps = False  # whether to draw contact points on virtual finger board
 draw_filtered_cps = False  # whether to draw filtered contact points on virtual finger board
-save_position = True  # whether to save the position of filtered position
-
-# parent_dir = 'cello_0111'
-# proj_dir = 'aidelizan'
-# start_frame_idx = 1211
-# end_frame_idx = 1214  # could be a bit bigger than the exact end frame
-# cam_file = 'jsons/cello_0111_camera.json'
+save_position = True  # whether to save filtered position
 
 """
 INFER

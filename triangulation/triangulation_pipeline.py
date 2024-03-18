@@ -769,18 +769,37 @@ if __name__ == "__main__":
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
         for cc in used_cams:
+            actual_ff = ff
             try:
                 frame_drop_path = f'../data/{parent_dir}/{proj_dir}/videos/{CAM_DICT[cc]}_FrameDropIDLog.txt'
                 drop_frames = np.array(open(frame_drop_path).readlines(), dtype=int)
+                drop_frames = sorted(drop_frames)
                 # remove camera that drop frames
-                if ff in drop_frames:
-                    print(f'Remove cam {CAM_DICT[cc]} for frame {ff}!')
-                    cam_ff.remove(cc)
+                # if ff in drop_frames:
+                #     print(f'Remove cam {CAM_DICT[cc]} for frame {ff}!')
+                #     cam_ff.remove(cc)
+                #     continue
+                dropped = 0
+                removed = False  # whether the camera is removed
+                for drop_frame in drop_frames:
+                    if drop_frame < ff:
+                        dropped += 1
+                    elif drop_frame == ff:
+                        print(f'Remove cam {CAM_DICT[cc]} for frame {ff}!')
+                        cam_ff.remove(cc)
+                        removed = True
+                        break
+                    elif drop_frame > ff:
+                        break
+                if removed:
                     continue
+                else:
+                    actual_ff -= dropped
+
             except FileNotFoundError as e:
                 pass
             try:
-                human_joint = f'../human_kp_2d/kp_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json'
+                human_joint = f'../human_kp_2d/kp_result/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 human_2d_cc_ff = np.array(json.load(open(human_joint)))
             except FileNotFoundError as e:
                 # remove camera that has no human joint data
@@ -788,7 +807,7 @@ if __name__ == "__main__":
                 continue
             cello_2d_cc_ff = np.zeros([9, 3])  # 9 cello key points in total (default score 0 will not be used)
             try:
-                cello_json_path = f'../cello_kp_2d/kp_result/{proj_dir}/{CAM_DICT[cc]}/{ff}.json'
+                cello_json_path = f'../cello_kp_2d/kp_result/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
                 # Resolve XML
                 # for each_ann in labelme['shapes']:  # manually labelled
@@ -822,10 +841,10 @@ if __name__ == "__main__":
 
     # visualize_3d(kp_3d_all, proj_dir)
 
-    if not os.path.exists(f'./kp_3d_result/{proj_dir}/'):
-        os.makedirs(f'./kp_3d_result/{proj_dir}/', exist_ok=True)
-    data_dict = {'kp_3d_all_dw': kp_3d_all.tolist()}
-    with open(f'./kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'w') as f:
-        json.dump(data_dict, f)
+    # if not os.path.exists(f'./kp_3d_result/{proj_dir}/'):
+    #     os.makedirs(f'./kp_3d_result/{proj_dir}/', exist_ok=True)
+    # data_dict = {'kp_3d_all_dw': kp_3d_all.tolist()}
+    # with open(f'./kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'w') as f:
+    #     json.dump(data_dict, f)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
