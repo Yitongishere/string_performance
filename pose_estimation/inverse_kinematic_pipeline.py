@@ -8,16 +8,16 @@ from matplotlib import pyplot as plt
 from scipy.spatial.transform import Rotation
 from handpose_toolkit import get6d_from_txt, rotation_6d_to_R, get_joint_positions, get_mano_init, get_converted_R0, \
     cal_dist
-from integrate_handpose import get_bone_length_dw, MANO_PARENTS_INDICES, LEFT_WRIST_INDEX, MANO_TO_DW
+from integrate_handpose_pipeline import get_bone_length_dw, MANO_PARENTS_INDICES, LEFT_WRIST_INDEX, MANO_TO_DW
 import json
 from icecream import ic
 
 from triangulation.smooth import Savgol_Filter
-from triangulation.triangulation import make_projection_matrix, HUMAN_LINKS, CELLO_LINKS, BOW_LINKS, STRING_LINKS, \
+from triangulation.triangulation_pipeline import make_projection_matrix, HUMAN_LINKS, CELLO_LINKS, BOW_LINKS, STRING_LINKS, \
     visualize_3d
 from scipy.optimize import minimize
 
-from triangulation.triangulation_cello_aidelizan import CAM_DICT, FULL_FINGER_INDICES
+from triangulation.triangulation_pipeline import CAM_DICT, FULL_FINGER_INDICES
 
 
 @contextlib.contextmanager

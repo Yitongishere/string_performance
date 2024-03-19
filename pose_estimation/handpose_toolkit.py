@@ -3,9 +3,9 @@ import os
 import json
 from icecream import ic
 from scipy.spatial.transform import Rotation, Slerp
-from triangulation.triangulation import visualize_3d, CAM_DICT
+from triangulation.triangulation_pipeline import visualize_3d, CAM_DICT
 import matplotlib.pyplot as plt
-from triangulation.triangulation import compute_axis_lim
+from triangulation.triangulation_pipeline import compute_axis_lim
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 
