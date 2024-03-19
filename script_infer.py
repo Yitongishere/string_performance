@@ -1,10 +1,10 @@
 import os
 """
 The script facilitates a clearer and faster execution of the project.
-This is the THIRD script.
+This is the SECOND script.
 You may need to edit: parent_dir, proj_dir, end_frame_idx
-4.2. INFER human key points
-5. TRIANGULATION
+4. INFER human key points (Run this script)
+5. TRACK instrument key points (Next script)
 """
 
 

@@ -4,10 +4,11 @@ import os
 The script facilitates a clearer and faster execution of the project.
 This is the FOURTH script.
 You may need to edit: parent_dir, proj_dir, start_frame_idx, end_frame_idx, resolve, xml_path, json_path
-4.1. Instrument key points should be tracked.
-4.2. Human key points should be inferred.
-5. TRIANGULATION
-6. CONTACT POINTS DETECTION
+3.2. Camera Calibrated. (Pre-request)
+4. Human key points should be inferred. (Pre-request)
+5. Instrument key points should be tracked. (Pre-request)
+6. TRIANGULATION (Run this script)
+7. CONTACT POINTS DETECTION (Next script)
 """
 
 parent_dir = 'cello_1113'
@@ -19,12 +20,6 @@ resolve = False  # whether to resolve xml file
 if resolve:
     xml_path = 'xmls/cello_1113_pgy_camera.xml'
 json_path = 'jsons/cello_1113_scale_camera.json'
-
-# parent_dir = 'cello_0111'
-# proj_dir = 'aidelizan'
-# start_frame_idx = 1211
-# end_frame_idx = 1214  # could be a bit bigger than the exact end frame
-# cam_file = 'jsons/cello_0111_camera.json'
 
 """
 TRIANGULATION

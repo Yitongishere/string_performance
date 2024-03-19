@@ -3,7 +3,7 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 """
 The script facilitates a clearer and faster execution of the project.
 This is the FIRST script.
-You may need to edit: parent_dir, proj_dir, start_frame_idx, extract_cams
+You may need to edit: parent_dir, proj_dir, start_frame_idx, end_frame_idx, extract_cams, extract_frames
 1. When new data is recorded, the audio and video first need to be aligned. (MANUALLY)
 2. FRAME EXTRACT (Run this script)
 3.1. Label the cello/violin key points. (MANUALLY)
@@ -23,6 +23,7 @@ extract_frames = [start_frame_idx]
 
 extract_frames = [i for i in range(start_frame_idx, end_frame_idx+1)]  # for overlay
 
+# post processing
 extract_frames_str = ''
 for frame in extract_frames:
     extract_frames_str += str(frame)

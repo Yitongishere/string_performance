@@ -2,9 +2,10 @@ import os
 """
 The script facilitates a clearer and faster execution of the project.
 This is the FIFTH script.
-You may need to edit: parent_dir, proj_dir, end_frame_idx, visualize, draw_cps, draw_filtered_cps
-5. human and instrument key points should be triangulated.
-6. CONTACT POINTS DETECTION
+You may need to edit: parent_dir, proj_dir, wave_file, visualize, draw_cps, draw_filtered_cps, save_position
+6. Human and instrument key points should be triangulated. (Pre-request)
+7. CONTACT POINTS DETECTION. (Run this script)
+8. INTEGRATE hand poses. (Next script)
 """
 
 
