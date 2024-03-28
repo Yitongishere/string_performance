@@ -45,7 +45,7 @@ Please refer to [CREPE Documentation](https://github.com/marl/crepe)
 If you want to track the cello key points using [TAPIR](https://deepmind-tapir.github.io/), you can either
 follow the instructions below or the [official guide](https://github.com/google-deepmind/tapnet#live-demo) provided by google.
 
-For inferring by pytorch models of TAPIR (TAP-Net/BootsTAPIR), you are required to install pytorch>=2.0.0 or you will Missing key(s) in state_dict of the checkpoints when loading them and get wrong outputs.
+Note: For inferring by pytorch models of TAPIR (TAP-Net/BootsTAPIR), you are required to install pytorch>=2.1.0 or you will Missing key(s) in state_dict of the checkpoints when loading them and get wrong outputs.
 
 5.1. Install requirements for inference:
 `pip install -r requirements_inference.txt`
