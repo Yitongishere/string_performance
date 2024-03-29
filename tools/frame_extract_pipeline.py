@@ -146,7 +146,7 @@ def extract_calib_frame(directory_path, output_path):
 
 
 # Extract frames interval: [start : end-1]
-def extract_frames_interval(files_path, output_path, frame_list):
+def extract_frames_interval(files_path, output_path, start_frame, end_frame, step):
     videos_path = glob.glob(files_path)
     base_name = [os.path.basename(i) for i in videos_path]
     file_name = [os.path.splitext(i)[0] for i in base_name]
@@ -154,6 +154,7 @@ def extract_frames_interval(files_path, output_path, frame_list):
     # frame_list = [i for i in range(start, end)]
 
     print('videos_path:', videos_path)
+    frame_list = [i for i in range(start_frame, end_frame, step)]
     print('frame_list:', frame_list)
 
     for i, video_path in enumerate(videos_path):
@@ -168,13 +169,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='frame_extract_pipeline')
     parser.add_argument('--files_path', default='../data/cello_1113/cello_1113_scale/video/cello_1113_21334190.avi', type=str, required=True)
     parser.add_argument('--output_path', default='../data/cello_1113/cello_1113_scale/frames', type=str, required=True)
-    parser.add_argument('--extract_frames', default='[128]', type=int, nargs='+', required=True)
+    parser.add_argument('--start_frame', default=1, type=int, required=True)
+    parser.add_argument('--end_frame', default=10, type=int, required=True)
+    parser.add_argument('--step', default=1, type=int, required=True)
     # parser.add_argument('--start_frame_idx', default='1', type=int, required=True)
     # parser.add_argument('--end_frame_idx', default='2', type=int, required=True)
     args = parser.parse_args()
     files_path = args.files_path
     output_path = args.output_path
-    extract_frames = args.extract_frames
+    start_frame = args.start_frame
+    end_frame = args.end_frame
+    step = args.step
     # start_frame_idx = args.start_frame_idx
     # end_frame_idx = args.end_frame_idx
 
@@ -191,4 +196,4 @@ if __name__ == "__main__":
 
     # print(extract_frames)
 
-    extract_frames_interval(files_path, output_path, extract_frames)
+    extract_frames_interval(files_path, output_path, start_frame, end_frame, step)
