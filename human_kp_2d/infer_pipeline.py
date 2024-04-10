@@ -81,10 +81,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='infer_pipeline')
     parser.add_argument('--dirs_path', default='../data/cello_1113/cello_1113_scale/video/cello_1113_21334190.avi',
                         type=str, required=True)
+    parser.add_argument('--parent_dir', default='cello_1113', type=str, required=True)
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
     parser.add_argument('--end_frame_idx', default='2', type=int, required=True)
     args = parser.parse_args()
     dirs_path = args.dirs_path
+    parent_dir = args.parent_dir
     proj_dir = args.proj_dir
     end_frame_idx = args.end_frame_idx
 
@@ -125,8 +127,9 @@ if __name__ == '__main__':
                 os.makedirs('./kp_result', exist_ok=True)
             # store_path = r'./kp_result/{sub_dir_name}/{cam_num}'.format(sub_dir_name=sub_dir_name,
             #                                                             cam_num=cam_num[i])
-            store_path = r'./kp_result/{dir_name}/{cam_num}'.format(dir_name=proj_dir,
-                                                                    cam_num=cam_num[i])
+            store_path = r'./kp_result/{parent_dir}/{dir_name}/{cam_num}'.format(parent_dir=parent_dir,
+                                                                                 dir_name=proj_dir,
+                                                                                 cam_num=cam_num[i])
             if not os.path.exists(store_path):
                 os.makedirs(store_path, exist_ok=True)
             out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])

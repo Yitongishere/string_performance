@@ -11,15 +11,16 @@ You may need to edit: parent_dir, proj_dir, start_frame_idx, end_frame_idx, reso
 7. CONTACT POINTS DETECTION (Next script)
 """
 
-parent_dir = 'cello_1113'
-proj_dir = 'cello_1113_pgy'
-start_frame_idx = 133
-end_frame_idx = 647
+parent_dir = 'cello_0327'
+proj_dir = 'chuizhenanfeng_jyt'
+start_frame_idx = 607
+end_frame_idx = 3516
 # end_frame_idx = 134
 resolve = False  # whether to resolve xml file
+json_path = 'jsons/cello_0327.json'
+
 if resolve:
     xml_path = 'xmls/cello_1113_pgy_camera.xml'
-json_path = 'jsons/cello_1113_scale_camera.json'
 
 """
 TRIANGULATION

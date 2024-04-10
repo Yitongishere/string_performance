@@ -51,8 +51,6 @@ CELLO_DICT = {
     'tip_plate': 10,
 }
 
-KPT_NUM = 142
-
 """skeleton define"""
 HUMAN_LINKS = [[15, 13],
                [13, 11],
@@ -642,7 +640,8 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
 
         human_segs3d = kp_3d[tuple([HUMAN_LINKS])]
         cello_segs3d = kp_3d[tuple([CELLO_LINKS])]
-        bow_segs3d = kp_3d[tuple([BOW_LINKS])]
+        # bow_segs3d = kp_3d[tuple([BOW_LINKS])]
+        bow_segs3d = []
         left_hand_segs3d = kp_3d[tuple([LEFT_HAND_LINKS])]
 
         if zoom_in:
@@ -726,6 +725,8 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
 
         plt.close()
 
+# TODO: EDIT KEY POINT NUMBER
+KPT_NUM = 140
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='triangulation_pipeline')
@@ -799,15 +800,16 @@ if __name__ == "__main__":
             except FileNotFoundError as e:
                 pass
             try:
-                human_joint = f'../human_kp_2d/kp_result/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
+                human_joint = f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 human_2d_cc_ff = np.array(json.load(open(human_joint)))
             except FileNotFoundError as e:
                 # remove camera that has no human joint data
                 cam_ff.remove(cc)
                 continue
-            cello_2d_cc_ff = np.zeros([9, 3])  # 9 cello key points in total (default score 0 will not be used)
+            # TODO: EDIT CELLO KEY POINTS
+            cello_2d_cc_ff = np.zeros([7, 3])  # 9 cello key points in total (default score 0 will not be used)
             try:
-                cello_json_path = f'../cello_kp_2d/kp_result/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
+                cello_json_path = f'../cello_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
                 # Resolve XML
                 # for each_ann in labelme['shapes']:  # manually labelled
@@ -839,12 +841,12 @@ if __name__ == "__main__":
     # kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
     # kp_3d_smooth = Savgol_Filter(kp_3d_all, KPT_NUM)
 
-    # visualize_3d(kp_3d_all, proj_dir)
+    # visualize_3d(kp_3d_all, f'{parent_dir}/{proj_dir}')
 
-    # if not os.path.exists(f'./kp_3d_result/{proj_dir}/'):
-    #     os.makedirs(f'./kp_3d_result/{proj_dir}/', exist_ok=True)
-    # data_dict = {'kp_3d_all_dw': kp_3d_all.tolist()}
-    # with open(f'./kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'w') as f:
-    #     json.dump(data_dict, f)
+    if not os.path.exists(f'./kp_3d_result/{parent_dir}/{proj_dir}/'):
+        os.makedirs(f'./kp_3d_result/{parent_dir}/{proj_dir}/', exist_ok=True)
+    data_dict = {'kp_3d_all_dw': kp_3d_all.tolist()}
+    with open(f'./kp_3d_result/{parent_dir}/{proj_dir}/kp_3d_all_dw.json', 'w') as f:
+        json.dump(data_dict, f)
 
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
