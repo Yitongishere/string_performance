@@ -1,4 +1,4 @@
-# Cello Performace
+# String Performace
 
 This is the repository of Digital Human Instrument Performance Research Group.
 
