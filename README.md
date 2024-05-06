@@ -74,8 +74,9 @@ cd checkpoints
 wget -P checkpoints https://storage.googleapis.com/dm-tapnet/causal_tapir_checkpoint.npy
 ```
 
-Here is a presentation effect.
-![Example GIF](cello_kp_2d/display/chuizhenanfeng_21334181.gif)
+Here is an effect of presentation.
+
+<img src="cello_kp_2d/display/chuizhenanfeng_21334181.gif" alt="cello keypoints Example" style="zoom:50%;" />
 
 ## 2d Key Points Detection
 `model.pth` for pose estimator should be downloaded ahead for `infer.py`
