@@ -4,7 +4,8 @@ This is the repository of Digital Human Instrument Performance Research Group.
 
 We are now concentrating on cello playing.
 
-Please enjoy our presentation video! 
+Please enjoy our presentation video!
+
 <iframe  
     width="100%"  
     height="450"  
