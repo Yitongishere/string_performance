@@ -1260,7 +1260,7 @@ if __name__ == '__main__':
             image = cv2.putText(image, str(num-start_frame_idx+1), (150, 150), cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 0), 2)
             for j, color in enumerate(colormap):
                 frame = cv2.circle(image,
-                                   tuple(np.array(all_results[j][num-start_frame_idx+1],#+origin
+                                   tuple(np.array(all_results[j][num-start_frame_idx+1],
                                                   dtype=np.uint32)), 1, color, 10)
             out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
     
