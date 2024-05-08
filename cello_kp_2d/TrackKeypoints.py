@@ -75,23 +75,6 @@ def download_checkpoints(ckpt_url,ckpt_path):
     f.close()
     print('Completed!')
     return True
-
-    
-def DeepLSD_download_checkpoint(summary):
-    DeepLSD_model_type = summary['DeepLSD_model_type']
-    ckpt_path = summary['DeepLSD_ckpt_path']
-    ckpt_urls = {'md':'https://cvg-data.inf.ethz.ch/DeepLSD/deeplsd_md.tar',# Trained by MegaDepth Dataset
-                 'wireframe':'https://cvg-data.inf.ethz.ch/DeepLSD/deeplsd_wireframe.tar',# Trained by Wireframe Dataset
-                }
-    ckpt_url = ckpt_urls[DeepLSD_model_type]
-    #ckpt_url = ckpt_urls['md']
-    #ckpt_path += ckpt_url.split('/')[-1]
-    if not download_checkpoints(ckpt_url,ckpt_path):
-        requests.exceptions.ConnectTimeout(
-            'Please download the checkpoint file at {} and'
-            'put it into the folder "DeepLSD/checkpoints/" manually!\n'
-            'You can choose one from below links:\n{}'.format(ckpt_url,ckpt_urls))
-    return None
 ######################## Download checkpoints ########################
 
 
@@ -212,7 +195,6 @@ def get_seperate_list(summary):
     iter_frames = summary['iter_frames']
     labeled_json = summary['labeled_json']
     
-    
     frame_jsonlist= []
     json_files_indir = os.listdir(os.path.dirname(labeled_json))
     frame_jsonlist.append(end_frame_idx)
@@ -246,7 +228,6 @@ def get_seperate_list(summary):
     summary.update(var_to_dict(frame_jsonlist = frame_jsonlist))
     summary.update(var_to_dict(frame_alllist = frame_alllist))
     summary.update(var_to_dict(frame_cyclelist = frame_cyclelist))
-    
     return summary
 
 
@@ -317,7 +298,6 @@ def TAPIR_infer(summary):
     
     video = imageio.get_reader(os.path.abspath(video_path),  'ffmpeg')
     
-
     frames = None
     frame_jsonlist_round = 0
     ceaseflag = 0
