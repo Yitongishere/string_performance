@@ -90,7 +90,7 @@ def DeepLSD_download_checkpoint(summary):
     #ckpt_url = ckpt_urls['md']
     #ckpt_path += ckpt_url.split('/')[-1]
     if not download_checkpoints(ckpt_url,ckpt_path):
-        requests.exceptions.ConnectTimeout(
+        raise requests.exceptions.ConnectTimeout(
             'Please download the checkpoint file at {} and'
             'put it into the folder "DeepLSD/checkpoints/" manually!\n'
             'You can choose one from below links:\n{}'.format(ckpt_url,ckpt_urls))
@@ -111,7 +111,7 @@ def TAPIR_download_checkpoint(summary):
     ckpt_url = ckpt_urls['TAPIR_model_type']
     
     if not download_checkpoints(ckpt_url,ckpt_path):
-        requests.exceptions.ConnectTimeout(
+        raise requests.exceptions.ConnectTimeout(
             'Please download the checkpoint file at {} and'
             'put it into the folder "tapnet/checkpoints" manually!\n'
             'You can choose one from below links:\n{}'.format(ckpt_url,ckpt_urls))
@@ -452,7 +452,7 @@ def TAPIR_infer(summary):
 def YOLO_detectbow_download_checkpoint(ckpt_path = './yolov8/checkpoints'):
     ckpt_url = ''
     if not download_checkpoints(ckpt_url,ckpt_path):
-        requests.exceptions.ConnectTimeout(
+        raise requests.exceptions.ConnectTimeout(
             'Please download the checkpoint file at {} and'
             'put it into the folder "yolov8/checkpoints/" manually!'
             .format(ckpt_url))
@@ -472,7 +472,7 @@ def DeepLSD_download_checkpoint(summary):#ckpt_type = 'md',ckpt_path = './DeepLS
     #ckpt_url = ckpt_urls['md']
     #ckpt_path += ckpt_url.split('/')[-1]
     if not download_checkpoints(ckpt_url,ckpt_path):
-        requests.exceptions.ConnectTimeout(
+        raise requests.exceptions.ConnectTimeout(
             'Please download the checkpoint file at {} and'
             'put it into the folder "deeplsd/checkpoints/" manually!\n'
             'You can choose one from below links:\n{}'.format(ckpt_url,ckpt_urls))
