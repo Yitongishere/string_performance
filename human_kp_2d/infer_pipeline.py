@@ -147,9 +147,6 @@ if __name__ == '__main__':
                 os.makedirs(store_path, exist_ok=True)
             out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=(2300, 2656))
             while True:
-                # TODO edit end_frame num
-                if frame_num == end_frame_idx:
-                    break
                 if frame_num >= start_frame_idx:
                     ret, frame = cap.read()
                     if not ret:
@@ -171,8 +168,10 @@ if __name__ == '__main__':
                     out.write(result_img)
                     # cv2.imshow('result', result_img)
                     # cv2.waitKey(1)
-                frame_num += 1
-                
+                # TODO edit end_frame num
+                if frame_num == end_frame_idx:
+                    break
+                frame_num += 1             
             cap.release()
             out.release()
         cv2.destroyAllWindows()
