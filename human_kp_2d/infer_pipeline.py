@@ -22,10 +22,14 @@ from mmpose.registry import VISUALIZERS
 from mmpose.structures import merge_data_samples
 from mmdet.apis import inference_detector, init_detector
 from tools.rotate import frame_rotate
+import requests
+import gdown
 
 '''
 configs and models for pose estimator (2d kept detection) and detector (bbox detection) should be prepared ahead
 preferred pose estimator model link: https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/
+
+We give a method in the script using gdown to download the model from googledrive.
 '''
 
 
@@ -83,24 +87,30 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='infer_pipeline')
     parser.add_argument('--dirs_path', default='../data/cello_1113/cello_1113_scale/video/cello_1113_21334190.avi',
                         type=str, required=True)
-    parser.add_argument('--parent_dir', default='cello_1113', type=str, required=True)
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
     parser.add_argument('--end_frame_idx', default='2', type=int, required=True)
     args = parser.parse_args()
     dirs_path = args.dirs_path
-    parent_dir = args.parent_dir
     proj_dir = args.proj_dir
     end_frame_idx = args.end_frame_idx
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    print(device)
     DET_CONF_THRES = 0.5
     detector = init_detector(
         'configs/rtmdet_m_640-8xb32_coco-person.py',
         'https://download.openmmlab.com/mmpose/v1/projects/rtmpose/rtmdet_m_8xb32-100e_coco-obj365-person-235e8209.pth',
         device=device
     )
-
+    
+    if not os.path.exists('./dw-ll_ucoco_384.pth'):
+        dwpose_model_url = 'https://drive.google.com/uc?id=1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm'
+        try:
+            gdown.download(dwpose_model_url, './dw-ll_ucoco_384.pth', quiet = False)
+        except:
+            raise requests.exceptions.ConnectTimeout(
+              'Please download the checkpoint file at "{}" and'
+              'put it into the folder "./" manually!\n'.format('https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/'))
+        
     pose_estimator = init_pose_estimator(
         'configs/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py',
         './dw-ll_ucoco_384.pth',  # your pose estimator model.pth path
@@ -129,9 +139,8 @@ if __name__ == '__main__':
                 os.makedirs('./kp_result', exist_ok=True)
             # store_path = r'./kp_result/{sub_dir_name}/{cam_num}'.format(sub_dir_name=sub_dir_name,
             #                                                             cam_num=cam_num[i])
-            store_path = r'./kp_result/{parent_dir}/{dir_name}/{cam_num}'.format(parent_dir=parent_dir,
-                                                                                 dir_name=proj_dir,
-                                                                                 cam_num=cam_num[i])
+            store_path = r'./kp_result/{dir_name}/{cam_num}'.format(dir_name=proj_dir,
+                                                                    cam_num=cam_num[i])
             if not os.path.exists(store_path):
                 os.makedirs(store_path, exist_ok=True)
             out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
