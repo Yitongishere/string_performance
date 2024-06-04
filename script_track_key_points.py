@@ -26,14 +26,26 @@ for folder_name in folder_names:
     start_frame_idx = summary['StartFrame'] # obtained by audio and video alignment
     end_frame_idx =  summary['EndFrame']# obtained by audio and video alignment
     
+
+    """
+    parent_dir = 'cello_1113'
+    proj_dir = 'cello_1113_pgy'
+    start_frame_idx = 127  # obtained by audio and video alignment
+    end_frame_idx = 658
+    instrument = 'cello'
+    track_cams = ['21334181', '21334190', '21334237']  # cello
+    # track_cams = ['21334220', '21334207']  # violin
+    """
+    
     """
     TRACK KEY POINTS
     2D key points on cello/violin are collected in this section.
     Multi-view 2D key points will be triangulated to obtain the 3D coordinates.
     """
-    
+
+  
     for track_cam in track_cams:
-        video_path = f'../data/{parent_dir}/{proj_dir}/{proj_dir}_{track_cam}.avi'
+        video_path = os.path.abspath(f'../data/{parent_dir}/{proj_dir}/{proj_dir}_{track_cam}.avi')
         #TrackKeypoints_pipeline.py
         trackkeypoint_command = f'python3 TrackKeypoints_pipeline.py ' \
                                 f'--proj_dir {proj_dir} ' \
