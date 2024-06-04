@@ -33,7 +33,7 @@ import mediapy as media
 import matplotlib.pyplot as plt
 from tools.rotate import frame_rotate
 
-# use network to download checkpoints
+#use network to download checkpoints
 import requests
 
 #verbose
@@ -55,6 +55,9 @@ from deeplsd.utils.tensor import batch_to_device
 from deeplsd.models.deeplsd_inference import DeepLSD
 from deeplsd.geometry.viz_2d import plot_images, plot_lines
 
+#argparse (use "~/script_track_key_points.py" to run this script.)
+import argparse
+
 
 ######################## Download checkpoints ########################
 def download_checkpoints(ckpt_url,ckpt_path):
@@ -75,6 +78,23 @@ def download_checkpoints(ckpt_url,ckpt_path):
     f.close()
     print('Completed!')
     return True
+
+    
+def DeepLSD_download_checkpoint(summary):
+    DeepLSD_model_type = summary['DeepLSD_model_type']
+    ckpt_path = summary['DeepLSD_ckpt_path']
+    ckpt_urls = {'md':'https://cvg-data.inf.ethz.ch/DeepLSD/deeplsd_md.tar',# Trained by MegaDepth Dataset
+                 'wireframe':'https://cvg-data.inf.ethz.ch/DeepLSD/deeplsd_wireframe.tar',# Trained by Wireframe Dataset
+                }
+    ckpt_url = ckpt_urls[DeepLSD_model_type]
+    #ckpt_url = ckpt_urls['md']
+    #ckpt_path += ckpt_url.split('/')[-1]
+    if not download_checkpoints(ckpt_url,ckpt_path):
+        requests.exceptions.ConnectTimeout(
+            'Please download the checkpoint file at {} and'
+            'put it into the folder "DeepLSD/checkpoints/" manually!\n'
+            'You can choose one from below links:\n{}'.format(ckpt_url,ckpt_urls))
+    return None
 ######################## Download checkpoints ########################
 
 
@@ -195,6 +215,7 @@ def get_seperate_list(summary):
     iter_frames = summary['iter_frames']
     labeled_json = summary['labeled_json']
     
+    
     frame_jsonlist= []
     json_files_indir = os.listdir(os.path.dirname(labeled_json))
     frame_jsonlist.append(end_frame_idx)
@@ -228,6 +249,7 @@ def get_seperate_list(summary):
     summary.update(var_to_dict(frame_jsonlist = frame_jsonlist))
     summary.update(var_to_dict(frame_alllist = frame_alllist))
     summary.update(var_to_dict(frame_cyclelist = frame_cyclelist))
+    
     return summary
 
 
@@ -298,6 +320,7 @@ def TAPIR_infer(summary):
     
     video = imageio.get_reader(os.path.abspath(video_path),  'ffmpeg')
     
+
     frames = None
     frame_jsonlist_round = 0
     ceaseflag = 0
@@ -937,24 +960,31 @@ def var_to_dict(**kwargs):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog='track_keypoints_pipeline')
+    parser.add_argument('--instrument', default='cello', type=str, required=True)
+    parser.add_argument('--proj_dir', default='chuizhenanfeng', type=str, required=True)
+    parser.add_argument('--video_path', default=r'../data/cello_0327/chuizhenanfeng/videos/chuizhenanfeng_21334181.avi',
+                        type=str, required=True)
+    parser.add_argument('--start_frame_idx', default='608', type=int, required=True)
+    parser.add_argument('--end_frame_idx', default='908', type=int, required=True)
+    # Number of iteration frames per model insertion <=video.count_frames()
+    parser.add_argument('--iter_frames', default='500', type=int, required=False) 
+    
+    args = parser.parse_args()
+    
+    proj_dir = args.proj_dir
+    video_path = args.video_path
+    start_frame_idx = args.start_frame_idx
+    instrument = args.instrument
+    end_frame_idx = args.end_frame_idx
+    iter_frames = args.iter_frames
+    
     inform = {}
-    
-    instrument = 'cello'
     inform.update(var_to_dict(instrument  = instrument))
-    
-    start_frame_idx = 608
     inform.update(var_to_dict(start_frame_idx = start_frame_idx))
-
-    end_frame_idx = 908
     inform.update(var_to_dict(end_frame_idx = end_frame_idx))
-    
-    iter_frames = 500 # Number of iteration frames per model insertion <=video.count_frames()
     inform.update(var_to_dict(iter_frames = iter_frames))
-    
-    proj_dir = 'chuizhenanfeng'
     inform.update(var_to_dict(proj_dir = proj_dir))
-    
-    video_path =  r'../data/cello_0327/chuizhenanfeng/videos/chuizhenanfeng_21334181.avi'
     inform.update(var_to_dict(video_path = video_path))
     
     cam_num = video_path.split('_')[-1].split('.')[0]
@@ -963,7 +993,7 @@ if __name__ == '__main__':
     parent_folder = os.path.dirname(video_path)
     base_name = os.path.basename(video_path)
 
-    labeled_json = f'labeled_jsons/{proj_dir}/{cam_num}/{cam_num}_{start_frame_idx}.json'
+    labeled_json = f'labeled_jsons/{instrument}/{proj_dir}/{cam_num}_{start_frame_idx}.json'
     inform.update(var_to_dict(labeled_json = labeled_json))
 
     inform.update(get_seperate_list(inform))
@@ -1227,9 +1257,14 @@ if __name__ == '__main__':
     # ------------------------------------------------------------------------    
     colormap = viz_utils.get_colors(all_results.shape[0])
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    frame_size = tuple(np.flip(video.get_data(0).shape)[1:])  # tuple->(width,height)
+    frame_size = tuple(np.flip(video.get_data(0).shape)[1:]/4)  # tuple->(width,height)
     
-    out = cv2.VideoWriter(f'chuizhenanfeng_{cam_num}_{TAPIR_model_type}.avi', fourcc, fps=30, frameSize= np.flip(frame_size))# frame.shape[0:2]
+    save_folder_path = './kp_result_videos'
+    save_sub_sub_dir_path = save_folder_path + os.sep + proj_dir
+    if not os.path.exists(save_sub_sub_dir_path):
+        os.makedirs(save_sub_sub_dir_path, exist_ok=True)
+    
+    out = cv2.VideoWriter(f'{save_folder_path}/{proj_dir}/{proj_dir}_{cam_num}_{TAPIR_model_type}.avi', fourcc, fps=30, frameSize= np.flip(frame_size))# frame.shape[0:2]
     #print(f'{proj_dir}/{file_name}.avi')
 
     # Visualize and generate a video.
@@ -1240,10 +1275,11 @@ if __name__ == '__main__':
             image = cv2.putText(image, str(num-start_frame_idx+1), (150, 150), cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 0), 2)
             for j, color in enumerate(colormap):
                 frame = cv2.circle(image,
-                                   tuple(np.array(all_results[j][num-start_frame_idx+1],
+                                   tuple(np.array(all_results[j][num-start_frame_idx+1],#+origin
                                                   dtype=np.uint32)), 1, color, 10)
+            frame = cv2.resize(frame,(np.flip(video.get_data(0).shape)[1:]/4))
             out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-    
+      
     # ------------------------------------------------------------------------
     # That's it!
     
