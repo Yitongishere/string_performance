@@ -40,11 +40,12 @@ for folder_name in folder_names:
     """
     
     
-    dirs_path = fr'../data/{parent_dir}/{proj_dir}'
+    dirs_path = os.path.abspath(f'../data/{parent_dir}/{proj_dir}/')
     
     infer_command = f'python3 infer_pipeline.py ' \
                             f'--dirs_path {dirs_path} ' \
                             f'--proj_dir {proj_dir} '\
-                            f'--end_frame_idx {end_frame_idx}'
+                            f'--end_frame_idx {end_frame_idx} '\
+                            f'--start_frame_idx {start_frame_idx}'
     os.system(infer_command)
     #break
