@@ -89,11 +89,13 @@ if __name__ == '__main__':
                         type=str, required=True)
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
     parser.add_argument('--end_frame_idx', default='2', type=int, required=True)
+    parser.add_argument('--start_frame_idx', default='1', type=int, required=False)
     args = parser.parse_args()
     dirs_path = args.dirs_path
     proj_dir = args.proj_dir
     end_frame_idx = args.end_frame_idx
-
+    start_frame_idx = args.start_frame_idx
+    
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     DET_CONF_THRES = 0.5
     detector = init_detector(
@@ -145,30 +147,32 @@ if __name__ == '__main__':
                 os.makedirs(store_path, exist_ok=True)
             out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=(2300, 2656))
             while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame_rot = frame_rotate(cam_num[i], frame)
-                init_default_scope(detector.cfg.get('default_scope', 'mmdet'))
-                detect_result = inference_detector(detector, frame_rot)
-                pred_instance = detect_result.pred_instances.cpu().numpy()
-                bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
-                bboxes = bboxes[np.logical_and(pred_instance.labels == 0, pred_instance.scores > DET_CONF_THRES)]
-                bboxes = bboxes[nms(bboxes, 0.3)][:, :4]
-                init_default_scope(pose_estimator.cfg.get('default_scope', 'mmpose'))
-                # bboxes=None indicates that the entire image will be regarded as a single bbox area (one person)
-                pose_results = inference_topdown(pose_estimator, frame_rot, bboxes=bboxes)
-                data_samples = merge_data_samples(pose_results)
-                result_img = visualize(pose_estimator, frame_rot, data_samples)
-                # store 2d key points result to json file
-                posinfo2json(pose_results, f'{store_path}/{frame_num}.json')
-                out.write(result_img)
-                # cv2.imshow('result', result_img)
-                # cv2.waitKey(1)
-                frame_num += 1
                 # TODO edit end_frame num
                 if frame_num == end_frame_idx:
                     break
+                if frame_num >= start_frame_idx:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    frame_rot = frame_rotate(cam_num[i], frame)
+                    init_default_scope(detector.cfg.get('default_scope', 'mmdet'))
+                    detect_result = inference_detector(detector, frame_rot)
+                    pred_instance = detect_result.pred_instances.cpu().numpy()
+                    bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
+                    bboxes = bboxes[np.logical_and(pred_instance.labels == 0, pred_instance.scores > DET_CONF_THRES)]
+                    bboxes = bboxes[nms(bboxes, 0.3)][:, :4]
+                    init_default_scope(pose_estimator.cfg.get('default_scope', 'mmpose'))
+                    # bboxes=None indicates that the entire image will be regarded as a single bbox area (one person)
+                    pose_results = inference_topdown(pose_estimator, frame_rot, bboxes=bboxes)
+                    data_samples = merge_data_samples(pose_results)
+                    result_img = visualize(pose_estimator, frame_rot, data_samples)
+                    # store 2d key points result to json file
+                    posinfo2json(pose_results, f'{store_path}/{frame_num}.json')
+                    out.write(result_img)
+                    # cv2.imshow('result', result_img)
+                    # cv2.waitKey(1)
+                frame_num += 1
+                
             cap.release()
             out.release()
         cv2.destroyAllWindows()
