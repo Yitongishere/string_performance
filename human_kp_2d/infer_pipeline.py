@@ -119,13 +119,13 @@ if __name__ == '__main__':
         # cfg_options={'model': {'test_cfg': {'output_heatmaps': True}}}
     )
 
-    # dirs_path = r'../data/cello_0111'  # Your directory path
-    # dirs_list = os.listdir(dirs_path)
-    # full_path = [dirs_path + os.sep + i for i in dirs_list]  # multiple proj
+    # dirs_path = r'../data/cello/cello_01'  # Your directory path
+    #dirs_list = os.listdir(dirs_path)
+    #full_path = [dirs_path + os.sep + i for i in dirs_list]  # multiple proj
     full_path = [dirs_path]  # single proj
     for idx, dir_path in enumerate(full_path):
         print(dir_path)
-        videos_path = glob.glob(dir_path + os.sep + 'videos' + os.sep + '*.avi')
+        videos_path = glob.glob(dir_path + os.sep + '*.avi')
         print(videos_path)
         base_name = [os.path.basename(i) for i in videos_path]
         file_name = [os.path.splitext(i)[0] for i in base_name]
@@ -143,7 +143,7 @@ if __name__ == '__main__':
                                                                     cam_num=cam_num[i])
             if not os.path.exists(store_path):
                 os.makedirs(store_path, exist_ok=True)
-            out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=[2300, 2656])
+            out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=(2300, 2656))
             while True:
                 ret, frame = cap.read()
                 if not ret:
