@@ -21,6 +21,8 @@ from mmpose.evaluation.functional import nms
 from mmpose.registry import VISUALIZERS
 from mmpose.structures import merge_data_samples
 from mmdet.apis import inference_detector, init_detector
+from mmpose.structures import PoseDataSample
+from mmengine.structures import InstanceData
 from tools.rotate import frame_rotate
 import requests
 import gdown
@@ -51,7 +53,7 @@ def visualize(pose_estimator, img, data_samples):
         data_sample=data_samples,
         draw_gt=False,
         # draw_heatmap=True, # comment this if you want to output videos
-        draw_bbox=True,
+        draw_bbox=False if data_samples.pred_instances.bbox[0][0] is None else True,
         show_kpt_idx=False,
         # show=True,
         show=False,
@@ -77,7 +79,7 @@ def posinfo2json(pose, path='json/pos.json', save=True, kp_type='unit8'):
     try:
         print(jsonfile)
         with open(os.path.abspath(jsonfile + '.json'), 'w') as f:
-            f.write(json.dumps(output.tolist()))
+            f.write(json.dumps(output.tolist(),ensure_ascii=False, indent=4))
         f.close()
     except IOError:
         traceback.print_exc()
@@ -90,13 +92,18 @@ if __name__ == '__main__':
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
     parser.add_argument('--end_frame_idx', default='2', type=int, required=True)
     parser.add_argument('--start_frame_idx', default='1', type=int, required=False)
+    parser.add_argument('--cuda', default='0', type=int, required=False)
+    parser.add_argument('--writevideo', default='0', type=int, required=False)
+    
     args = parser.parse_args()
     dirs_path = args.dirs_path
     proj_dir = args.proj_dir
     end_frame_idx = args.end_frame_idx
     start_frame_idx = args.start_frame_idx
+    cuda = args.cuda
+    writevideo = args.writevideo
     
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{cuda}' if torch.cuda.is_available() else 'cpu')
     DET_CONF_THRES = 0.5
     detector = init_detector(
         'configs/rtmdet_m_640-8xb32_coco-person.py',
@@ -133,7 +140,6 @@ if __name__ == '__main__':
         file_name = [os.path.splitext(i)[0] for i in base_name]
         cam_num = [i.split('_')[-1] for i in file_name]
         # sub_dir_name = dirs_list[idx]  # multiple proj
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
         for i, video_path in enumerate(videos_path):
             cap = cv2.VideoCapture(video_path)
             frame_num = 1
@@ -145,9 +151,9 @@ if __name__ == '__main__':
                                                                     cam_num=cam_num[i])
             if not os.path.exists(store_path):
                 os.makedirs(store_path, exist_ok=True)
-            out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=(2300, 2656))
+            
             while True:
-                if frame_num >= start_frame_idx:
+                if frame_num >= start_frame_idx and not os.path.exists(f'{store_path}/{frame_num}.json'):
                     ret, frame = cap.read()
                     if not ret:
                         break
@@ -161,17 +167,39 @@ if __name__ == '__main__':
                     init_default_scope(pose_estimator.cfg.get('default_scope', 'mmpose'))
                     # bboxes=None indicates that the entire image will be regarded as a single bbox area (one person)
                     pose_results = inference_topdown(pose_estimator, frame_rot, bboxes=bboxes)
-                    data_samples = merge_data_samples(pose_results)
-                    result_img = visualize(pose_estimator, frame_rot, data_samples)
                     # store 2d key points result to json file
                     posinfo2json(pose_results, f'{store_path}/{frame_num}.json')
-                    out.write(result_img)
-                    # cv2.imshow('result', result_img)
-                    # cv2.waitKey(1)
                 # TODO edit end_frame num
                 if frame_num == end_frame_idx:
                     break
-                frame_num += 1             
+                frame_num += 1
+            cap.release()
+        
+        if writevideo:
+            cap = cv2.VideoCapture(video_path)
+            frame_num = 1
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=(2300, 2656))
+            while True:
+                if frame_num >= start_frame_idx:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    with open(f'{store_path}/{frame_num}.json','r') as f:
+                        inferred_info = np.asarray(labeljson.load(f))
+                    f.close()
+                    inferred_instances = InstanceData()
+                    inferred_instances.keypoints = inferred_info[:,:2].copy()[np.newaxis, :]
+                    inferred_instances.bbox = [[None]]
+                    data_samples = PoseDataSample(pred_instances=inferred_instances)
+                    result_img = visualize(pose_estimator, frame_rot, data_samples)
+                    frame_rot = frame_rotate(cam_num[i], frame)
+                    result_img = visualize(pose_estimator, frame_rot, data_samples)
+                    # store 2d key points result to json file
+                    out.write(result_img)
+                  # TODO edit end_frame num
+                if frame_num == end_frame_idx:
+                    break
+                frame_num += 1
             cap.release()
             out.release()
-        cv2.destroyAllWindows()
