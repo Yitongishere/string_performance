@@ -21,7 +21,6 @@ print(folder_names)
 parent_dir = instrument
 os.chdir('./human_kp_2d/')
 
-#cr_flag = False # The flag for covering results if existed
 for folder_name in folder_names:
     summary = get_inform(folder_name,root_path)
     proj_dir = folder_name
