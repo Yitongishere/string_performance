@@ -218,17 +218,16 @@ def get_seperate_list(summary):
     
     frame_jsonlist= []
     json_files_indir = os.listdir(os.path.dirname(labeled_json))
+    
+    # frame_jsonlist = [all indexes of json files]+[the index of the end frame]
+    # To prevent some errors such as "index out of range" in the process of TAPNET
     frame_jsonlist.append(end_frame_idx)
 
     for jsonfile in json_files_indir:
         if "_".join(os.path.basename(labeled_json).split(".json")[0].split("_")[:-1]) in jsonfile:
             json_index = int(os.path.splitext(jsonfile)[0].split("_")[-1])
-            #if json_index == start_frame_idx:
             frame_jsonlist.append(json_index)
-            #else:
-                #frame_jsonlist.append(json_index-1)
-
-
+    
     frame_jsonlist = sorted(list(set(frame_jsonlist)))
     frame_alllist = frame_jsonlist.copy()
     frame_jsonlist_round = 0
@@ -245,6 +244,10 @@ def get_seperate_list(summary):
         if frame_jsonlist[i] in frame_alllist:
             frame_cyclelist.append(frame_alllist[(frame_alllist.index(frame_jsonlist[i])+1)])
     frame_alllist = frame_alllist[1:]
+    
+    frame_jsonlist = [item for item in frame_jsonlist if item <= end_frame_idx]
+    frame_alllist = [item for item in frame_alllist if item <= end_frame_idx]
+    frame_cyclelist = [item for item in frame_cyclelist if item <= end_frame_idx]
     
     summary.update(var_to_dict(frame_jsonlist = frame_jsonlist))
     summary.update(var_to_dict(frame_alllist = frame_alllist))
@@ -899,7 +902,7 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
     
     #improve frog
     frog += (x1,y1)
-    with open(f'../human_2d_result/{proj_dir}/{cam_num}/{video_num + 1}.json','r') as f:
+    with open(f'../human_kp_2d/kp_result/{proj_dir}/{cam_num}/{video_num + 1}.json','r') as f:
         human2D_data = np.asarray(json.load(f))#,dtype = np.int32
     f.close()
 
@@ -962,11 +965,11 @@ def var_to_dict(**kwargs):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='track_keypoints_pipeline')
     parser.add_argument('--instrument', default='cello', type=str, required=True)
-    parser.add_argument('--proj_dir', default='chuizhenanfeng', type=str, required=True)
-    parser.add_argument('--video_path', default=r'../data/cello_0327/chuizhenanfeng/videos/chuizhenanfeng_21334181.avi',
+    parser.add_argument('--proj_dir', default='cello01', type=str, required=True)
+    parser.add_argument('--video_path', default=r'../data/cello/cello01/cello01_21334181.avi',
                         type=str, required=True)
-    parser.add_argument('--start_frame_idx', default='608', type=int, required=True)
-    parser.add_argument('--end_frame_idx', default='908', type=int, required=True)
+    parser.add_argument('--start_frame_idx', default='128', type=int, required=True)
+    parser.add_argument('--end_frame_idx', default='160', type=int, required=True)
     # Number of iteration frames per model insertion <=video.count_frames()
     parser.add_argument('--iter_frames', default='500', type=int, required=False) 
     
@@ -979,13 +982,22 @@ if __name__ == '__main__':
     end_frame_idx = args.end_frame_idx
     iter_frames = args.iter_frames
     
+    '''
+    proj_dir = 'cello01'
+    video_path = r'../data/cello/cello01/cello01_21334181.avi'
+    start_frame_idx = 128
+    instrument = 'cello'
+    end_frame_idx = 786
+    iter_frames = 500
+    '''
+    
     inform = {}
-    inform.update(var_to_dict(instrument  = instrument))
-    inform.update(var_to_dict(start_frame_idx = start_frame_idx))
-    inform.update(var_to_dict(end_frame_idx = end_frame_idx))
-    inform.update(var_to_dict(iter_frames = iter_frames))
-    inform.update(var_to_dict(proj_dir = proj_dir))
-    inform.update(var_to_dict(video_path = video_path))
+    inform.update(var_to_dict(instrument=instrument))
+    inform.update(var_to_dict(start_frame_idx=start_frame_idx))
+    inform.update(var_to_dict(end_frame_idx=end_frame_idx))
+    inform.update(var_to_dict(iter_frames=iter_frames))
+    inform.update(var_to_dict(proj_dir=proj_dir))
+    inform.update(var_to_dict(video_path=video_path))
     
     cam_num = video_path.split('_')[-1].split('.')[0]
     inform.update(var_to_dict(cam_num = cam_num))
@@ -1014,9 +1026,9 @@ if __name__ == '__main__':
     print('Loading the checkpoint...')
     TAPIR_ckpt_path = os.path.abspath(".") + os.sep + 'tapnet/checkpoints/causal_tapir_checkpoint.npy'
     #TAPIR_checkpoint_path = os.path.abspath(".") + os.sep + 'tapnet/checkpoints/bootstapir_checkpoint.npy'
-    inform.update(var_to_dict(TAPIR_ckpt_path = TAPIR_ckpt_path))
+    inform.update(var_to_dict(TAPIR_ckpt_path=TAPIR_ckpt_path))
     TAPIR_model_type = os.path.basename(TAPIR_ckpt_path).split('_')[0]
-    inform.update(var_to_dict(TAPIR_model_type = TAPIR_model_type))
+    inform.update(var_to_dict(TAPIR_model_type=TAPIR_model_type))
 
     if not os.path.exists(TAPIR_ckpt_path):
         TAPIR_download_checkpoint(inform)
@@ -1024,13 +1036,13 @@ if __name__ == '__main__':
     # Build the model (TAP)
     print('Building the model...')
     if TAPIR_model_type == 'causal':
-        TAPIR_model, TAPIR_online_model_init, TAPIR_online_model_predict = TAPIR_test_checkpoint(inform)
-        inform.update(var_to_dict(TAPIR_online_model_init = TAPIR_online_model_init))
-        inform.update(var_to_dict(TAPIR_online_model_predict = TAPIR_online_model_predict))
+        TAPIR_model, TAPIR_online_model_init, TAPIR_online_model_predict=TAPIR_test_checkpoint(inform)
+        inform.update(var_to_dict(TAPIR_online_model_init=TAPIR_online_model_init))
+        inform.update(var_to_dict(TAPIR_online_model_predict=TAPIR_online_model_predict))
     else:
         TAPIR_model, TAPIR_inference = TAPIR_test_checkpoint(inform)
-        inform.update(var_to_dict(TAPIR_inference = TAPIR_inference))
-    inform.update(var_to_dict(TAPIR_model = TAPIR_model))
+        inform.update(var_to_dict(TAPIR_inference=TAPIR_inference))
+    inform.update(var_to_dict(TAPIR_model=TAPIR_model))
 
 
     # Track[Infer] (TAP)
@@ -1038,17 +1050,17 @@ if __name__ == '__main__':
     if instrument == 'cello':
 
         ROI_size = 512
-        inform.update(var_to_dict(ROI_size = ROI_size))
+        inform.update(var_to_dict(ROI_size=ROI_size))
 
         resize_pixel = 512
-        inform.update(var_to_dict(resize_pixel = resize_pixel))
+        inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
         instrument_kps = ['scroll_top', 'nut_l', 'nut_r']
-        inform.update(var_to_dict(instrument_kps = instrument_kps))
+        inform.update(var_to_dict(instrument_kps=instrument_kps))
 
         guided_kps = ['nut_guide']#'nut_guide'
-        inform.update(var_to_dict(guided_kps = guided_kps))
+        inform.update(var_to_dict(guided_kps=guided_kps))
 
         inform.update(get_origin(inform))
 
@@ -1061,14 +1073,14 @@ if __name__ == '__main__':
 
 
         ROI_size = 512
-        inform.update(var_to_dict(ROI_size = ROI_size))
+        inform.update(var_to_dict(ROI_size=ROI_size))
 
         resize_pixel = 512
-        inform.update(var_to_dict(resize_pixel = resize_pixel))
+        inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
         instrument_kps = ['bridge_l', 'bridge_r']
-        inform.update(var_to_dict(instrument_kps = instrument_kps))
+        inform.update(var_to_dict(instrument_kps=instrument_kps))
 
         guided_kps = ['bridge_guide']#'bridge_guide'
         inform.update(var_to_dict(guided_kps = guided_kps))
@@ -1082,17 +1094,17 @@ if __name__ == '__main__':
         # ------------------------------------------------------------------------
 
         ROI_size = 512
-        inform.update(var_to_dict(ROI_size = ROI_size))
+        inform.update(var_to_dict(ROI_size=ROI_size))
 
         resize_pixel = 512
-        inform.update(var_to_dict(resize_pixel = resize_pixel))
+        inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
         instrument_kps = ['tail_gut', 'end_pin']
-        inform.update(var_to_dict(instrument_kps = instrument_kps))
+        inform.update(var_to_dict(instrument_kps=instrument_kps))
 
         guided_kps = []
-        inform.update(var_to_dict(guided_kps = guided_kps))
+        inform.update(var_to_dict(guided_kps=guided_kps))
 
         inform.update(get_origin(inform))
 
@@ -1104,22 +1116,22 @@ if __name__ == '__main__':
     # ------------------------------------------------------------------------
     else:
         iter_frames = 200 # Number of iteration frames per model insertion <=video.count_frames()
-        inform.update(var_to_dict(iter_frames = iter_frames))
+        inform.update(var_to_dict(iter_frames=iter_frames))
 
         inform.update(get_seperate_list(inform))
 
         ROI_size = 1024
-        inform.update(var_to_dict(ROI_size = ROI_size))
+        inform.update(var_to_dict(ROI_size=ROI_size))
 
         resize_pixel = 1024
-        inform.update(var_to_dict(resize_pixel = resize_pixel))
+        inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
         instrument_kps = ['scroll_top', 'nut_l', 'nut_r']#+['bridge_l', 'bridge_r']
-        inform.update(var_to_dict(instrument_kps = instrument_kps))
+        inform.update(var_to_dict(instrument_kps=instrument_kps))
 
         guided_kps = ['nut_guide']#'nut_guide'
-        inform.update(var_to_dict(guided_kps = guided_kps))
+        inform.update(var_to_dict(guided_kps=guided_kps))
 
         inform.update(get_origin(inform))
 
@@ -1136,23 +1148,23 @@ if __name__ == '__main__':
         inform.update(get_seperate_list(inform))
 
         ROI_size = 512
-        inform.update(var_to_dict(ROI_size = ROI_size))
+        inform.update(var_to_dict(ROI_size=ROI_size))
 
         resize_pixel = 512
-        inform.update(var_to_dict(resize_pixel = resize_pixel))
+        inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
         instrument_kps = ['bridge_l', 'bridge_r']
-        inform.update(var_to_dict(instrument_kps = instrument_kps))
+        inform.update(var_to_dict(instrument_kps=instrument_kps))
 
         guided_kps = ['bridge_guide']#'bridge_guide'
-        inform.update(var_to_dict(guided_kps = guided_kps))
+        inform.update(var_to_dict(guided_kps=guided_kps))
 
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
 
-        insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
+        insturment_results=np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
 
 
 
@@ -1167,20 +1179,20 @@ if __name__ == '__main__':
         if not os.path.exists(os.path.dirname(YOLOv8_ckpt_path)):
             os.makedirs(os.path.dirname(YOLOv8_ckpt_path), exist_ok=True)
     YOLOv8_ckpt = YOLO(YOLOv8_ckpt_path+os.sep+'bow_detection.pt')
-    inform.update(var_to_dict(YOLO_conf_threshhold = 0.25))
+    inform.update(var_to_dict(YOLO_conf_threshhold=0.25))
     
     # DeepLSD checkpoint loading
-    DeepLSD_ckpt_path  = os.path.abspath('.')+'/deeplsd/checkpoints/deeplsd_md.tar'
-    inform.update(var_to_dict(DeepLSD_ckpt_path =  DeepLSD_ckpt_path))
+    DeepLSD_ckpt_path = os.path.abspath('.')+'/deeplsd/checkpoints/deeplsd_md.tar'
+    inform.update(var_to_dict(DeepLSD_ckpt_path=DeepLSD_ckpt_path))
     DeepLSD_model_type = os.path.splitext(os.path.basename(DeepLSD_ckpt_path))[0].split('_')[-1]
-    inform.update(var_to_dict(DeepLSD_model_type =  DeepLSD_model_type))
+    inform.update(var_to_dict(DeepLSD_model_type=DeepLSD_model_type))
 
     if not os.path.exists(DeepLSD_ckpt_path):
         if not os.path.exists(os.path.dirname(DeepLSD_ckpt_path)):
             os.makedirs(os.path.dirname(DeepLSD_ckpt_path), exist_ok=True)
         DeepLSD_download_checkpoint(inform)
     
-    video = imageio.get_reader(os.path.abspath(video_path),  'ffmpeg')
+    video = imageio.get_reader(os.path.abspath(video_path), 'ffmpeg')
     
     DeepLSD_model = DeepLSD_test_checkpoint(inform)
     inform.update(var_to_dict(DeepLSD_model = DeepLSD_model))
@@ -1194,13 +1206,12 @@ if __name__ == '__main__':
     
     for num in tqdm(range(end_frame_idx), desc="(YOLO & DeepLSD) Loading frames & Inferring"):
         if (num + 1) >= start_frame_idx:
-
             image = np.asarray(video.get_data(num), dtype=np.uint8)
             image = frame_rotate(cam_num, image)
 
             #YOLO
-            YOLO_results = YOLOv8_ckpt.predict(image.copy()[:,:,::-1],conf = inform['YOLO_conf_threshhold'],
-                                       imgsz=640,device = torch_device,verbose = False)
+            YOLO_results = YOLOv8_ckpt.predict(image.copy()[:,:,::-1],conf=inform['YOLO_conf_threshhold'],
+                                       imgsz=640,device =torch_device,verbose=False)
             num_bbox = len(YOLO_results[0].boxes.cls)
             #print('bbox_num',num_bbox)
             if num_bbox >= 1:
@@ -1236,35 +1247,35 @@ if __name__ == '__main__':
             frog,tip = detect_frog_tip(inform,image,handpos,longest_line)
 
             frog,tip,previous_frog_id = improved_frog_tip(inform,num,frog,tip,handpos,image,previous_frog_id)
-            bow_result = np.concatenate(([frog],[tip]),axis = 0)[:,np.newaxis,:]
+            bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
             bow_conf = np.ones((bow_result.shape[0],1))
             #print(frog,tip)
             if (num + 1) == start_frame_idx:
                 bow_results = bow_result
                 bow_confs = bow_conf
             else:
-                bow_results = np.concatenate((bow_results,bow_result),axis = 1)
-                bow_confs = np.concatenate((bow_confs,bow_conf),axis = 0)
+                bow_results = np.concatenate((bow_results,bow_result),axis=1)
+                bow_confs = np.concatenate((bow_confs,bow_conf),axis=0)
             #break
     
     # ------------------------------------------------------------------------
     # That's it!
     
     # Final_results
-    all_results = np.concatenate((insturment_results,bow_results),axis = 0)
+    all_results = np.concatenate((insturment_results,bow_results),axis=0)
     
     #Visualize
     # ------------------------------------------------------------------------    
     colormap = viz_utils.get_colors(all_results.shape[0])
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    frame_size = tuple(np.flip(video.get_data(0).shape)[1:]/4)  # tuple->(width,height)
+    frame_size = tuple(np.flip(video.get_data(0).shape)[1:]//4)  # tuple->(width,height):(2300,2656)
     
     save_folder_path = './kp_result_videos'
     save_sub_sub_dir_path = save_folder_path + os.sep + proj_dir
     if not os.path.exists(save_sub_sub_dir_path):
         os.makedirs(save_sub_sub_dir_path, exist_ok=True)
     
-    out = cv2.VideoWriter(f'{save_folder_path}/{proj_dir}/{proj_dir}_{cam_num}_{TAPIR_model_type}.avi', fourcc, fps=30, frameSize= np.flip(frame_size))# frame.shape[0:2]
+    out = cv2.VideoWriter(f'{save_folder_path}/{proj_dir}/{proj_dir}_{cam_num}_TAPIR_{TAPIR_model_type}.avi', fourcc=fourcc, fps=30, frameSize=np.flip(frame_size))# frame.shape[0:2]
     #print(f'{proj_dir}/{file_name}.avi')
 
     # Visualize and generate a video.
@@ -1277,7 +1288,7 @@ if __name__ == '__main__':
                 frame = cv2.circle(image,
                                    tuple(np.array(all_results[j][num-start_frame_idx+1],#+origin
                                                   dtype=np.uint32)), 1, color, 10)
-            frame = cv2.resize(frame,(np.flip(video.get_data(0).shape)[1:]/4))
+            frame = cv2.resize(frame,np.flip(frame_size))
             out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
       
     # ------------------------------------------------------------------------
