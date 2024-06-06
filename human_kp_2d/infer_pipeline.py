@@ -71,11 +71,14 @@ def posinfo2json(pose, path='json/pos.json', save=True, kp_type='unit8'):
         jsonfile = ''.join(file_name_split)
     else:
         jsonfile = '.'.join(file_name_split)
-    kp_info = pose[0].to_dict()['pred_instances']
-
-    output = np.concatenate(
-        (np.array(kp_info['keypoints'][0]), kp_info['keypoint_scores'].reshape(-1, 1)), axis=1)
-
+    try:
+        kp_info = pose[0].to_dict()['pred_instances']
+        output = np.concatenate(
+            (np.array(kp_info['keypoints'][0]), kp_info['keypoint_scores'].reshape(-1, 1)), axis=1)
+    except:
+        # If pose == [], set output as an array of zeros.
+        output = np.zeros((133,3))
+        #return None
     try:
         print(jsonfile)
         with open(os.path.abspath(jsonfile + '.json'), 'w') as f:
@@ -83,6 +86,7 @@ def posinfo2json(pose, path='json/pos.json', save=True, kp_type='unit8'):
         f.close()
     except IOError:
         traceback.print_exc()
+    return None
 
 
 if __name__ == '__main__':
@@ -188,6 +192,8 @@ if __name__ == '__main__':
                     with open(f'{store_path}/{frame_num}.json','r') as f:
                         inferred_info = np.asarray(labeljson.load(f))
                     f.close()
+                    if np.all(inferred_info  == 0):
+                        continue
                     inferred_instances = InstanceData()
                     inferred_instances.keypoints = inferred_info[:,:2].copy()[np.newaxis, :]
                     inferred_instances.bbox = [[None]]
