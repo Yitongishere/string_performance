@@ -16,10 +16,10 @@ instrument = 'cello' # cello or violin
 root_path = os.path.abspath(f'./data/{instrument}')
 folder_names = get_folder(instrument,root_path)
 
-#If you want to process these data in batches, you can use the following code.
+#If you want to process these data in batches, you can use the following annotated code.
 
 '''
-index = -21
+index = -1
 step = 10
 
 if (index == -1 and step == 1):
