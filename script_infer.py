@@ -15,7 +15,11 @@ writevideo = 0
 instrument = 'cello' # cello or violin
 root_path = os.path.abspath(f'./data/{instrument}')
 folder_names = get_folder(instrument,root_path)
-index = -1
+
+#If you want to process these data in batches, you can use the following code.
+
+'''
+index = -21
 step = 10
 
 if (index == -1 and step == 1):
@@ -25,10 +29,11 @@ elif index == -1:
 else:
     folder_names = folder_names[index-step+1:index+1]
 
+'''
+
 print(folder_names)
 parent_dir = instrument
-os.chdir('./human_kp_2d/')
-
+os.chdir('./human_kp_2d/')    
 for folder_name in folder_names:
     summary = get_inform(folder_name,root_path)
     proj_dir = folder_name
