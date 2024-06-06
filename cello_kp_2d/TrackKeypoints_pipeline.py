@@ -576,6 +576,8 @@ def compute_longest_line(summary,pred_lines):
     longest_line = np.array([[], []])
     
     if instrument == 'cello':
+        # Increase image contrast for filtering
+        DeepLSD_infer_image_contrasted = adjust_image_factor(DeepLSD_infer_image,contrast=2, brightness=3)
         for line in pred_lines:
             condition1 = compute_line_length(line)>max(DeepLSD_infer_image.shape[:2])/4*3
             line_k,line_b = line_equation_two_points(line[0][0], line[0][1], line[1][0],line[1][1])
@@ -586,8 +588,10 @@ def compute_longest_line(summary,pred_lines):
                 radius = 3
                 condition3 = distance_to_boundary(int(line[0][0]), int(line[0][1]),DeepLSD_infer_image.shape[1],DeepLSD_infer_image.shape[0])<border
                 condition4 = distance_to_boundary(int(line[1][0]), int(line[1][1]),DeepLSD_infer_image.shape[1],DeepLSD_infer_image.shape[0])<border
-                condition5 = np.alltrue(get_neighborhood_average(DeepLSD_infer_image, int(line[0][0]), int(line[0][1]), radius)>(100,60,50))
-                condition6 = np.alltrue(get_neighborhood_average(DeepLSD_infer_image, int(line[1][0]), int(line[1][1]), radius)>(100,60,50))
+                # Increase image contrast for filtering
+                
+                condition5 = np.alltrue(get_neighborhood_average(DeepLSD_infer_image_contrasted, int(line[0][0]), int(line[0][1]), radius)>(100,60,50))
+                condition6 = np.alltrue(get_neighborhood_average(DeepLSD_infer_image_contrasted, int(line[1][0]), int(line[1][1]), radius)>(100,60,50))
 
             except:
                 continue
@@ -883,6 +887,10 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
             elif handpos == (x2-x1,y2-y1):
                 tip = (x1,y1)
         else:
+            tip -= (x1,y1)
+            tip[1] = bow_k*(x2-x1)+bow_b
+            tip[0] = (x2-x1)
+            tip += (x1,y1)
             if handpos == (0,0):
                 tip = (min(tip[0],x2),min(tip[1],y2))
             elif handpos == (0,y2-y1):
@@ -954,6 +962,16 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
         plt.show()
         '''
         return np.asarray(frog),np.asarray(tip),previous_frog_id
+        
+
+def adjust_image_factor(img, contrast=1, brightness=1):
+    from PIL import Image, ImageEnhance
+    pil_img = Image.fromarray(img)
+    enhancer = ImageEnhance.Contrast(pil_img)
+    pil_img = enhancer.enhance(contrast)
+    enhancer = ImageEnhance.Brightness(pil_img)
+    pil_img = enhancer.enhance(brightness)
+    return np.asarray(pil_img)
 ##################### Some methods for Processing Keypoints on Bow #####################
 
 
