@@ -15,42 +15,42 @@ jax                             0.3.25
 jaxlib                          0.3.22
 """
 
-#libraries for basic functions
+# libraries for basic functions
 import json
 import os
 from tqdm import tqdm
 import sys
 sys.path.append('..')
 
-#libraries for computing
+# libraries for computing
 import numpy as np
 import math
 
-#libraries for processing images
+# libraries for processing images
 import cv2
 import imageio
 import mediapy as media
 import matplotlib.pyplot as plt
 from tools.rotate import frame_rotate
 
-#use network to download checkpoints
+# Use Internet to download checkpoints
 import requests
 
-#verbose
+# verbose
 #from icecream import ic
 
-#libraries of tapnet
+# libraries of tapnet
 import jax
 from tapnet import tapir_model
 from tapnet.utils import transforms
 from tapnet.utils import viz_utils
 from tapnet.utils import model_utils
 
-#libraries of YOLOv8
+# libraries of YOLOv8
 from ultralytics import YOLO
 import torch
 
-#libraries of Deeplsd
+# libraries of Deeplsd
 from deeplsd.utils.tensor import batch_to_device
 from deeplsd.models.deeplsd_inference import DeepLSD
 from deeplsd.geometry.viz_2d import plot_images, plot_lines
