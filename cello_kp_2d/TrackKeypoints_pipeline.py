@@ -601,8 +601,9 @@ def compute_longest_line(summary,pred_lines):
                     continue
                 longest_line_length = compute_line_length(longest_line)
                 current_line_length = compute_line_length(line)
-                if current_line_length > longest_line_length and (condition5 and condition6) and (not (condition3 and condition4) or condition1):
-                    longest_line = line
+                if current_line_length > longest_line_length:
+                    if condition1 or (condition5 and condition6) and (not (condition3 and condition4)):
+                        longest_line = line
             else:
                 indices = np.where(pred_lines==line)
                 pred_lines = np.delete(pred_lines,indices[0],axis = 0)
