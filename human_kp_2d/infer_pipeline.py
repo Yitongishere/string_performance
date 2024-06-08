@@ -36,8 +36,6 @@ We give a method in the script using gdown to download the model from googledriv
 
 
 def visualize(visualizer, pose_estimator, img, data_samples):
-    #img = mmcv.imread(img, channel_order='bgr')  # when cv2.imshow is used
-    # img = mmcv.imread(img, channel_order='rgb') # when plt is used
     visualizer.add_datasample(
         'result',
         img,
@@ -49,9 +47,6 @@ def visualize(visualizer, pose_estimator, img, data_samples):
         show=False,
         wait_time=0
     )
-    # plt.figure(figsize=(10, 10))
-    # plt.imshow(img_output)
-    # plt.show()
     img_output = visualizer.get_image()
     return img_output
 
