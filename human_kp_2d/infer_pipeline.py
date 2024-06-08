@@ -35,19 +35,10 @@ We give a method in the script using gdown to download the model from googledriv
 '''
 
 
-def visualize(pose_estimator, img, data_samples):
-    # 半径
-    pose_estimator.cfg.visualizer.radius = 2
-    # 线宽
-    pose_estimator.cfg.visualizer.line_width = 1
-    # pose_estimator.cfg.visualizer.setdefault('save_dir', 'outputs')
-    pose_estimator.cfg.visualizer.setdefault('save_dir', None)
-    visualizer = VISUALIZERS.build(pose_estimator.cfg.visualizer)
-    # 元数据
-    visualizer.set_dataset_meta(pose_estimator.dataset_meta)
-    img = mmcv.imread(img, channel_order='bgr')  # when cv2.imshow is used
+def visualize(visualizer, pose_estimator, img, data_samples):
+    #img = mmcv.imread(img, channel_order='bgr')  # when cv2.imshow is used
     # img = mmcv.imread(img, channel_order='rgb') # when plt is used
-    img_output = visualizer.add_datasample(
+    visualizer.add_datasample(
         'result',
         img,
         data_sample=data_samples,
@@ -55,13 +46,13 @@ def visualize(pose_estimator, img, data_samples):
         # draw_heatmap=True, # comment this if you want to output videos
         draw_bbox=False if data_samples.pred_instances.bbox[0][0] is None else True,
         show_kpt_idx=False,
-        # show=True,
         show=False,
         wait_time=0
     )
     # plt.figure(figsize=(10, 10))
     # plt.imshow(img_output)
     # plt.show()
+    img_output = visualizer.get_image()
     return img_output
 
 
@@ -108,6 +99,7 @@ if __name__ == '__main__':
     writevideo = args.writevideo
     
     device = torch.device(f'cuda:{cuda}' if torch.cuda.is_available() else 'cpu')
+    
     DET_CONF_THRES = 0.5
     detector = init_detector(
         'configs/rtmdet_m_640-8xb32_coco-person.py',
@@ -123,7 +115,7 @@ if __name__ == '__main__':
             raise requests.exceptions.ConnectTimeout(
               'Please download the checkpoint file at "{}" and'
               'put it into the folder "./" manually!\n'.format('https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/'))
-        
+    
     pose_estimator = init_pose_estimator(
         'configs/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py',
         './dw-ll_ucoco_384.pth',  # your pose estimator model.pth path
@@ -131,7 +123,17 @@ if __name__ == '__main__':
         # if you want to see heatmaps, please uncomment the following line (but it'll be much slower)
         # cfg_options={'model': {'test_cfg': {'output_heatmaps': True}}}
     )
-
+    
+    if writevideo:
+        # 半径
+        pose_estimator.cfg.visualizer.radius = 1
+        # 线宽
+        pose_estimator.cfg.visualizer.line_width = 0.5
+        pose_estimator.cfg.visualizer.setdefault('save_dir', None)
+        visualizer = VISUALIZERS.build(pose_estimator.cfg.visualizer)
+        # 元数据
+        visualizer.set_dataset_meta(pose_estimator.dataset_meta)
+    
     # dirs_path = r'../data/cello/cello_01'  # Your directory path
     #dirs_list = os.listdir(dirs_path)
     #full_path = [dirs_path + os.sep + i for i in dirs_list]  # multiple proj
@@ -145,67 +147,76 @@ if __name__ == '__main__':
         cam_num = [i.split('_')[-1] for i in file_name]
         # sub_dir_name = dirs_list[idx]  # multiple proj
         for i, video_path in enumerate(videos_path):
-            cap = cv2.VideoCapture(video_path)
-            frame_num = 1
-            if not os.path.exists('./kp_result'):
-                os.makedirs('./kp_result', exist_ok=True)
-            # store_path = r'./kp_result/{sub_dir_name}/{cam_num}'.format(sub_dir_name=sub_dir_name,
-            #                                                             cam_num=cam_num[i])
-            store_path = r'./kp_result/{dir_name}/{cam_num}'.format(dir_name=proj_dir,
+            json_store_path = r'./kp_result/{dir_name}/{cam_num}'.format(dir_name=proj_dir,
                                                                     cam_num=cam_num[i])
-            if not os.path.exists(store_path):
-                os.makedirs(store_path, exist_ok=True)
-            
-            while True:
-                if frame_num >= start_frame_idx and not os.path.exists(f'{store_path}/{frame_num}.json'):
-                    ret, frame = cap.read()
-                    if not ret:
+            if writevideo and os.path.exists(f'{json_store_path}/{end_frame_idx}.json'):
+                pass
+            else:
+                cap = cv2.VideoCapture(video_path)
+                frame_num = 1
+                if not os.path.exists('./kp_result'):
+                    os.makedirs('./kp_result', exist_ok=True)
+
+                if not os.path.exists(json_store_path):
+                    os.makedirs(json_store_path, exist_ok=True)
+                
+                while True:
+                    if frame_num >= start_frame_idx and not os.path.exists(f'{json_store_path}/{frame_num}.json'):
+                        ret, frame = cap.read()
+                        if not ret:
+                            break
+                        frame_rot = frame_rotate(cam_num[i], frame)
+                        init_default_scope(detector.cfg.get('default_scope', 'mmdet'))
+                        detect_result = inference_detector(detector, frame_rot)
+                        pred_instance = detect_result.pred_instances.cpu().numpy()
+                        bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
+                        bboxes = bboxes[np.logical_and(pred_instance.labels == 0, pred_instance.scores > DET_CONF_THRES)]
+                        bboxes = bboxes[nms(bboxes, 0.3)][:, :4]
+                        init_default_scope(pose_estimator.cfg.get('default_scope', 'mmpose'))
+                        # bboxes=None indicates that the entire image will be regarded as a single bbox area (one person)
+                        pose_results = inference_topdown(pose_estimator, frame_rot, bboxes=bboxes)
+                        # store 2d key points result to json file
+                        posinfo2json(pose_results, f'{json_store_path}/{frame_num}.json')
+                    else:
+                        ret = cap.grab()
+                    if frame_num == end_frame_idx or not ret:
                         break
-                    frame_rot = frame_rotate(cam_num[i], frame)
-                    init_default_scope(detector.cfg.get('default_scope', 'mmdet'))
-                    detect_result = inference_detector(detector, frame_rot)
-                    pred_instance = detect_result.pred_instances.cpu().numpy()
-                    bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
-                    bboxes = bboxes[np.logical_and(pred_instance.labels == 0, pred_instance.scores > DET_CONF_THRES)]
-                    bboxes = bboxes[nms(bboxes, 0.3)][:, :4]
-                    init_default_scope(pose_estimator.cfg.get('default_scope', 'mmpose'))
-                    # bboxes=None indicates that the entire image will be regarded as a single bbox area (one person)
-                    pose_results = inference_topdown(pose_estimator, frame_rot, bboxes=bboxes)
-                    # store 2d key points result to json file
-                    posinfo2json(pose_results, f'{store_path}/{frame_num}.json')
-                # TODO edit end_frame num
-                if frame_num == end_frame_idx:
-                    break
-                frame_num += 1
-            cap.release()
+                    frame_num += 1
+                cap.release()
         
-        if writevideo:
-            cap = cv2.VideoCapture(video_path)
-            frame_num = 1
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            out = cv2.VideoWriter(f'{store_path}/output.avi', fourcc, fps=30, frameSize=(2300, 2656))
-            while True:
-                if frame_num >= start_frame_idx:
-                    ret, frame = cap.read()
-                    if not ret:
+            if writevideo:
+                cap = cv2.VideoCapture(video_path)
+                frame_num = 1
+                fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                #视频画幅缩小的倍数
+                reduction_factor = 4
+                framesize = (2300//reduction_factor, 2656//reduction_factor)
+                video_store_path = r'./kp_result/{dir_name}'.format(dir_name=proj_dir)
+                out = cv2.VideoWriter(f'{video_store_path}/{proj_dir}_{cam_num[i]}_DWPose.avi', fourcc=fourcc, fps=30, frameSize=framesize)
+                while True:
+                    if frame_num >= start_frame_idx:
+                        ret, frame = cap.read()
+                        if not ret:
+                            break
+                        with open(f'{json_store_path}/{frame_num}.json','r') as f:
+                            inferred_info = np.asarray(json.load(f))/reduction_factor
+                        f.close()
+                        if np.all(inferred_info  == 0):
+                            continue
+                        frame_rot = frame_rotate(cam_num[i], frame)
+                        inferred_instances = InstanceData()
+                        inferred_instances.keypoints = inferred_info[:,:2].copy()[np.newaxis, :]
+                        inferred_instances.bbox = [[None]]
+                        data_samples = PoseDataSample(pred_instances=inferred_instances)
+                        frame_rot = cv2.resize(frame_rot,framesize)
+                        output_img = visualize(visualizer, pose_estimator, frame_rot, data_samples)
+                        # store 2d key points result to json file
+                        out.write(output_img)
+                        print(f'Creating Video: {proj_dir} | {cam_num[i]} : {frame_num}')
+                    else:
+                        ret = cap.grab()
+                    if frame_num == end_frame_idx or not ret:
                         break
-                    with open(f'{store_path}/{frame_num}.json','r') as f:
-                        inferred_info = np.asarray(labeljson.load(f))
-                    f.close()
-                    if np.all(inferred_info  == 0):
-                        continue
-                    inferred_instances = InstanceData()
-                    inferred_instances.keypoints = inferred_info[:,:2].copy()[np.newaxis, :]
-                    inferred_instances.bbox = [[None]]
-                    data_samples = PoseDataSample(pred_instances=inferred_instances)
-                    result_img = visualize(pose_estimator, frame_rot, data_samples)
-                    frame_rot = frame_rotate(cam_num[i], frame)
-                    result_img = visualize(pose_estimator, frame_rot, data_samples)
-                    # store 2d key points result to json file
-                    out.write(result_img)
-                  # TODO edit end_frame num
-                if frame_num == end_frame_idx:
-                    break
-                frame_num += 1
-            cap.release()
-            out.release()
+                    frame_num += 1
+                cap.release()
+                out.release()
