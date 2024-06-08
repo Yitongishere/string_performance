@@ -590,7 +590,7 @@ def compute_longest_line(summary,pred_lines):
                 condition4 = distance_to_boundary(int(line[1][0]), int(line[1][1]),DeepLSD_infer_image.shape[1],DeepLSD_infer_image.shape[0])<border
                 # Increase image contrast for filtering
                 
-                condition5 = np.alltrue(get_neighborhood_average(DeepLSD_infer_image_contrasted, int(line[0][0]), int(line[0][1]), radius)>(100,60,50))
+                condition5 = np.alltrue(get_neighborhood_average(DeepLSD_infer_image, int(line[0][0]), int(line[0][1]), radius)>(100,60,50))
                 condition6 = np.alltrue(get_neighborhood_average(DeepLSD_infer_image_contrasted, int(line[1][0]), int(line[1][1]), radius)>(100,60,50))
 
             except:
@@ -852,7 +852,7 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
     tip += (x1,y1)
     previous_tip = tip.copy()
     condition1 = abs(bow_k)<=0.1
-    angle_threshhold = 10
+    angle_threshhold = 15
     
     if handpos == (0,0): 
         condition2 = math.dist((x2,y2),tip)>math.dist((x1,y1),(x2,y2))/3
@@ -987,7 +987,7 @@ if __name__ == '__main__':
     parser.add_argument('--video_path', default=r'../data/cello/cello01/cello01_21334181.avi',
                         type=str, required=True)
     parser.add_argument('--start_frame_idx', default='128', type=int, required=True)
-    parser.add_argument('--end_frame_idx', default='160', type=int, required=True)
+    parser.add_argument('--end_frame_idx', default='786', type=int, required=True)
     # Number of iteration frames per model insertion <=video.count_frames()
     parser.add_argument('--iter_frames', default='500', type=int, required=False) 
     
