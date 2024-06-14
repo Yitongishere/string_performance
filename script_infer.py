@@ -10,7 +10,7 @@ import os
 from tools.load_summary import get_folder, get_inform
 
 cuda = 0
-writevideo = 1
+writevideo = 0
 
 instrument = 'cello' # cello or violin
 root_path = os.path.abspath(f'./data/{instrument}')
@@ -22,7 +22,7 @@ folder_names = get_folder(instrument,root_path)
 index = -1
 batch_size = 49
 
-if (index == -1 and step == 1):
+if (index == -1 and batch_size == 1):
     folder_names = [folder_names[-1]]
 elif index == -1:
     folder_names = folder_names[index-batch_size+1:index] + [folder_names[-1]]
