@@ -34,7 +34,7 @@ print(folder_names)
 parent_dir = instrument
 os.chdir('./human_kp_2d/')    
 for folder_name in folder_names:
-    summary, summary_jsonpath = get_inform(folder_name,root_path)
+    summary, _ = get_inform(folder_name,root_path)
     proj_dir = folder_name
     
     start_frame_idx = summary['StartFrame'] # use annotated data in json file or could start from first frame
