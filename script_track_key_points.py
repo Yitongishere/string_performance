@@ -13,15 +13,34 @@ from tools.load_summary import get_folder, get_inform
 
 
 instrument = 'cello' # cello or violin
+root_path = os.path.abspath(f'./data/{instrument}')
+
 if instrument == 'cello':
-    track_cams = ['21334181', '21334190']  # cello , '21334237'
+    track_cams = ['21334181', '21334190']  # cello , '21334237','21334206'
 else:
     track_cams = ['21334220', '21334207']  # violin
-folder_names,root_path = get_folder(instrument)
+
+folder_names = get_folder(instrument,root_path)
+
+#If you want to process these data in batches, you can use the following annotated code.
+'''
+
+index = -1
+batch_size = 24
+
+if (index == -1 and step == 1):
+    folder_names = [folder_names[-1]]
+elif index == -1:
+    folder_names = folder_names[index-batch_size+1:index] + [folder_names[-1]]
+else:
+    folder_names = folder_names[index-batch_size+1:index+1]
+'''
+
+print(folder_names)
 parent_dir = instrument
 os.chdir('./cello_kp_2d/')
 for folder_name in folder_names:
-    summary = get_inform(folder_name,root_path)
+    summary, summary_jsonpath = get_inform(folder_name,root_path)
     proj_dir = folder_name
     start_frame_idx = summary['StartFrame'] # obtained by audio and video alignment
     end_frame_idx =  summary['EndFrame']# obtained by audio and video alignment
