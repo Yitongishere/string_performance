@@ -13,14 +13,20 @@ from tools.load_summary import get_folder, get_inform
 
 
 instrument = 'cello' # cello or violin
-root_path = os.path.abspath(f'./data/{instrument}')
+parent_dir = instrument
+
+root_path = os.path.abspath(f'./data/{parent_dir}')
+
+# if you want to use customized "parent_dir"
+# You can refer to the following code:
+# from tools.load_summary import get_folder_extra
+# folder_names = get_folder_extra(parent_dir,root_path)
+folder_names = get_folder(parent_dir,root_path)
 
 if instrument == 'cello':
-    track_cams = ['21334181', '21334190']  # cello , '21334237','21334206'
+    track_cams = ['21334237','21334206']  # cello 
 else:
-    track_cams = ['21334220', '21334207']  # violin
-
-folder_names = get_folder(instrument,root_path)
+    track_cams = ['21334207','21334220']  # violin 
 
 #If you want to process these data in batches, you can use the following annotated code.
 '''
@@ -37,36 +43,25 @@ else:
 '''
 
 print(folder_names)
-parent_dir = instrument
+
 os.chdir('./cello_kp_2d/')
 for folder_name in folder_names:
-    summary, _ = get_inform(folder_name,root_path)
+    summary, summary_jsonpath = get_inform(folder_name,root_path)
     proj_dir = folder_name
     start_frame_idx = summary['StartFrame'] # obtained by audio and video alignment
     end_frame_idx =  summary['EndFrame']# obtained by audio and video alignment
-    
-
-    """
-    parent_dir = 'cello_1113'
-    proj_dir = 'cello_1113_pgy'
-    start_frame_idx = 127  # obtained by audio and video alignment
-    end_frame_idx = 658
-    instrument = 'cello'
-    track_cams = ['21334181', '21334190', '21334237']  # cello
-    # track_cams = ['21334220', '21334207']  # violin
-    """
     
     """
     TRACK KEY POINTS
     2D key points on cello/violin are collected in this section.
     Multi-view 2D key points will be triangulated to obtain the 3D coordinates.
     """
-
-  
+    
     for track_cam in track_cams:
         video_path = os.path.abspath(f'../data/{parent_dir}/{proj_dir}/{proj_dir}_{track_cam}.avi')
         #TrackKeypoints_pipeline.py
         trackkeypoint_command = f'python3 TrackKeypoints_pipeline.py ' \
+                                f'--parent_dir {parent_dir} ' \
                                 f'--proj_dir {proj_dir} ' \
                                 f'--video_path {video_path} ' \
                                 f'--start_frame_idx {start_frame_idx} ' \
