@@ -17,10 +17,12 @@ parent_dir = instrument
 
 root_path = os.path.abspath(f'./data/{parent_dir}')
 
-# if you want to use customized "parent_dir"
+# if you want to use customized $parent_dir
 # You can refer to the following code:
 # from tools.load_summary import get_folder_extra
+# parent_dir = $parent_dir
 # folder_names = get_folder_extra(parent_dir,root_path)
+folder_names = get_folder(parent_dir, root_path)
 folder_names = get_folder(parent_dir,root_path)
 
 if instrument == 'cello':
