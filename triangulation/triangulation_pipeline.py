@@ -640,8 +640,7 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
 
         human_segs3d = kp_3d[tuple([HUMAN_LINKS])]
         cello_segs3d = kp_3d[tuple([CELLO_LINKS])]
-        # bow_segs3d = kp_3d[tuple([BOW_LINKS])]
-        bow_segs3d = []
+        bow_segs3d = kp_3d[tuple([BOW_LINKS])]
         left_hand_segs3d = kp_3d[tuple([LEFT_HAND_LINKS])]
 
         if zoom_in:
@@ -726,24 +725,30 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
         plt.close()
 
 # TODO: EDIT KEY POINT NUMBER
-KPT_NUM = 140
+KPT_NUM = 142
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='triangulation_pipeline')
-    parser.add_argument('--cam_file', default='jsons/cello_1113_scale_camera.json', type=str, required=True)
+    parser.add_argument('--cam_file', default='jsons/cello_1113_scale.json', type=str, required=True)
     parser.add_argument('--parent_dir', default='cello_1113', type=str, required=True)
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
+    parser.add_argument('--instrument', default='cello', type=str, required=False)
     parser.add_argument('--start_frame', default='128', type=int, required=True)
     parser.add_argument('--end_frame', default='786', type=int, required=True)
     args = parser.parse_args()
     cam_file = args.cam_file
     parent_dir = args.parent_dir
     proj_dir = args.proj_dir
+    instrument = args.instrument
     start_frame = args.start_frame
     end_frame = args.end_frame
 
+    point_offset = 0
+    if instrument == 'violin':
+        point_offset += 2  # violin has less key points
+        KPT_NUM -= 2
 
-    # cam_file = "jsons/cello_1113_scale_camera.json"
+    # cam_file = "jsons/cello_1113_scale.json"
     # proj_dir = "cello_1113_scale"
     cam_param = json.load(open(cam_file))
     # R = np.array(cam_param['cam0']['R']).reshape([3, 3])
@@ -752,10 +757,17 @@ if __name__ == "__main__":
     # ic(T@R)
 
     """read 2d results."""
+    # cello used cams
     used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
                  'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
                  'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19', 'cam20', 'cam21', 'cam22', 'cam23']
 
+    if instrument == 'violin':
+        # used_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
+        used_cams = ['cam10', 'cam11', 'cam12', 'cam13', 'cam21', 'cam22']
+        CELLO_LINKS = CELLO_LINKS[:-3]
+        CELLO_LINKS.append([136, 137])
+        BOW_LINKS = np.array(BOW_LINKS) - 2
     # used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
     #              'cam7', 'cam11', 'cam12', 'cam13',
     #              'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
@@ -807,7 +819,7 @@ if __name__ == "__main__":
                 cam_ff.remove(cc)
                 continue
             # TODO: EDIT CELLO KEY POINTS
-            cello_2d_cc_ff = np.zeros([7, 3])  # 9 cello key points in total (default score 0 will not be used)
+            cello_2d_cc_ff = np.zeros([9-point_offset, 3])  # 9 cello key points in total (default score 0 will not be used)
             try:
                 cello_json_path = f'../cello_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
@@ -836,7 +848,6 @@ if __name__ == "__main__":
         print(f'Frame {ff} triangulation done.')
 
     kp_3d_all = np.array(kp_3d_all)
-    # visualize(kp_3d_all)
 
     # kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
     # kp_3d_smooth = Savgol_Filter(kp_3d_all, KPT_NUM)

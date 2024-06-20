@@ -11,13 +11,32 @@ You may need to edit: parent_dir, proj_dir, start_frame_idx, end_frame_idx, reso
 7. CONTACT POINTS DETECTION (Next script)
 """
 
-parent_dir = 'cello_0327'
-proj_dir = 'chuizhenanfeng_jyt'
-start_frame_idx = 607
-end_frame_idx = 3516
-# end_frame_idx = 134
+# parent_dir = 'cello_0327'
+# proj_dir = 'chuizhenanfeng_jyt'
+# start_frame_idx = 608
+# end_frame_idx = 3516
+# # end_frame_idx = 134
+# resolve = False  # whether to resolve xml file
+# json_path = 'jsons/cello_0327.json'
+# instrument = 'cello'
+
+# parent_dir = 'violin_0110'
+# proj_dir = '0110_chen_si'
+# start_frame_idx = 126
+# end_frame_idx = 2710
+# # end_frame_idx = 156
+# resolve = False  # whether to resolve xml file
+# json_path = 'jsons/violin_0110.json'
+# instrument = 'violin'
+
+parent_dir = 'violin_0323'
+proj_dir = 'gxianshangdeyongtandiao'
+start_frame_idx = 333
+end_frame_idx = 4866
+# end_frame_idx = 156
 resolve = False  # whether to resolve xml file
-json_path = 'jsons/cello_0327.json'
+json_path = 'jsons/violin_0323.json'
+instrument = 'violin'
 
 if resolve:
     xml_path = 'xmls/cello_1113_pgy_camera.xml'
@@ -40,6 +59,7 @@ triangulation_command = f'python triangulation_pipeline.py ' \
                         f'--cam_file {json_path} ' \
                         f'--parent_dir {parent_dir} ' \
                         f'--proj_dir {proj_dir} ' \
+                        f'--instrument {instrument} ' \
                         f'--start_frame {start_frame_idx} ' \
                         f'--end_frame {end_frame_idx}'
 os.system(triangulation_command)
