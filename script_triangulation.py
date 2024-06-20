@@ -1,5 +1,3 @@
-import os
-
 """
 The script facilitates a clearer and faster execution of the project.
 This is the FOURTH script.
@@ -11,55 +9,49 @@ You may need to edit: parent_dir, proj_dir, start_frame_idx, end_frame_idx, reso
 7. CONTACT POINTS DETECTION (Next script)
 """
 
-# parent_dir = 'cello_0327'
-# proj_dir = 'chuizhenanfeng_jyt'
-# start_frame_idx = 608
-# end_frame_idx = 3516
-# # end_frame_idx = 134
-# resolve = False  # whether to resolve xml file
-# json_path = 'jsons/cello_0327.json'
-# instrument = 'cello'
+import os
+from tools.load_summary import get_folder, get_inform, get_folder_extra
+from multiprocessing import Pool
 
-# parent_dir = 'violin_0110'
-# proj_dir = '0110_chen_si'
-# start_frame_idx = 126
-# end_frame_idx = 2710
-# # end_frame_idx = 156
-# resolve = False  # whether to resolve xml file
-# json_path = 'jsons/violin_0110.json'
-# instrument = 'violin'
 
-parent_dir = 'violin_0323'
-proj_dir = 'gxianshangdeyongtandiao'
-start_frame_idx = 333
-end_frame_idx = 4866
-# end_frame_idx = 156
-resolve = False  # whether to resolve xml file
-json_path = 'jsons/violin_0323.json'
-instrument = 'violin'
+def triangulation_process(folder_name):
+    summary, summary_jsonfile_path = get_inform(folder_name, root_path)
+    proj_dir = folder_name
+    
+    start_frame_idx = summary['StartFrame']
+    end_frame_idx = summary['EndFrame']
+    cam_parm = summary['CameraParameter']
+    
+    print(f'Processing FolderName:{summary["FolderName"]}')
+    print(f'Track:{summary["Track"]}')
+    print(f'start_frame_idx:{start_frame_idx}')
+    print(f'end_frame_idx:{end_frame_idx}')
+    
+    os.chdir('./triangulation/')
+    
+    triangulation_command = f'python3 triangulation_pipeline.py ' \
+                            f'--summary_jsonfile {summary_jsonfile_path} ' \
+                            f'--parent_dir {parent_dir} ' \
+                            f'--proj_dir {proj_dir} ' \
+                            f'--start_frame {start_frame_idx} ' \
+                            f'--end_frame {end_frame_idx} ' \
+                            f'--instrument {instrument}'
+    os.system(triangulation_command)
 
-if resolve:
-    xml_path = 'xmls/cello_1113_pgy_camera.xml'
 
-"""
-TRIANGULATION
-In this section, 3D coordinates of human body, instrument body, and bow are triangulated based on Multi-view 2D key points.
-"""
-
-os.chdir('./triangulation/')
-
-if resolve:
-    xml_resolve_command = f'python camera_xml_resolve_pipeline.py ' \
-                          f'--xml_path {xml_path} ' \
-                          f'--json_path {json_path} '
-    os.system(xml_resolve_command)
-    print(f'Cam file {xml_path} has been resolved as {json_path}.')
-
-triangulation_command = f'python triangulation_pipeline.py ' \
-                        f'--cam_file {json_path} ' \
-                        f'--parent_dir {parent_dir} ' \
-                        f'--proj_dir {proj_dir} ' \
-                        f'--instrument {instrument} ' \
-                        f'--start_frame {start_frame_idx} ' \
-                        f'--end_frame {end_frame_idx}'
-os.system(triangulation_command)
+if __name__ == '__main__':
+    instrument = 'violin'
+    parent_dir = instrument
+    root_path = os.path.abspath(f'./data/{parent_dir}')
+    
+    # if you want to use customized $parent_dir
+    # You can refer to the following code:
+    # from tools.load_summary import get_folder_extra
+    # parent_dir = $parent_dir
+    # folder_names = get_folder_extra(parent_dir,root_path)
+    folder_names = get_folder(parent_dir, root_path)
+    
+    print(folder_names)
+    
+    with Pool(processes=os.cpu_count()) as pool: 
+        pool.map(triangulation_process, folder_names)
