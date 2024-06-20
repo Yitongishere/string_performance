@@ -1140,7 +1140,8 @@ if __name__ == '__main__':
                 bow_confs = bow_conf
             else:
                 bow_results = np.concatenate((bow_results,bow_result),axis=1)
-                bow_confs = np.concatenate((bow_confs,bow_conf),axis=0)
+                bow_confs = np.concatenate((bow_confs,bow_conf),axis=1)
+            
             #break
     
     # ------------------------------------------------------------------------
@@ -1148,6 +1149,8 @@ if __name__ == '__main__':
     
     # Final_results
     all_results = np.concatenate((insturment_results,bow_results),axis=0)
+    all_results_confs = np.concatenate((np.ones((insturment_results.shape[:2]))[:, :, np.newaxis],bow_confs[:, :, np.newaxis]),axis=0)
+    # all_results_confs = np.ones((all_results.shape[:2]))[:, :, np.newaxis]
     
     #Visualize
     # ------------------------------------------------------------------------    
@@ -1161,7 +1164,6 @@ if __name__ == '__main__':
         os.makedirs(save_sub_sub_dir_path, exist_ok=True)
     
     out = cv2.VideoWriter(f'{save_folder_path}/{parent_dir}/{proj_dir}/{proj_dir}_{cam_num}_TAPIR_{TAPIR_model_type}.avi', fourcc=fourcc, fps=30, frameSize=np.flip(frame_size))# frame.shape[0:2]
-    #print(f'{proj_dir}/{file_name}.avi')
 
     # Visualize and generate a video.
     for num in tqdm(range(end_frame_idx),desc=f'Create the inferring results of video for "Camera:{cam_num}"'):
@@ -1181,8 +1183,8 @@ if __name__ == '__main__':
     
     # Get the outputs
     # ------------------------------------------------------------------------
-    visibles_results = np.ones((all_results.shape[:2]))[:, :, np.newaxis]
-    pos = np.concatenate((all_results, visibles_results), axis=2).transpose(1, 0, 2)
+    
+    pos = np.concatenate((all_results, all_results_confs), axis=2).transpose(1, 0, 2)
 
     save_folder_path = './kp_result'
     save_sub_sub_dir_path = save_folder_path + os.sep + parent_dir + os.sep + proj_dir + os.sep + cam_num
