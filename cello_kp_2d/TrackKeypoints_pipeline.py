@@ -673,165 +673,24 @@ def verify_handpos(summary,longest_line,video_num):
 
 
 def detect_frog_tip(summary,img,handpos,longest_line):
+    '''
     x1,y1,x2,y2 = summary['bow_bbox'].xyxy.numpy().flatten().astype('uint32')
     imgbow = img[y1:y2,x1:x2,:]
     
-    '''
+    
     plot_images([imgbow], ['longest_line'], cmaps='gray')
     plotline = longest_line.reshape(1, 2, 2)
     plot_lines([plotline], line_colors='red', indices=range(1))
     plt.show()
     '''
-
+    # 定义弓根和弓头
     if math.dist(handpos,longest_line[0])<math.dist(handpos,longest_line[1]):
         frog = longest_line[0]
         tip = longest_line[1]
     else:
         frog = longest_line[1]
         tip = longest_line[0]
-
-    
-    longest_line_angle = cal_angle(longest_line[0],longest_line[1])
-
-    aim_angle = longest_line_angle
-    longest_line_k,longest_line_b = line_equation_two_points(longest_line[0][0], longest_line[0][1],
-                                                            longest_line[1][0],longest_line[1][1])
-    
-    # 检测弓根
-    frog_dis = np.inf
-    frog_res = frog
-    frog_det = frog
-    
-    while True:
-        frog_li = []
-        for i in range(len(pred_lines)):
-            pred_line_angle = cal_angle(pred_lines[i][0],pred_lines[i][1])
-            sep_points_angle = cal_angle(frog,pred_lines[i][np.argmax(pred_lines[i].copy().T[0])])
-
-            condition1_angle_threshold = 10
-            condition2_angle_threshold = 5
-            condition3_distance_threshold = 5
-
-            if aim_angle - condition1_angle_threshold < 0:
-                condition1 = pred_line_angle < aim_angle + condition1_angle_threshold or pred_line_angle > 180 - aim_angle - condition1_angle_threshold
-            elif aim_angle + condition1_angle_threshold > 180:
-                condition1 = pred_line_angle > aim_angle - condition1_angle_threshold or pred_line_angle < 180 - aim_angle + condition1_angle_threshold
-            else:    
-                condition1 = aim_angle - condition1_angle_threshold < pred_line_angle < aim_angle + condition1_angle_threshold
-
-            if aim_angle - condition2_angle_threshold < 0:
-                condition2 = sep_points_angle < aim_angle + condition2_angle_threshold or sep_points_angle > 180 - aim_angle - condition2_angle_threshold
-            elif aim_angle + condition2_angle_threshold > 180:
-                condition2 = sep_points_angle > aim_angle - condition2_angle_threshold or sep_points_angle < 180 - aim_angle + condition2_angle_threshold
-            else:
-                condition2 = aim_angle - condition2_angle_threshold < sep_points_angle < aim_angle + condition2_angle_threshold
-
-            point1_distance2longestline = distance_point_to_line(pred_lines[i][0][0],pred_lines[i][0][1],
-                                                                longest_line_k,-1,longest_line_b)
-            point2_distance2longestline = distance_point_to_line(pred_lines[i][1][0],pred_lines[i][1][1],
-                                                                longest_line_k,-1,longest_line_b)
-            condition3 = point1_distance2longestline < condition3_distance_threshold and point2_distance2longestline < condition3_distance_threshold
-
-
-            if imgbow.shape[0]<imgbow.shape[1]:
-                condition4 = max(pred_lines[i][0][0],pred_lines[i][1][0]) < frog_det[0]
-            else:
-                condition4 = max(pred_lines[i][0][1],pred_lines[i][1][1]) > frog_det[1]
-
-            if handpos == (0,0):
-                condition5 = pred_lines[i][np.argmin(pred_lines[i].copy().T[0])][1] < imgbow.shape[0] / 4
-            elif handpos == (0,imgbow.shape[0]):
-                condition5 = pred_lines[i][np.argmin(pred_lines[i].copy().T[0])][1] > imgbow.shape[0] / 4 * 3
-            else:
-                condition5 = True
-            
-            if condition1 and condition2 and condition3 and condition4 and condition5:
-                if math.dist(frog,pred_lines[i][np.argmax(pred_lines[i].copy().T[0])])< frog_dis:
-                    frog_dis = math.dist(frog,pred_lines[i][np.argmax(pred_lines[i].copy().T[0])])
-                    frog_res = pred_lines[i][np.argmin(pred_lines[i].copy().T[0])]
-                '''
-                plot_images([imgbow], ['DeepLSD lines[frog]'], cmaps='gray')
-                plotline = pred_lines[i].reshape(1, 2, 2)
-                plot_lines([plotline], line_colors='red', indices=range(1))
-                plt.show()
-                '''
-        
-        frog_det = frog_res
-        if frog_li == []:
-            break
-        else:
-            aim_angle = cal_angle(frog_li[-1][0],frog_li[-1][1]) 
-    
-    
-    # 检测弓头 
-    tip_dis = np.inf
-    tip_res = tip
-    tip_det = tip
-
-    aim_angle = longest_line_angle
-
-    while True:
-        tip_li = []
-        for i in range(len(pred_lines)):
-            pred_line_angle = cal_angle(pred_lines[i][0],pred_lines[i][1])
-            sep_points_angle = cal_angle(tip,pred_lines[i][np.argmax(pred_lines[i].copy().T[0])])
-
-            condition1_angle_threshold = 10 
-            condition2_angle_threshold = 5
-            condition3_distance_threshold = 5
-
-            if aim_angle - condition1_angle_threshold < 0:
-                condition1 = pred_line_angle < aim_angle + condition1_angle_threshold or pred_line_angle > 180 - aim_angle - condition1_angle_threshold
-            elif aim_angle + condition1_angle_threshold > 180:
-                condition1 = pred_line_angle > aim_angle - condition1_angle_threshold or pred_line_angle < 180 - aim_angle + condition1_angle_threshold
-            else:    
-                condition1 = aim_angle - condition1_angle_threshold < pred_line_angle < aim_angle + condition1_angle_threshold
-
-            if aim_angle - condition2_angle_threshold < 0:
-                condition2 = sep_points_angle < aim_angle + condition2_angle_threshold or sep_points_angle > 180 - aim_angle - condition2_angle_threshold
-            elif aim_angle + condition2_angle_threshold > 180:
-                condition2 = sep_points_angle > aim_angle - condition2_angle_threshold or sep_points_angle < 180 - aim_angle + condition2_angle_threshold
-            else:    
-                condition2 = aim_angle - condition2_angle_threshold < sep_points_angle < aim_angle + condition2_angle_threshold
-
-            point1_distance2longestline = distance_point_to_line(pred_lines[i][0][0],pred_lines[i][0][1],
-                                                                longest_line_k,-1,longest_line_b)
-            point2_distance2longestline = distance_point_to_line(pred_lines[i][1][0],pred_lines[i][1][1],
-                                                                longest_line_k,-1,longest_line_b)
-            condition3 = point1_distance2longestline < condition3_distance_threshold and point2_distance2longestline < condition3_distance_threshold
-
-            if imgbow.shape[0] < imgbow.shape[1]:
-                condition4 = min(pred_lines[i][0][0],pred_lines[i][1][0]) > tip_det[0]
-            else:
-                condition4 = min(pred_lines[i][0][1],pred_lines[i][1][1]) < tip_det[1]
-
-            if handpos == (0,0):
-                condition5 = pred_lines[i][np.argmax(pred_lines[i].copy().T[0])][1] > imgbow.shape[0] / 4 * 3
-            elif handpos == (0,imgbow.shape[0]):#imgbow.shape[0]
-                condition5 = pred_lines[i][np.argmax(pred_lines[i].copy().T[0])][1] < imgbow.shape[0] / 4 
-            else:
-                condition5 = True
-
-            if condition1 and condition2 and condition3 and condition4 and condition5:
-                if math.dist(tip_det,pred_lines[i][np.argmin(pred_lines[i].copy().T[0])])< tip_dis :
-                    tip_dis = math.dist(tip,pred_lines[i][np.argmin(pred_lines[i].copy().T[0])])
-                    tip_res = pred_lines[i][np.argmax(pred_lines[i].copy().T[0])]
-                    tip_li.append(pred_lines[i])
-                    
-                    '''
-                    plot_images([imgbow], ['DeepLSD lines[tip]'], cmaps='gray')
-                    plotline = pred_lines[i].reshape(1, 2, 2)
-                    plot_lines([plotline], line_colors='red', indices=range(1))
-                    plt.show()
-                    '''
-                    
-        tip_det = tip_res
-        if tip_li == []:
-            break
-        else:
-            aim_angle = cal_angle(tip_li[-1][0],tip_li[-1][1])
-
-    return frog_res,tip_res
+    return frog,tip
 
 
 def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id = None):
@@ -911,7 +770,7 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
     
     #improve frog
     frog += (x1,y1)
-    with open(f'../human_kp_2d/kp_result/{proj_dir}/{cam_num}/{video_num + 1}.json','r') as f:
+    with open(f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{cam_num}/{video_num + 1}.json','r') as f:
         human2D_data = np.asarray(json.load(f))#,dtype = np.int32
     f.close()
 
@@ -984,6 +843,7 @@ def var_to_dict(**kwargs):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='track_keypoints_pipeline')
     parser.add_argument('--instrument', default='cello', type=str, required=True)
+    parser.add_argument('--parent_dir', default=None, type=str, required=False)
     parser.add_argument('--proj_dir', default='cello01', type=str, required=True)
     parser.add_argument('--video_path', default=r'../data/cello/cello01/cello01_21334181.avi',
                         type=str, required=True)
@@ -994,12 +854,16 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
+    parent_dir = args.parent_dir
     proj_dir = args.proj_dir
     video_path = args.video_path
     start_frame_idx = args.start_frame_idx
     instrument = args.instrument
     end_frame_idx = args.end_frame_idx
     iter_frames = args.iter_frames
+    
+    if parent_dir is None:
+        parent_dir = proj_dir[:-2]
     
     '''
     proj_dir = 'cello01'
@@ -1024,7 +888,7 @@ if __name__ == '__main__':
     parent_folder = os.path.dirname(video_path)
     base_name = os.path.basename(video_path)
 
-    labeled_json = f'labeled_jsons/{instrument}/{proj_dir}/{cam_num}_{start_frame_idx}.json'
+    labeled_json = f'labeled_jsons/{parent_dir}/{proj_dir}/{cam_num}_{start_frame_idx}.json'
     inform.update(var_to_dict(labeled_json = labeled_json))
 
     inform.update(get_seperate_list(inform))
@@ -1062,7 +926,7 @@ if __name__ == '__main__':
         TAPIR_model, TAPIR_inference = TAPIR_test_checkpoint(inform)
         inform.update(var_to_dict(TAPIR_inference=TAPIR_inference))
     inform.update(var_to_dict(TAPIR_model=TAPIR_model))
-
+    
 
     # Track[Infer] (TAP)
     # ------------------------------------------------------------------------
@@ -1198,7 +1062,7 @@ if __name__ == '__main__':
         if not os.path.exists(os.path.dirname(YOLOv8_ckpt_path)):
             os.makedirs(os.path.dirname(YOLOv8_ckpt_path), exist_ok=True)
     YOLOv8_ckpt = YOLO(YOLOv8_ckpt_path+os.sep+'bow_detection.pt')
-    inform.update(var_to_dict(YOLO_conf_threshhold=0.25))
+    inform.update(var_to_dict(YOLO_conf_threshhold=0.5))
     
     # DeepLSD checkpoint loading
     DeepLSD_ckpt_path = os.path.abspath('.')+'/deeplsd/checkpoints/deeplsd_md.tar'
@@ -1230,7 +1094,7 @@ if __name__ == '__main__':
 
             #YOLO
             YOLO_results = YOLOv8_ckpt.predict(image.copy()[:,:,::-1],conf=inform['YOLO_conf_threshhold'],
-                                       imgsz=640,device =torch_device,verbose=False)
+                                               imgsz=640,device =torch_device,verbose=False)
             num_bbox = len(YOLO_results[0].boxes.cls)
             #print('bbox_num',num_bbox)
             if num_bbox >= 1:
@@ -1238,18 +1102,17 @@ if __name__ == '__main__':
 
                 current_conf = inform['bow_bbox'].conf.float()[0]#YOLO_results[0].boxes[0].conf.cpu().numpy()[0]
                 bow_bbox_xyxy = inform['bow_bbox'].xyxy.numpy().flatten()  #YOLO_results[0].boxes[0].xyxy.cpu().numpy().flatten()
-
                 bow_bbox_xyxy_int32 = bow_bbox_xyxy.astype('uint32')
 
-            else:
+            else:                
                 current_conf = inform['bow_bbox'].conf.float()[0] if inform['bow_bbox'].conf.float()[0] >= inform['YOLO_conf_threshhold'] else 0
                 bbox_border = 10
                 if current_conf == 0 and previous_conf != 0:
                     inform['bow_bbox'].xyxy.numpy().flatten()[:2 ] -= bbox_border
-                    inform['bow_bbox'].xyxy.numpy().flatten()[-2:] += bbox_border
+                    inform['bow_bbox'].xyxy.numpy().flatten()[-2:] += bbox_bordere
                 bow_bbox_xyxy = inform['bow_bbox'].xyxy.numpy().flatten()
                 bow_bbox_xyxy_int32 = bow_bbox_xyxy.astype('uint32')
-
+            
             previous_conf = current_conf
 
             #DeepLSD
@@ -1261,14 +1124,17 @@ if __name__ == '__main__':
 
             pred_lines = DeepLSD_infer(inform)
             longest_line,pred_lines = compute_longest_line(inform,pred_lines)
-
-            handpos = verify_handpos(inform,longest_line,num)
-            frog,tip = detect_frog_tip(inform,image,handpos,longest_line)
-
-            frog,tip,previous_frog_id = improved_frog_tip(inform,num,frog,tip,handpos,image,previous_frog_id)
-            bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
-            bow_conf = np.ones((bow_result.shape[0],1))
-            #print(frog,tip)
+            if longest_line.size >0:
+                handpos = verify_handpos(inform,longest_line,num)
+                frog,tip = detect_frog_tip(inform,image,handpos,longest_line)
+                frog,tip,previous_frog_id = improved_frog_tip(inform,num,frog,tip,handpos,image,previous_frog_id)
+                bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
+                bow_conf = np.ones((bow_result.shape[0],1))
+            
+            else:
+                bow_result = np.zeros((2,1,2))
+                bow_conf = np.zeros((bow_result.shape[0],1))
+            
             if (num + 1) == start_frame_idx:
                 bow_results = bow_result
                 bow_confs = bow_conf
@@ -1290,11 +1156,11 @@ if __name__ == '__main__':
     frame_size = tuple(np.flip(video.get_data(0).shape)[1:]//4)  # tuple->(width,height):(2300,2656)
     
     save_folder_path = './kp_result_videos'
-    save_sub_sub_dir_path = save_folder_path + os.sep + proj_dir
+    save_sub_sub_dir_path = save_folder_path + os.sep + parent_dir + os.sep + proj_dir
     if not os.path.exists(save_sub_sub_dir_path):
         os.makedirs(save_sub_sub_dir_path, exist_ok=True)
     
-    out = cv2.VideoWriter(f'{save_folder_path}/{proj_dir}/{proj_dir}_{cam_num}_TAPIR_{TAPIR_model_type}.avi', fourcc=fourcc, fps=30, frameSize=np.flip(frame_size))# frame.shape[0:2]
+    out = cv2.VideoWriter(f'{save_folder_path}/{parent_dir}/{proj_dir}/{proj_dir}_{cam_num}_TAPIR_{TAPIR_model_type}.avi', fourcc=fourcc, fps=30, frameSize=np.flip(frame_size))# frame.shape[0:2]
     #print(f'{proj_dir}/{file_name}.avi')
 
     # Visualize and generate a video.
@@ -1319,12 +1185,12 @@ if __name__ == '__main__':
     pos = np.concatenate((all_results, visibles_results), axis=2).transpose(1, 0, 2)
 
     save_folder_path = './kp_result'
-    save_sub_sub_dir_path = save_folder_path + os.sep + proj_dir + os.sep + cam_num
+    save_sub_sub_dir_path = save_folder_path + os.sep + parent_dir + os.sep + proj_dir + os.sep + cam_num
     if not os.path.exists(save_sub_sub_dir_path):
         os.makedirs(save_sub_sub_dir_path, exist_ok=True)
 
     for idx, kp_info in enumerate(pos):
-        with open(f'{save_folder_path}/{proj_dir}/{cam_num}/{start_frame_idx + idx}.json', 'w') as f:
+        with open(f'{save_folder_path}/{parent_dir}/{proj_dir}/{cam_num}/{start_frame_idx + idx}.json', 'w') as f:
             f.write(json.dumps(kp_info.tolist()))
         f.close()
     

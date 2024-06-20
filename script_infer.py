@@ -20,7 +20,7 @@ folder_names = get_folder(instrument,root_path)
 
 
 index = -1
-batch_size = 49
+batch_size = 85
 
 if (index == -1 and batch_size == 1):
     folder_names = [folder_names[-1]]
@@ -34,12 +34,11 @@ print(folder_names)
 parent_dir = instrument
 os.chdir('./human_kp_2d/')    
 for folder_name in folder_names:
-    summary = get_inform(folder_name,root_path)
+    summary, _ = get_inform(folder_name,root_path)
     proj_dir = folder_name
     
-    # always start from first frame
-    start_frame_idx = summary['StartFrame']
-    end_frame_idx =  summary['EndFrame']# could be a bit bigger than the exact end frame
+    start_frame_idx = summary['StartFrame'] # use annotated data in json file or could start from first frame
+    end_frame_idx = summary['EndFrame'] # use annotated data in json file or could be a bit bigger than the exact end frame
     
     
     """

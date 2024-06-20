@@ -17,6 +17,7 @@ def get_folder(instrument,root_path):
 
 
 def get_inform(folder_name,root_path):
-    with open(f'{root_path}{os.sep}{folder_name}{os.sep}{folder_name}_summary.json','r') as f:
+    summary_jsonfile_path = os.path.abspath(f'{root_path}{os.sep}{folder_name}{os.sep}{folder_name}_summary.json')
+    with open(summary_jsonfile_path,'r') as f:
         summary = json.load(f) 
-    return summary
+    return summary,summary_jsonfile_path
