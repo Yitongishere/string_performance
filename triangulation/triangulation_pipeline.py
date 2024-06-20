@@ -729,32 +729,44 @@ KPT_NUM = 142
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='triangulation_pipeline')
-    parser.add_argument('--cam_file', default='jsons/cello_1113_scale.json', type=str, required=True)
-    parser.add_argument('--parent_dir', default='cello_1113', type=str, required=True)
-    parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
-    parser.add_argument('--instrument', default='cello', type=str, required=False)
-    parser.add_argument('--start_frame', default='128', type=int, required=True)
-    parser.add_argument('--end_frame', default='786', type=int, required=True)
+    parser.add_argument('--summary_jsonfile', default='../data/cello/cello01/cello01_summary.json', type=str, required=True)
+    parser.add_argument('--instrument', default='cello', type=str, required=True)
+    parser.add_argument('--parent_dir', default=None, type=str, required=False)
+    parser.add_argument('--proj_dir', default=None, type=str, required=False)
+    parser.add_argument('--start_frame', default=None, type=int, required=False)
+    parser.add_argument('--end_frame', default=None, type=int, required=False)
+    
     args = parser.parse_args()
-    cam_file = args.cam_file
-    parent_dir = args.parent_dir
-    proj_dir = args.proj_dir
     instrument = args.instrument
-    start_frame = args.start_frame
-    end_frame = args.end_frame
+    
+    with open(args.summary_jsonfile,'r') as f:
+        summary = json.load(f)
+    f.close()
+    
+    if args.parent_dir is None or args.proj_dir is None:
+        parent_dir = args.summary_jsonfile.split(os.sep)[-3]
+        proj_dir = args.summary_jsonfile.split(os.sep)[-2]
+    else:
+        parent_dir = args.parent_dir
+        proj_dir = args.proj_dir
+    
+    if args.start_frame is None:
+        start_frame = summary['StartFrame']
+    else:
+        start_frame = args.start_frame
+    
+    if args.end_frame is None:
+        end_frame = summary['EndFrame']
+    else:
+        end_frame = args.end_frame
+    
+    cam_param = summary['CameraParameter']
 
     point_offset = 0
     if instrument == 'violin':
         point_offset += 2  # violin has less key points
         KPT_NUM -= 2
-
-    # cam_file = "jsons/cello_1113_scale.json"
-    # proj_dir = "cello_1113_scale"
-    cam_param = json.load(open(cam_file))
-    # R = np.array(cam_param['cam0']['R']).reshape([3, 3])
-    # T = np.array(cam_param['cam0']['T'])
-    # ic(R, T)
-    # ic(T@R)
+    
 
     """read 2d results."""
     # cello used cams
@@ -812,6 +824,7 @@ if __name__ == "__main__":
             except FileNotFoundError as e:
                 pass
             try:
+                print(1)
                 human_joint = f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 human_2d_cc_ff = np.array(json.load(open(human_joint)))
             except FileNotFoundError as e:
@@ -821,6 +834,7 @@ if __name__ == "__main__":
             # TODO: EDIT CELLO KEY POINTS
             cello_2d_cc_ff = np.zeros([9-point_offset, 3])  # 9 cello key points in total (default score 0 will not be used)
             try:
+                print(2)
                 cello_json_path = f'../cello_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
                 # Resolve XML
@@ -845,7 +859,7 @@ if __name__ == "__main__":
         kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=KPT_NUM, epsilon=60, kpt_thr=0.6)
         # kp_3d_all[ff] = kp_3d
         kp_3d_all.append(kp_3d)
-        print(f'Frame {ff} triangulation done.')
+        print(f'{proj_dir}: | Frame {ff} triangulation done.')
 
     kp_3d_all = np.array(kp_3d_all)
 
