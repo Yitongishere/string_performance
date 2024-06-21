@@ -822,7 +822,31 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
         plt.show()
         '''
         return np.asarray(frog),np.asarray(tip),previous_frog_id
-        
+
+
+def revise_frog_tip(summary,video_num,bow_results,previous_frog_id):
+    instrument = summary['instrument']
+    proj_dir = summary['proj_dir']
+    cam_num = summary['cam_num']
+    previous_frog,previous_tip = bow_results[:,-1,0],bow_results[:,-1,1]
+    print(previous_frog,previous_tip)
+    with open(f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{cam_num}/{video_num + 1}.json','r') as f:
+        human2D_data = np.asarray(json.load(f))#,dtype = np.int32
+    f.close()
+    if instrument == 'cello':
+        frog_pos = [
+                    (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2
+                    ]
+    else:
+        frog_pos = [(human2D_data[126-1][:2]+human2D_data[122-1][:2])/2,
+                    (human2D_data[127-1][:2]+human2D_data[123-1][:2])/2,
+                    (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2,
+                    (human2D_data[129-1][:2]+human2D_data[125-1][:2])/2
+                    ]
+    frog = frog_pos[previous_frog_id]
+    tip = previous_tip + (frog - previous_frog)
+    return np.asarray(frog),np.asarray(tip),previous_frog_id
+
 
 def adjust_image_factor(img, contrast=1, brightness=1):
     from PIL import Image, ImageEnhance
@@ -1062,7 +1086,7 @@ if __name__ == '__main__':
         if not os.path.exists(os.path.dirname(YOLOv8_ckpt_path)):
             os.makedirs(os.path.dirname(YOLOv8_ckpt_path), exist_ok=True)
     YOLOv8_ckpt = YOLO(YOLOv8_ckpt_path+os.sep+'bow_detection.pt')
-    inform.update(var_to_dict(YOLO_conf_threshhold=0.5))
+    inform.update(var_to_dict(YOLO_conf_threshhold=0.25))
     
     # DeepLSD checkpoint loading
     DeepLSD_ckpt_path = os.path.abspath('.')+'/deeplsd/checkpoints/deeplsd_md.tar'
@@ -1128,13 +1152,18 @@ if __name__ == '__main__':
                 handpos = verify_handpos(inform,longest_line,num)
                 frog,tip = detect_frog_tip(inform,image,handpos,longest_line)
                 frog,tip,previous_frog_id = improved_frog_tip(inform,num,frog,tip,handpos,image,previous_frog_id)
-                bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
-                bow_conf = np.ones((bow_result.shape[0],1))
+                #bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
+                #bow_conf = np.ones((bow_result.shape[0],1))
             
             else:
-                bow_result = np.zeros((2,1,2))
-                bow_conf = np.zeros((bow_result.shape[0],1))
-            
+                #bow_result = np.zeros((2,1,2))
+                frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
+                #bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
+                #bow_conf = np.zeros((bow_result.shape[0],1))
+                print(frog,tip)
+                print('revised')
+            bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
+            bow_conf = np.ones((bow_result.shape[0],1))            
             if (num + 1) == start_frame_idx:
                 bow_results = bow_result
                 bow_confs = bow_conf
@@ -1149,8 +1178,8 @@ if __name__ == '__main__':
     
     # Final_results
     all_results = np.concatenate((insturment_results,bow_results),axis=0)
-    all_results_confs = np.concatenate((np.ones((insturment_results.shape[:2]))[:, :, np.newaxis],bow_confs[:, :, np.newaxis]),axis=0)
-    # all_results_confs = np.ones((all_results.shape[:2]))[:, :, np.newaxis]
+    # all_results_confs = np.concatenate((np.ones((insturment_results.shape[:2]))[:, :, np.newaxis],bow_confs[:, :, np.newaxis]),axis=0)
+    all_results_confs = np.ones((all_results.shape[:2]))[:, :, np.newaxis]
     
     #Visualize
     # ------------------------------------------------------------------------    
