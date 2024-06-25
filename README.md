@@ -40,9 +40,9 @@ Our Example (Windows or linux, torch==1.9.1+cu111, mmcv=2.0.0)
 ### 4. CREPE installation
 You may need to install either Tensorflow or Torch as well.
 
-Please refer to [CREPE Documentation(Tensorflow)](https://github.com/marl/crepe)
+Tensorflow: Please refer to [CREPE Documentation](https://github.com/marl/crepe)
 
-Please refer to [TORCHCREPE Documentation(Torch)]([https://github.com/marl/crepe](https://github.com/maxrmorrison/torchcrepe))
+Torch: Please refer to [TORCHCREPE Documentation](https://github.com/maxrmorrison/torchcrepe)
 
 ### 5. TAP-Net installation
 If you want to track the cello key points using [TAPIR](https://deepmind-tapir.github.io/), you can either
