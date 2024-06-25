@@ -39,8 +39,9 @@ Our Example (Windows or linux, torch==1.9.1+cu111, mmcv=2.0.0)
 
 ### 4. CREPE installation
 You may need to install either Tensorflow or Torch as well.
+
 Please refer to [CREPE Documentation(Tensorflow)](https://github.com/marl/crepe)
-You may need to install tensorflow as well.
+
 Please refer to [TORCHCREPE Documentation(Torch)]([https://github.com/marl/crepe](https://github.com/maxrmorrison/torchcrepe))
 
 ### 5. TAP-Net installation
