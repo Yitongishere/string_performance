@@ -4,6 +4,9 @@ import subprocess
 def getPython3_command(python3_command=None):
     if python3_command is None:
         python3_command = ['python3','python']
+    else:
+        if type(python3_command) != list:
+            python3_command = list(str(python3_command))
     for py_cmd in python3_command:
         try:
             result = subprocess.run([py_cmd, '--version'], check=True, 
