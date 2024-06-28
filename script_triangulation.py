@@ -10,7 +10,8 @@ You may need to edit: parent_dir, proj_dir, start_frame_idx, end_frame_idx, reso
 """
 
 import os
-from tools.load_summary import get_folder, get_inform, get_folder_extra
+from tools.Python_in_Shell import getPython3_command
+from tools.load_summary import get_folder, get_inform
 from multiprocessing import Pool
 
 
@@ -29,7 +30,7 @@ def triangulation_process(folder_name):
     
     os.chdir('./triangulation/')
     
-    triangulation_command = f'python3 triangulation_pipeline.py ' \
+    triangulation_command = f'{shell_python_cmd} triangulation_pipeline.py ' \
                             f'--summary_jsonfile {summary_jsonfile_path} ' \
                             f'--parent_dir {parent_dir} ' \
                             f'--proj_dir {proj_dir} ' \
@@ -38,6 +39,8 @@ def triangulation_process(folder_name):
                             f'--instrument {instrument}'
     os.system(triangulation_command)
 
+
+shell_python_cmd = getPython3_command()
 
 if __name__ == '__main__':
     instrument = 'violin'
