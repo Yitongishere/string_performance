@@ -729,7 +729,10 @@ KPT_NUM = 142
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='triangulation_pipeline')
-    parser.add_argument('--summary_jsonfile', default='../data/cello/cello01/cello01_summary.json', type=str, required=True)
+    parser.add_argument('--summary_jsonfile',
+                        default='../data/cello/cello01/cello01_summary.json',
+                        type=str, 
+                        required=True)
     parser.add_argument('--instrument', default='cello', type=str, required=True)
     parser.add_argument('--parent_dir', default=None, type=str, required=False)
     parser.add_argument('--proj_dir', default=None, type=str, required=False)
@@ -771,11 +774,12 @@ if __name__ == "__main__":
     """read 2d results."""
     # cello used cams
     customed_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
-                     'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
-                     'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19', 'cam20', 'cam21', 'cam22', 'cam23']
+                 'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
+                 'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19', 'cam20', 'cam21', 'cam22', 'cam23']
     
     if instrument == 'violin':
-        customed_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
+        # customed_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
+        customed_cams = ['cam10', 'cam11', 'cam12', 'cam13', 'cam21', 'cam22', 'cam0','cam1']
         CELLO_LINKS = CELLO_LINKS[:-3]
         CELLO_LINKS.append([136, 137])
         BOW_LINKS = np.array(BOW_LINKS) - 2
