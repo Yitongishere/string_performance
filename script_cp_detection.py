@@ -9,7 +9,7 @@ You may need to edit: parent_dir, proj_dir, wave_file, visualize, draw_cps, draw
 
 import os
 from tools.Python_in_Shell import getPython3_command
-from tools.load_summary import get_folder, get_inform, get_folder_extra
+from tools.load_summary import get_folder, get_inform
 from multiprocessing import Pool
 
 
