@@ -2,7 +2,6 @@ import argparse
 import json
 import math
 import os.path
-import crepe
 import cv2
 from scipy.io import wavfile
 import matplotlib.pyplot as plt
@@ -10,6 +9,8 @@ import numpy as np
 from icecream import ic
 import freq_position
 import librosa
+import sys
+sys.path.append('..')
 from triangulation.smooth import Savgol_Filter
 from triangulation.triangulation_pipeline import visualize_3d
 from triangulation.triangulation_pipeline import FULL_FINGER_INDICES
@@ -24,14 +25,13 @@ def draw_fundamental_curve(time_arr, freq_arr, conf_arr, proj, algo):
     axes.set_title('Pitch Curve')
     fig.colorbar(ax)
     # plt.show()
-    if not os.path.exists('output'):
-        os.mkdir('output')
+    
     if not os.path.exists(f'output/{proj}'):
-        os.mkdir(f'output/{proj}')
+        os.makedirs(f'output/{proj}', exist_ok=True)
     plt.savefig(f'output/{proj}/pitch_curve_{algo}.jpg')
 
 
-def draw_contact_points(data, proj, file_name):
+def draw_contact_points(data, file_name, proj):
     """
     data: [n, 4], n: frame number, 4: string number
     """
@@ -53,12 +53,10 @@ def draw_contact_points(data, proj, file_name):
     x2, y2 = zip(*string2)
     x3, y3 = zip(*string3)
     x4, y4 = zip(*string4)
-
-    if not os.path.exists('output'):
-        os.mkdir('output')
+    
     if not os.path.exists(f'output/{proj}'):
-        os.mkdir(f'output{proj}')
-
+        os.makedirs(f'output/{proj}', exist_ok=True)
+    
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(f'output/{proj}/{file_name}.avi', fourcc, fps=30, frameSize=[700, 1000])
     for frame_idx, frame in enumerate(data):
@@ -112,17 +110,40 @@ def draw_contact_points(data, proj, file_name):
         plt.close()
 
 
-def pitch_detect_crepe(proj, center, audio_path='wavs/background.wav'):
-    sr, audio = wavfile.read(audio_path)
+def pitch_detect_crepe(crepe_backend, proj, center, audio_path='wavs/background.wav'):
+
     # viterbi: smoothing for the pitch curve
     # step_size: 10 milliseconds
     # center: False, don't need to pad!
-    sample_num = audio.shape[0]
-    ic(audio.shape)
-    ic(sr)
-    frame_num = math.floor(sample_num / sr * 30)
-    time, frequency, confidence, activation = crepe.predict(
+    
+    if crepe_backend == 'torch':
+        import torchcrepe
+        audio, sr = torchcrepe.load.audio(audio_path)
+        audio_1channel = audio[0].reshape(1,-1)
+        sample_num = audio_1channel.size()[1]
+        frame_num = math.floor(sample_num / sr * 30)
+        frequency,confidence = torchcrepe.predict(audio_1channel,
+                                                   sr,
+                                                   hop_length=int(sr / 30.),
+                                                   return_periodicity=True,
+                                                   model='full',
+                                                   batch_size=2048,
+                                                   device='cuda:0')
+        time = np.arange(0,100/3.*frequency.size()[1],100/3.).reshape(-1,)
+        frequency = frequency.reshape(-1,)
+        confidence = confidence.reshape(-1,)
+        
+    elif crepe_backend == 'tensorflow':
+        import crepe
+        sr, audio = wavfile.read(audio_path)
+        sample_num = audio.shape[0]
+        frame_num = math.floor(sample_num / sr * 30)
+        time, frequency, confidence, activation = crepe.predict(
         audio, sr, viterbi=True, step_size=100 / 3, model_capacity='full', center=center)
+        
+    else:
+        print('the argument "crepe_backend" is either "tensorflow" or "torch"')
+    
     draw_fundamental_curve(time, frequency, confidence, proj, 'crepe')
     pitch_results = np.stack((time, frequency, confidence), axis=1)
     # Pitch Data Persistence
@@ -165,11 +186,11 @@ def point_init():
     return np.array([np.nan, np.nan, np.nan])
 
 
-def mapping(proj_dir, positions, visualize=False):
+def mapping(proj, positions, visualize=False):
     """
     positions: n * 4
     """
-    with open(f'../triangulation/kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'r') as f:
+    with open(f'../triangulation/kp_3d_result/{proj}/kp_3d_all_dw.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_all_dw'])
     # ic(kp_3d_all.shape)
@@ -377,14 +398,13 @@ def mapping(proj_dir, positions, visualize=False):
     # Origin one will be sent to further processing
     data_dict_smooth = {'kp_3d_all_dw_cp_smooth': kp_3d_all_cp_smooth.tolist()}
     data_dict_origin = {'kp_3d_all_dw_cp': kp_3d_all_cp.tolist()}
-
-    if not os.path.exists('cp_result'):
-        os.mkdir('cp_result')
-    if not os.path.exists(f'cp_result/{proj_dir}'):
-        os.mkdir(f'cp_result/{proj_dir}')
-    with open(f'cp_result/{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'w') as f:
+    
+    if not os.path.exists(f'cp_result/{proj}'):
+        os.makedirs(f'cp_result/{proj}', exist_ok=True)
+    
+    with open(f'cp_result/{proj}/kp_3d_all_dw_cp_smooth.json', 'w') as f:
         json.dump(data_dict_smooth, f)
-    with open(f'cp_result/{proj_dir}/kp_3d_all_dw_cp.json', 'w') as f:
+    with open(f'cp_result/{proj}/kp_3d_all_dw_cp.json', 'w') as f:
         json.dump(data_dict_origin, f)
     return filtered_positions
 
@@ -392,32 +412,33 @@ def mapping(proj_dir, positions, visualize=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='contact_points_pipeline')
     parser.add_argument('--wav_path', default='wavs/scale_128_786.wav', type=str, required=True)
-    parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
+    parser.add_argument('--parent_dir', default='cello', type=str, required=True)
+    parser.add_argument('--proj_dir', default='cello01', type=str, required=True)
     parser.add_argument('--visualize', default=False, required=False, action='store_true')
     parser.add_argument('--draw_cps', default=False, required=False, action='store_true')
     parser.add_argument('--draw_filtered_cps', default=False, required=False, action='store_true')
     parser.add_argument('--save_position', default=False, required=False, action='store_true')
+    parser.add_argument('--crepe_backend', default='torch', required=False)
     args = parser.parse_args()
+    
     wav_path = args.wav_path
+    parent_dir = args.parent_dir
     proj_dir = args.proj_dir
     visualize = args.visualize
     draw_cps = args.draw_cps
     draw_filtered_cps = args.draw_filtered_cps
     save_position = args.save_position
-
-    # proj_dir = 'aidelizan'
-    # wav_path = 'wavs/cello_0111_aidelizan_excerpt.wav'
-    pitch_results = pitch_detect_crepe(proj_dir, True, wav_path)
-    # np.savetxt(f'pitch_results_{proj_dir}', pitch_results)
-    # ic(pitch_results[352:360])
+    crepe_backend = args.crepe_backend
+    
+    proj = parent_dir + os.sep + proj_dir
+    
+    pitch_results = pitch_detect_crepe(crepe_backend, proj, True, wav_path)
     pitch_with_positions = freq_position.get_contact_position(pitch_results)
-    # ic(pitch_with_positions.shape)
     positions = pitch_with_positions[:, -4:]
-    # ic(positions.shape)
     if draw_cps:
-        draw_contact_points(positions, proj_dir, 'virtual_contact_point')
-    new_positions = mapping(proj_dir, positions, visualize=visualize)
+        draw_contact_points(positions, proj, 'virtual_contact_point')
+    new_positions = mapping(proj, positions, visualize=visualize)
     if save_position:
         np.savetxt(f'positions_{proj_dir}', new_positions)
     if draw_filtered_cps:
-        draw_contact_points(new_positions, proj_dir, 'virtual_contact_point_filtered')
+        draw_contact_points(new_positions, proj, 'virtual_contact_point_filtered')
