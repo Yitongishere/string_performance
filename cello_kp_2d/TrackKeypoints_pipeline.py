@@ -431,7 +431,7 @@ def TAPIR_infer(summary):
                             tracks[keypoints_num][false_indices[i]] = tracks[keypoints_num][false_indices[i]-1] + diff_guided
                             visibles[keypoints_num][false_indices[i]] = True
                 
-                for kp_idx in lacked_instrument_kps:
+                for kp_idx in losted_instrument_kps:
                     tracks = np.insert(tracks, kp_idx, 0, axis = 0)
                     visibles = np.insert(visibles, kp_idx, 0, axis = 0)
 
