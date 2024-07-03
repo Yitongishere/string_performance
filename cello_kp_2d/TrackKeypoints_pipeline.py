@@ -434,7 +434,6 @@ def TAPIR_infer(summary):
                 for kp_idx in losted_instrument_kps:
                     tracks = np.insert(tracks, kp_idx, 0, axis = 0)
                     visibles = np.insert(visibles, kp_idx, 0, axis = 0)
-                losted_instrument_kps = []
                 
                 if len(frame_alllist) == 1:
                     tracks_result = tracks
@@ -449,6 +448,10 @@ def TAPIR_infer(summary):
                     tracks_result = np.concatenate((tracks_result, tracks[:,:-1,:]), axis=1)
                     visibles_result = np.concatenate((visibles_result, visibles[:,:-1]), axis=1)
                 frames = media.resize_video(frames[-1][np.newaxis, :], (resize_pixel, resize_pixel))
+                
+                for kp_idx in sorted(losted_instrument_kps,reverse = True):
+                    tracks = np.delete(tracks, kp_idx, 0, axis = 0)
+                    visibles = np.delete(visibles, kp_idx, 0, axis = 0)
                 
                 print('-' * 80)
     
