@@ -364,7 +364,11 @@ def TAPIR_infer(summary):
                             continue
 
                     kpdict = dict(sorted(kpdict.items(), key=lambda item: item[0], reverse=False))
-
+                    
+                    # If the label is lost, use a 0 matrix to represent the result 
+                    # Identify lost tags -> lacked_instrument_kps
+                    losted_instrument_kps = list(set(range(len(instrument_kps))) ^ set(kpdict.keys()))
+                    
                     query_points = np.concatenate(
                         (np.ones((len(kpdict), 1)) * (num - iter_frames + 1), np.flip(list(kpdict.values())-origin, axis=1)), axis=1)
                     #print('qp_ori:',query_points)
@@ -426,7 +430,10 @@ def TAPIR_infer(summary):
                                 diff_guided = tracks[-1][false_indices[i]] - tracks[-1][false_indices[i] - 1]
                             tracks[keypoints_num][false_indices[i]] = tracks[keypoints_num][false_indices[i]-1] + diff_guided
                             visibles[keypoints_num][false_indices[i]] = True
-
+                
+                for kp_idx in lacked_instrument_kps:
+                    tracks = np.insert(tracks, kp_idx, 0, axis = 0)
+                    visibles = np.insert(visibles, kp_idx, 0, axis = 0)
 
                 if len(frame_alllist) == 1:
                     tracks_result = tracks
@@ -445,6 +452,7 @@ def TAPIR_infer(summary):
                 print('-' * 80)
     
     summary.update(instrument_kp_tracks = tracks_result[:len(instrument_kps),:])
+    summary.update(instrument_kp_tracks_conf = visibles_result[:len(instrument_kps),:])
     summary.update(guided_kp_tracks = tracks_result[len(instrument_kps):,:])
     return summary
 ################################# TAPIR #################################
@@ -972,7 +980,8 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
+        
+        insturment_results_conf = inform['instrument_kp_tracks_conf']
         insturment_results = inform['instrument_kp_tracks']+inform['origin']
 
 
@@ -995,7 +1004,8 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
+        
+        insturment_results_conf = np.concatenate((insturment_results_conf,inform['instrument_kp_tracks_conf']), axis=0)
         insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
 
         # ------------------------------------------------------------------------
@@ -1016,9 +1026,10 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
+        
+        insturment_results_conf = np.concatenate((insturment_results_conf,inform['instrument_kp_tracks_conf']), axis=0)
         insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
-
+        insturment_results = insturment_results*insturment_results_conf[:,:, np.newaxis]
 
     # ------------------------------------------------------------------------
     else:
@@ -1043,7 +1054,8 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
+        
+        insturment_results_conf = inform['instrument_kp_tracks_conf']
         insturment_results = inform['instrument_kp_tracks']+inform['origin']
 
 
@@ -1070,9 +1082,10 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
-        insturment_results=np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
-
+        
+        insturment_results_conf = np.concatenate((insturment_results_conf,inform['instrument_kp_tracks_conf']), axis=0)
+        insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
+        insturment_results = insturment_results*insturment_results_conf[:,:, np.newaxis]
 
 
     # ------------------------------------------------------------------------
@@ -1178,8 +1191,10 @@ if __name__ == '__main__':
     
     # Final_results
     all_results = np.concatenate((insturment_results,bow_results),axis=0)
+    all_results_confs = np.concatenate((insturment_results_conf,bow_confs),axis=0)[:, :, np.newaxis]
+    
     # all_results_confs = np.concatenate((np.ones((insturment_results.shape[:2]))[:, :, np.newaxis],bow_confs[:, :, np.newaxis]),axis=0)
-    all_results_confs = np.ones((all_results.shape[:2]))[:, :, np.newaxis]
+    #all_results_confs = np.ones((all_results.shape[:2]))[:, :, np.newaxis]
     
     #Visualize
     # ------------------------------------------------------------------------    
@@ -1201,9 +1216,10 @@ if __name__ == '__main__':
             image = frame_rotate(cam_num, image)#[origin[1]:origin[1]+ROI_size,origin[0]:origin[0]+ROI_size,:]
             image = cv2.putText(image, str(num-start_frame_idx+1), (150, 150), cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 0), 2)
             for j, color in enumerate(colormap):
-                frame = cv2.circle(image,
-                                   tuple(np.array(all_results[j][num-start_frame_idx+1],#+origin
-                                                  dtype=np.uint32)), 1, color, 10)
+                if all_results_confs[j][num-start_frame_idx+1][0]:
+                    frame = cv2.circle(image,
+                                       tuple(np.array(all_results[j][num-start_frame_idx+1],#+origin
+                                                      dtype=np.uint32)), 1, color, 10)
             frame = cv2.resize(frame,np.flip(frame_size))
             out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
       
