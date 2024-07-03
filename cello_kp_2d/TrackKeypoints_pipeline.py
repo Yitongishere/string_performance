@@ -434,7 +434,8 @@ def TAPIR_infer(summary):
                 for kp_idx in losted_instrument_kps:
                     tracks = np.insert(tracks, kp_idx, 0, axis = 0)
                     visibles = np.insert(visibles, kp_idx, 0, axis = 0)
-
+                losted_instrument_kps = []
+                
                 if len(frame_alllist) == 1:
                     tracks_result = tracks
                     visibles_result = visibles
