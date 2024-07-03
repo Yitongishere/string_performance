@@ -14,18 +14,10 @@ from multiprocessing import Pool
 
 
 def cp_detection_process(folder_name):
-    #summary, summary_jsonfile_path = get_inform(folder_name, root_path)
     proj_dir = folder_name
     wave_file = f'{root_path}/{proj_dir}/{proj_dir}.wav'
-    #start_frame_idx = summary['StartFrame']
-    #end_frame_idx = summary['EndFrame']
-    #cam_parm = summary['CameraParameter']
+    print(wave_file)
     
-    #print(f'Processing FolderName:{summary["FolderName"]}')
-    #print(f'Track:{summary["Track"]}')
-    #print(f'start_frame_idx:{start_frame_idx}')
-    #print(f'end_frame_idx:{end_frame_idx}')
-    os.chdir('./audio/')
     """
     INFER
     2D key points on human are collected in this section.
@@ -55,6 +47,7 @@ if __name__ == '__main__':
     root_path = os.path.abspath(f'./data/{parent_dir}')
 
     folder_names = get_folder(parent_dir, root_path)
+    print(folder_names)
 
     visualize = False  # whether to visualize the 3D representation of smoothed dw outcomes
     draw_cps = False  # whether to draw contact points on virtual finger board
@@ -63,5 +56,6 @@ if __name__ == '__main__':
 
     crepe_backend = 'torch' # 'torch' or 'tensorflow'
     
-    with Pool(processes=os.cpu_count()) as pool: 
+    os.chdir('./audio/')
+    with Pool(processes=2) as pool: 
         pool.map(cp_detection_process, folder_names)
