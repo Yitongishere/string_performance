@@ -28,7 +28,6 @@ def triangulation_process(folder_name):
     print(f'start_frame_idx:{start_frame_idx}')
     print(f'end_frame_idx:{end_frame_idx}')
     
-    os.chdir('./triangulation/')
     
     triangulation_command = f'{shell_python_cmd} triangulation_pipeline.py ' \
                             f'--summary_jsonfile {summary_jsonfile_path} ' \
@@ -43,7 +42,9 @@ def triangulation_process(folder_name):
 shell_python_cmd = getPython3_command()
 
 if __name__ == '__main__':
-    instrument = 'violin'
+    instrument = 'cello'
+    
+    #parent_dir = 'liangzhu'
     parent_dir = instrument
     root_path = os.path.abspath(f'./data/{parent_dir}')
     
@@ -52,9 +53,11 @@ if __name__ == '__main__':
     # from tools.load_summary import get_folder_extra
     # parent_dir = $parent_dir
     # folder_names = get_folder_extra(parent_dir,root_path)
+    #folder_names = get_folder(parent_dir, root_path)
     folder_names = get_folder(parent_dir, root_path)
     
     print(folder_names)
     
+    os.chdir('./triangulation/')
     with Pool(processes=os.cpu_count()) as pool: 
         pool.map(triangulation_process, folder_names)
