@@ -676,11 +676,17 @@ def verify_handpos(summary,longest_line,video_num):
     infer_image = summary['DeepLSD_infer_image']
     longest_line_k,longest_line_b = line_equation_two_points(longest_line[0][0], longest_line[0][1],
                                                              longest_line[1][0],longest_line[1][1])
-
-    if longest_line_k>=0:
-        handpos = (0,0)
+                                                             
+    if abs(x2-x1) > abs(y2-y1):
+        if longest_line_k>=0:
+            handpos = (0,0)
+        else:
+            handpos = (0,y2-y1)
     else:
-        handpos = (0,y2-y1)
+        if longest_line_k>=0:
+            handpos = (x2-x1,y2-y1)
+        else:
+            handpos = (0,y2-y1)
     return handpos
 
 
@@ -730,6 +736,8 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
         condition2 = math.dist((x2,y2),tip)>math.dist((x1,y1),(x2,y2))/3
     elif handpos == (0,y2-y1):
         condition2 = math.dist((x2,0),tip)>math.dist((x1,y1),(x2,y2))/3
+    elif handpos == (x2-x1,y2-y1):
+        condition2 = math.dist((0,0),tip)>math.dist((x1,y1),(x2,y2))/3
     condition3 = abs(detected_line_angle-cal_angle(tip,(x2,y2))) <= angle_threshhold or abs(detected_line_angle-cal_angle(tip,(x2,y2))) >= 180 - angle_threshhold
     
     if conf > 0:
@@ -739,12 +747,12 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
             tip[0] = (x2-x1)
             tip += (x1,y1)
         elif condition2 and instrument != 'cello':
-            if handpos == (0,0):
+            if handpos == (0,0) or handpos == (x2-x1,0):
                 tip[1] = (y2-y1)
                 tip[0] = ((y2-y1)-bow_b)/bow_k
                 tip += (x1,y1)
                 tip = np.array((min(tip[0],x2),min(tip[1],y2)))
-            elif handpos == (0,y2-y1):
+            elif handpos == (0,y2-y1) or handpos == (x2-x1,y2-y1):
                 tip[1] = 0 
                 tip[0] = (0-bow_b)/bow_k
                 tip += (x1,y1)
@@ -810,13 +818,13 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
         plot_images([image], ['previous lines'], cmaps='gray')
         plot_lines([bow_res], line_colors='red', indices=range(1))
         plt.show()
-
+        '''
 
         bow_res = np.array([frog,tip]).reshape(1, 2, 2)
         plot_images([image], ['improved lines'], cmaps='gray')
         plot_lines([bow_res], line_colors='green', indices=range(1))
         plt.show()
-        '''
+        
 
         return np.asarray(frog),np.asarray(tip),frog_id
     else:
