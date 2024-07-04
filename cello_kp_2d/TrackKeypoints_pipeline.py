@@ -840,7 +840,7 @@ def revise_frog_tip(summary,video_num,bow_results,previous_frog_id):
     instrument = summary['instrument']
     proj_dir = summary['proj_dir']
     cam_num = summary['cam_num']
-    previous_frog,previous_tip = bow_results[:,-1,0],bow_results[:,-1,1]
+    previous_frog,previous_tip = bow_results[:,-1]
     print(previous_frog,previous_tip)
     with open(f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{cam_num}/{video_num + 1}.json','r') as f:
         human2D_data = np.asarray(json.load(f))#,dtype = np.int32
