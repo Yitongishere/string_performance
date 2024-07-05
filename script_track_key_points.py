@@ -32,7 +32,7 @@ if __name__ == '__main__':
     if instrument == 'cello':
         track_cams = ['21334237','21334206']  # cello 
     else:
-        track_cams = ['21334207','21334220']  # violin 
+        track_cams = ['21334207','21334218','21334220','21293324']  # violin
     
     #If you want to process these data in batches, you can use the following annotated code.
     '''
@@ -65,6 +65,9 @@ if __name__ == '__main__':
         
         for track_cam in track_cams:
             video_path = os.path.abspath(f'../data/{parent_dir}/{proj_dir}/{proj_dir}_{track_cam}.avi')
+            print(" "*8 + "-"*(len(prompt)+4)+"\n"
+                  f"Target: | {prompt} |\n"+
+                  " "*8 + "-"*(len(prompt)+4))
             #TrackKeypoints_pipeline.py
             trackkeypoint_command = f'{shell_python_cmd} TrackKeypoints_pipeline.py ' \
                                     f'--parent_dir {parent_dir} ' \
