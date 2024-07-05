@@ -368,6 +368,7 @@ def TAPIR_infer(summary):
                     # If the label is lost, use a 0 matrix to represent the result 
                     # Identify lost tags -> lacked_instrument_kps
                     losted_instrument_kps = list(set(range(len(instrument_kps))) ^ set(kpdict.keys()))
+                    #print("losted_instrument_kps: ",losted_instrument_kps)
                     
                     query_points = np.concatenate(
                         (np.ones((len(kpdict), 1)) * (num - iter_frames + 1), np.flip(list(kpdict.values())-origin, axis=1)), axis=1)
@@ -818,13 +819,13 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
         plot_images([image], ['previous lines'], cmaps='gray')
         plot_lines([bow_res], line_colors='red', indices=range(1))
         plt.show()
-        '''
+        
 
         bow_res = np.array([frog,tip]).reshape(1, 2, 2)
         plot_images([image], ['improved lines'], cmaps='gray')
         plot_lines([bow_res], line_colors='green', indices=range(1))
         plt.show()
-        
+        '''
 
         return np.asarray(frog),np.asarray(tip),frog_id
     else:
@@ -1057,7 +1058,7 @@ if __name__ == '__main__':
         inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
-        instrument_kps = ['scroll_top', 'nut_l', 'nut_r']#+['bridge_l', 'bridge_r']
+        instrument_kps = ['scroll_top', 'nut_l', 'nut_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
 
         guided_kps = ['nut_guide']#'nut_guide'
