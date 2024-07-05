@@ -778,8 +778,7 @@ if __name__ == "__main__":
                  'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19', 'cam20', 'cam21', 'cam22', 'cam23']
     
     if instrument == 'violin':
-        # customed_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
-        customed_cams = ['cam10', 'cam11', 'cam12', 'cam13', 'cam21', 'cam22', 'cam0','cam1']
+        customed_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
         CELLO_LINKS = CELLO_LINKS[:-3]
         CELLO_LINKS.append([136, 137])
         BOW_LINKS = np.array(BOW_LINKS) - 2
