@@ -1215,7 +1215,7 @@ if __name__ == '__main__':
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     frame_size = tuple(np.flip(video.get_data(0).shape)[1:]//4)  # tuple->(width,height):(2300,2656)
     
-    save_folder_path = './kp_result_videos'
+    save_folder_path = './kp_result_video'
     save_sub_sub_dir_path = save_folder_path + os.sep + parent_dir + os.sep + proj_dir
     if not os.path.exists(save_sub_sub_dir_path):
         os.makedirs(save_sub_sub_dir_path, exist_ok=True)
