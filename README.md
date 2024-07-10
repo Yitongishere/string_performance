@@ -89,6 +89,7 @@ Preferred pose estimator model is [this](https://drive.google.com/file/d/1Oy9O18
 
 ## 2d Bow Detection
 We use [YOLOv8](https://github.com/ultralytics/ultralytics) for Bow Detection and you can [download](https://huggingface.co/datasets/shiyi098/string_performance_dataset-SPD/resolve/main/cello_kp_2d/yolov8/checkpoints/bow_detection.pt?download=true) our pretrained model. 
+
 To fit the positions of the bow in the graphics furtherly, we use [DeepLSD](https://github.com/cvg/DeepLSD) and [deeplsd_md.tar](https://cvg-data.inf.ethz.ch/DeepLSD/deeplsd_md.tar) as the checkpoint.
 
 ## Triangulation
