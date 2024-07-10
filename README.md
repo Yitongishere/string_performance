@@ -79,6 +79,7 @@ wget -P checkpoints https://storage.googleapis.com/dm-tapnet/causal_tapir_checkp
 
 Here is an effect of presentation.
 
+<img src="https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/static/images/SPD_cello_tapnet_demo_21334181.gif" alt="cello keypoints Example" width="50%" height="50%" />
 <img src="https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/blob/main/static/images/SPD_cello_tapnet_demo_21334181.gif" alt="cello keypoints Example" width="50%" height="50%" />
 
 ## 2d Key Points Detection
