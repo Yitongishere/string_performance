@@ -79,7 +79,6 @@ wget -P checkpoints https://storage.googleapis.com/dm-tapnet/causal_tapir_checkp
 
 Here is an effect of presentation.
 
-#<img src="cello_kp_2d/display/chuizhenanfeng_21334181.gif" alt="cello keypoints Example" width="50%" height="50%" />
 <img src="https://huggingface.co/datasets/shiyi098/string_performance_dataset-SPD/blob/main/cello_kp_2d/display/SPD_cello_tapnet_demo_21334181.gif" alt="cello keypoints Example" width="50%" height="50%" />
 
 ## 2d Key Points Detection
