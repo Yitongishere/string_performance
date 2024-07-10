@@ -933,7 +933,7 @@ if __name__ == '__main__':
     parent_folder = os.path.dirname(video_path)
     base_name = os.path.basename(video_path)
 
-    labeled_json = f'labeled_jsons/{parent_dir}/{proj_dir}/{cam_num}_{start_frame_idx}.json'
+    labeled_json = f'labeled_json/{parent_dir}/{proj_dir}/{cam_num}_{start_frame_idx}.json'
     inform.update(var_to_dict(labeled_json = labeled_json))
 
     inform.update(get_seperate_list(inform))
