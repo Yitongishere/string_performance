@@ -88,7 +88,7 @@ Here is an effect of presentation.
 Preferred pose estimator model is [this](https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/view).
 
 ## 2d Bow Detection
-We pretrained a model of [YOLOv8](https://huggingface.co/datasets/shiyi098/string_performance_dataset-SPD/blob/main/cello_kp_2d/yolov8/checkpoints/bow_detection.pt) for bow detection and you can [download](https://huggingface.co/datasets/shiyi098/string_performance_dataset-SPD/blob/main/cello_kp_2d/yolov8/checkpoints/bow_detection.pt?download=true) it. 
+We pretrained a model of [YOLOv8](https://huggingface.co/datasets/shiyi098/string_performance_dataset-SPD/blob/main/cello_kp_2d/yolov8/checkpoints/bow_detection.pt) for bow detection and you can [download](https://huggingface.co/datasets/shiyi098/string_performance_dataset-SPD/resolve/main/cello_kp_2d/yolov8/checkpoints/bow_detection.pt?download=true) it. 
 
 ## Triangulation
 You need to prepare 2D key points coordinates in order to run our `triangulation.py`
