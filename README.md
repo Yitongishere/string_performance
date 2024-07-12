@@ -6,6 +6,8 @@ We are now concentrating on cello playing.
 
 https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/static/videos/SPD_TheOverallResult.mp4
 
+https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/raw/main/static/videos/SPD_TheOverallResult.mp4
+
 ## Install & Data Prep
 
 Clone this repo, and install the dependencies.
