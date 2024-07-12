@@ -4,7 +4,7 @@ This is the repository of Digital Human Instrument Performance Research Group.
 
 We are now concentrating on cello playing.
 
-https://github.com/google-deepmind/tapnet/assets/4534987/9f66b81a-7efb-48e7-a59c-f5781c35bebc
+https://github-production-user-asset-6210df.s3.amazonaws.com/4534987/272566653-9f66b81a-7efb-48e7-a59c-f5781c35bebc.mp4
 
 ## Install & Data Prep
 
