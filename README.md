@@ -4,6 +4,8 @@ This is the repository of Digital Human Instrument Performance Research Group.
 
 We are now concentrating on cello playing.
 
+https://youtu.be/DBhHA1IZWCI
+
 ## Install & Data Prep
 
 Clone this repo, and install the dependencies.
