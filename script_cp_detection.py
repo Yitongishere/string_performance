@@ -27,6 +27,7 @@ def cp_detection_process(folder_name):
                             f'--wav_path {wave_file} ' \
                             f'--parent_dir {parent_dir} ' \
                             f'--proj_dir {proj_dir} ' \
+                            f'--instrument {instrument} ' \
                             f'--crepe_backend {crepe_backend}'
     if visualize:
         cp_detection_command += ' --visualize'
@@ -53,7 +54,6 @@ if __name__ == '__main__':
     draw_cps = False  # whether to draw contact points on virtual finger board
     draw_filtered_cps = False  # whether to draw filtered contact points on virtual finger board
     save_position = True  # whether to save filtered position
-
     crepe_backend = 'torch' # 'torch' or 'tensorflow'
     
     os.chdir('./audio/')
