@@ -110,7 +110,7 @@ def draw_contact_points(data, file_name, proj):
         plt.close()
 
 
-def pitch_detect_crepe(crepe_backend, proj, center, audio_path='wavs/background.wav'):
+def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs/background.wav'):
 
     # viterbi: smoothing for the pitch curve
     # step_size: 10 milliseconds
@@ -118,38 +118,53 @@ def pitch_detect_crepe(crepe_backend, proj, center, audio_path='wavs/background.
     
     if crepe_backend == 'torch':
         import torchcrepe
-        audio, sr = torchcrepe.load.audio(audio_path)
-        audio_1channel = audio[0].reshape(1,-1)
-        sample_num = audio_1channel.size()[1]
-        frame_num = math.floor(sample_num / sr * 30)
+        import torch
+        #audio, sr = torchcrepe.load.audio(audio_path)
+        audio, sr = librosa.load(audio_path, mono=True)
+        audio_1channel = torch.tensor(audio).reshape(1,-1)
+        sample_num = audio_1channel.shape[1]
+        if instrument == 'cello':
+            freq_range = freq_position.PITCH_RANGES_CELLO
+        else:
+            freq_range = freq_position.PITCH_RANGES_VIOLIN
+        min_freq = np.min(freq_range)
+        max_freq = np.max(freq_range)
+        frame_num = math.floor(30 * sample_num / sr)
         frequency,confidence = torchcrepe.predict(audio_1channel,
                                                    sr,
                                                    hop_length=int(sr / 30.),
                                                    return_periodicity=True,
                                                    model='full',
+                                                   fmin = min_freq,
+                                                   fmax = max_freq,
                                                    batch_size=2048,
                                                    device='cuda:0')
-        time = np.arange(0,100/3.*frequency.size()[1],100/3.).reshape(-1,)
+        
+        
         frequency = frequency.reshape(-1,)
         confidence = confidence.reshape(-1,)
-        
+        time = np.arange(0,100/3.*frequency.size()[0],100/3.).reshape(-1,)[:len(frequency)]
+        print(frequency)
     elif crepe_backend == 'tensorflow':
         import crepe
         sr, audio = wavfile.read(audio_path)
         sample_num = audio.shape[0]
-        frame_num = math.floor(sample_num / sr * 30)
+        frame_num = math.floor(30 * sample_num / sr)
         time, frequency, confidence, activation = crepe.predict(
-        audio, sr, viterbi=True, step_size=100 / 3, model_capacity='full', center=center)
-        
+        audio, sr, viterbi=True, step_size=100 / 3, model_capacity='full', center=True)
+        print(frequency)
     else:
         print('the argument "crepe_backend" is either "tensorflow" or "torch"')
     
     draw_fundamental_curve(time, frequency, confidence, proj, 'crepe')
+    
     pitch_results = np.stack((time, frequency, confidence), axis=1)
     # Pitch Data Persistence
     # np.savetxt("pitch.csv", pitch_results, delimiter=",")
     ic(pitch_results.shape)
     pitch_results = pitch_results[:frame_num, :]
+    print(frame_num)
+    print(pitch_results.shape)
     # ic(pitch_results)
     return pitch_results
 
@@ -186,14 +201,14 @@ def point_init():
     return np.array([np.nan, np.nan, np.nan])
 
 
-def mapping(proj, positions, visualize=False):
+def mapping(proj, positions, instrument = 'cello', visualize=False):
     """
     positions: n * 4
     """
     with open(f'../triangulation/kp_3d_result/{proj}/kp_3d_all_dw.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_all_dw'])
-    # ic(kp_3d_all.shape)
+    ic(kp_3d_all.shape)
 
     # with open(f'../pose_estimation/{proj_dir}/kp_3d_all_pe.json', 'r') as f:
     #     data_dict = json.load(f)
@@ -209,7 +224,6 @@ def mapping(proj, positions, visualize=False):
     used_finger_index = np.nan
     used_finger = []
     filtered_positions = []
-
     for frame, kp_3d in enumerate(kp_3d_all):
         # ic(kp_3d.shape)
         finger_board = []
@@ -269,7 +283,11 @@ def mapping(proj, positions, visualize=False):
         dist_list = []
         current_freq_list = []
         pressed_string_id_list = []
-
+        
+        if instrument == 'cello':
+            freq_range = freq_position.PITCH_RANGES_CELLO
+        else:
+            freq_range = freq_position.PITCH_RANGES_VIOLIN
         for pos_idx, ratio in enumerate(position):
             if ratio > 0:
                 # temp_contact_point = finger_board[pos_idx] * ratio + locals()[f'string_{pos_idx + 1}_bottom']
@@ -283,7 +301,8 @@ def mapping(proj, positions, visualize=False):
                 potential_dist = cal_dist(rf, potential_contact_point)
                 dist_list.append(potential_dist)
                 contact_point_list.append(potential_contact_point)
-                string_fund_freq = freq_position.PITCH_RANGES[pos_idx][0]
+                
+                string_fund_freq = freq_range[pos_idx][0]
                 current_freq_list.append(freq_position.positon2freq(string_fund_freq, ratio))
                 pressed_string_id_list.append(pos_idx)
 
@@ -327,6 +346,7 @@ def mapping(proj, positions, visualize=False):
                             smallest_dist = temp_dist
                             contact_point = contact_point_list[idx]
                             pressed_string_id = pressed_string_id_list[idx]
+                
             if (not within_last_range) or (within_last_range and not within_mean_range):
                 # Finger Changed
                 dist_tip_cp = np.inf
@@ -414,6 +434,7 @@ if __name__ == '__main__':
     parser.add_argument('--wav_path', default='wavs/scale_128_786.wav', type=str, required=True)
     parser.add_argument('--parent_dir', default='cello', type=str, required=True)
     parser.add_argument('--proj_dir', default='cello01', type=str, required=True)
+    parser.add_argument('--instrument', default='cello', type=str, required=True)
     parser.add_argument('--visualize', default=False, required=False, action='store_true')
     parser.add_argument('--draw_cps', default=False, required=False, action='store_true')
     parser.add_argument('--draw_filtered_cps', default=False, required=False, action='store_true')
@@ -424,6 +445,7 @@ if __name__ == '__main__':
     wav_path = args.wav_path
     parent_dir = args.parent_dir
     proj_dir = args.proj_dir
+    instrument = args.instrument
     visualize = args.visualize
     draw_cps = args.draw_cps
     draw_filtered_cps = args.draw_filtered_cps
@@ -432,9 +454,12 @@ if __name__ == '__main__':
     
     proj = parent_dir + os.sep + proj_dir
     
-    pitch_results = pitch_detect_crepe(crepe_backend, proj, True, wav_path)
-    pitch_with_positions = freq_position.get_contact_position(pitch_results)
+    pitch_results = pitch_detect_crepe(crepe_backend, proj, instrument, wav_path)
+    print(pitch_results)
+    print(pitch_results.shape)
+    pitch_with_positions = freq_position.get_contact_position(pitch_results,instrument)
     positions = pitch_with_positions[:, -4:]
+    print(positions)
     if draw_cps:
         draw_contact_points(positions, proj, 'virtual_contact_point')
     new_positions = mapping(proj, positions, visualize=visualize)
