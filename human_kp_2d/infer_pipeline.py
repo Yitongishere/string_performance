@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import torch
 import traceback
 from icecream import ic
+from multiprocessing import Pool
 import mmcv
 from mmcv import imread
 import mmengine
@@ -35,7 +36,7 @@ We give a method in the script using gdown to download the model from googledriv
 '''
 
 
-def visualize(visualizer, pose_estimator, img, data_samples):
+def visualize(visualizer, img, data_samples):
     visualizer.add_datasample(
         'result',
         img,
@@ -51,7 +52,7 @@ def visualize(visualizer, pose_estimator, img, data_samples):
     return img_output
 
 
-def posinfo2json(pose, path='json/pos.json', save=True, kp_type='unit8'):
+def posinfo2json(pose, path='jsons_dir/pos.json', save=True, kp_type='unit8'):
     file_name_split = path.split('.')[:-1]
     if len(file_name_split) == 1:
         jsonfile = ''.join(file_name_split)
@@ -75,11 +76,57 @@ def posinfo2json(pose, path='json/pos.json', save=True, kp_type='unit8'):
     return None
 
 
+def write_video(args): 
+    video_path, cam_num = args
+    # 半径
+    pose_estimator.cfg.visualizer.radius = 1
+    # 线宽
+    pose_estimator.cfg.visualizer.line_width = 0.5
+    pose_estimator.cfg.visualizer.setdefault('save_dir', None)
+    visualizer = VISUALIZERS.build(pose_estimator.cfg.visualizer)
+    # 元数据
+    visualizer.set_dataset_meta(pose_estimator.dataset_meta)
+    
+    cap = cv2.VideoCapture(video_path)
+    frame_num = 1
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    framesize = (2300 // reduction_factor, 2656 // reduction_factor)
+    video_store_path = f'./kp_result/{parent_dir}/{proj_dir}'
+    json_store_path = f'{video_store_path}/{cam_num}'
+    out = cv2.VideoWriter(f'{video_store_path}/{proj_dir}_{cam_num}_DWPose.avi', fourcc=fourcc, fps=30, frameSize=framesize)
+    while True:
+        if frame_num >= start_frame_idx:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            with open(f'{json_store_path}/{frame_num}.json', 'r') as f:
+                inferred_info = np.asarray(json.load(f)) / reduction_factor
+            f.close()
+            if np.all(inferred_info == 0):
+                continue
+            frame_rot = frame_rotate(cam_num, frame)
+            inferred_instances = InstanceData()
+            inferred_instances.keypoints = inferred_info[:, :2].copy()[np.newaxis, :]
+            inferred_instances.bbox = [[None]]
+            data_samples = PoseDataSample(pred_instances=inferred_instances)
+            frame_rot = cv2.resize(frame_rot, framesize)
+            output_img = visualize(visualizer, frame_rot, data_samples)
+            out.write(output_img)
+            print(f'Creating Video: {proj_dir} | {cam_num} : {frame_num}')
+        else:
+            ret = cap.grab()
+        if frame_num == end_frame_idx or not ret:
+            break
+        frame_num += 1
+    cap.release()
+    out.release()
+    
+    
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='infer_pipeline')
-    parser.add_argument('--dirs_path', default='../data/cello_1113/cello_1113_scale/video/cello_1113_21334190.avi',
-                        type=str, required=True)
+    parser.add_argument('--dirs_path', default='../data/cello_1113/cello_1113_scale/video/cello_1113_21334190.avi',type=str, required=True)
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
+    parser.add_argument('--parent_dir', default=None, type=str, required=False)
     parser.add_argument('--end_frame_idx', default='2', type=int, required=True)
     parser.add_argument('--start_frame_idx', default='1', type=int, required=False)
     parser.add_argument('--cuda', default='0', type=int, required=False)
@@ -88,10 +135,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     dirs_path = args.dirs_path
     proj_dir = args.proj_dir
+    parent_dir = args.parent_dir
     end_frame_idx = args.end_frame_idx
     start_frame_idx = args.start_frame_idx
     cuda = args.cuda
     writevideo = args.writevideo
+    
+    if parent_dir is None:
+        parent_dir = proj_dir[:-2]
     
     device = torch.device(f'cuda:{cuda}' if torch.cuda.is_available() else 'cpu')
     
@@ -119,33 +170,18 @@ if __name__ == '__main__':
         # cfg_options={'model': {'test_cfg': {'output_heatmaps': True}}}
     )
     
-    if writevideo:
-        # 半径
-        pose_estimator.cfg.visualizer.radius = 1
-        # 线宽
-        pose_estimator.cfg.visualizer.line_width = 0.5
-        pose_estimator.cfg.visualizer.setdefault('save_dir', None)
-        visualizer = VISUALIZERS.build(pose_estimator.cfg.visualizer)
-        # 元数据
-        visualizer.set_dataset_meta(pose_estimator.dataset_meta)
-    
-    # dirs_path = r'../data/cello/cello_01'  # Your directory path
-    #dirs_list = os.listdir(dirs_path)
-    #full_path = [dirs_path + os.sep + i for i in dirs_list]  # multiple proj
-    full_path = [dirs_path]  # single proj
+    full_path = [dirs_path] 
     for idx, dir_path in enumerate(full_path):
-        print(dir_path)
         videos_path = glob.glob(dir_path + os.sep + '*.avi')
         print(videos_path)
         base_name = [os.path.basename(i) for i in videos_path]
         file_name = [os.path.splitext(i)[0] for i in base_name]
         cam_num = [i.split('_')[-1] for i in file_name]
-        # sub_dir_name = dirs_list[idx]  # multiple proj
+        
         for i, video_path in enumerate(videos_path):
-            json_store_path = r'./kp_result/{dir_name}/{cam_num}'.format(dir_name=proj_dir,
-                                                                    cam_num=cam_num[i])
-            if writevideo and os.path.exists(f'{json_store_path}/{end_frame_idx}.json'):
-                pass
+            json_store_path = f'./kp_result/{parent_dir}/{proj_dir}/{cam_num[i]}'
+            if os.path.exists(f'{json_store_path}/{end_frame_idx}.json'):
+                continue
             else:
                 cap = cv2.VideoCapture(video_path)
                 frame_num = 1
@@ -179,39 +215,8 @@ if __name__ == '__main__':
                     frame_num += 1
                 cap.release()
         
-            if writevideo:
-                cap = cv2.VideoCapture(video_path)
-                frame_num = 1
-                fourcc = cv2.VideoWriter_fourcc(*'XVID')
-                #视频画幅缩小的倍数
-                reduction_factor = 4
-                framesize = (2300//reduction_factor, 2656//reduction_factor)
-                video_store_path = r'./kp_result/{dir_name}'.format(dir_name=proj_dir)
-                out = cv2.VideoWriter(f'{video_store_path}/{proj_dir}_{cam_num[i]}_DWPose.avi', fourcc=fourcc, fps=30, frameSize=framesize)
-                while True:
-                    if frame_num >= start_frame_idx:
-                        ret, frame = cap.read()
-                        if not ret:
-                            break
-                        with open(f'{json_store_path}/{frame_num}.json','r') as f:
-                            inferred_info = np.asarray(json.load(f))/reduction_factor
-                        f.close()
-                        if np.all(inferred_info  == 0):
-                            continue
-                        frame_rot = frame_rotate(cam_num[i], frame)
-                        inferred_instances = InstanceData()
-                        inferred_instances.keypoints = inferred_info[:,:2].copy()[np.newaxis, :]
-                        inferred_instances.bbox = [[None]]
-                        data_samples = PoseDataSample(pred_instances=inferred_instances)
-                        frame_rot = cv2.resize(frame_rot,framesize)
-                        output_img = visualize(visualizer, pose_estimator, frame_rot, data_samples)
-                        # store 2d key points result to json file
-                        out.write(output_img)
-                        print(f'Creating Video: {proj_dir} | {cam_num[i]} : {frame_num}')
-                    else:
-                        ret = cap.grab()
-                    if frame_num == end_frame_idx or not ret:
-                        break
-                    frame_num += 1
-                cap.release()
-                out.release()
+        if writevideo:
+            reduction_factor = 4 # Reduce the magnification of the frame
+            params = list(zip(videos_path, cam_num))
+            with Pool(processes=os.cpu_count()) as pool:
+                pool.map(write_video, params)
