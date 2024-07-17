@@ -734,10 +734,10 @@ if __name__ == "__main__":
                         type=str, 
                         required=True)
     parser.add_argument('--instrument', default='cello', type=str, required=True)
-    parser.add_argument('--parent_dir', default=None, type=str, required=False)
-    parser.add_argument('--proj_dir', default=None, type=str, required=False)
-    parser.add_argument('--start_frame', default=None, type=int, required=False)
-    parser.add_argument('--end_frame', default=None, type=int, required=False)
+    parser.add_argument('--parent_dir', default='cello', type=str, required=False)
+    parser.add_argument('--proj_dir', default='cello01', type=str, required=False)
+    parser.add_argument('--start_frame', default='128', type=int, required=False)
+    parser.add_argument('--end_frame', default='786', type=int, required=False)
     
     args = parser.parse_args()
     instrument = args.instrument
@@ -779,6 +779,7 @@ if __name__ == "__main__":
     
     if instrument == 'violin':
         customed_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
+        #customed_cams = ['cam10', 'cam11', 'cam12', 'cam13', 'cam21', 'cam22', 'cam0','cam1']
         CELLO_LINKS = CELLO_LINKS[:-3]
         CELLO_LINKS.append([136, 137])
         BOW_LINKS = np.array(BOW_LINKS) - 2
