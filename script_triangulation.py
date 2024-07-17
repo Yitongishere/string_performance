@@ -18,7 +18,6 @@ from multiprocessing import Pool
 def triangulation_process(folder_name):
     summary, summary_jsonfile_path = get_inform(folder_name, root_path)
     proj_dir = folder_name
-    
     start_frame_idx = summary['StartFrame']
     end_frame_idx = summary['EndFrame']
     cam_parm = summary['CameraParameter']
@@ -43,8 +42,6 @@ shell_python_cmd = getPython3_command()
 
 if __name__ == '__main__':
     instrument = 'cello'
-    
-    #parent_dir = 'liangzhu'
     parent_dir = instrument
     root_path = os.path.abspath(f'./data/{parent_dir}')
     
@@ -53,7 +50,6 @@ if __name__ == '__main__':
     # from tools.load_summary import get_folder_extra
     # parent_dir = $parent_dir
     # folder_names = get_folder_extra(parent_dir,root_path)
-    #folder_names = get_folder(parent_dir, root_path)
     folder_names = get_folder(parent_dir, root_path)
     
     print(folder_names)
