@@ -18,35 +18,12 @@ shell_python_cmd = getPython3_command()
 if __name__ == '__main__':
     instrument = 'cello' # cello or violin
     parent_dir = instrument
-    
     root_path = os.path.abspath(f'./data/{parent_dir}')
-    
-    # if you want to use customized $parent_dir
-    # You can refer to the following code:
-    # from tools.load_summary import get_folder_extra
-    # parent_dir = $parent_dir
-    # folder_names = get_folder_extra(parent_dir,root_path)
-    folder_names = get_folder(parent_dir, root_path)
     folder_names = get_folder(parent_dir,root_path)
-    
     if instrument == 'cello':
-        track_cams = ['21334237','21334206']  # cello 
+        track_cams = ['21334181','21334190','21334211'] # cello
     else:
-        track_cams = ['21334207','21334218','21334220','21293324']  # violin
-    
-    #If you want to process these data in batches, you can use the following annotated code.
-    '''
-    
-    index = -1
-    batch_size = 24
-    
-    if (index == -1 and step == 1):
-        folder_names = [folder_names[-1]]
-    elif index == -1:
-        folder_names = folder_names[index-batch_size+1:index] + [folder_names[-1]]
-    else:
-        folder_names = folder_names[index-batch_size+1:index+1]
-    '''
+        track_cams = ['21334207','21334218','21334220','21293324']] # violin
     
     print(folder_names)
     
@@ -55,16 +32,19 @@ if __name__ == '__main__':
         summary, summary_jsonpath = get_inform(folder_name,root_path)
         proj_dir = folder_name
         start_frame_idx = summary['StartFrame'] # obtained by audio and video alignment
-        end_frame_idx =  summary['EndFrame']# obtained by audio and video alignment
+        end_frame_idx = summary['EndFrame']# obtained by audio and video alignment
+
         
         """
         TRACK KEY POINTS
         2D key points on cello/violin are collected in this section.
         Multi-view 2D key points will be triangulated to obtain the 3D coordinates.
         """
-        
+
+      
         for track_cam in track_cams:
             video_path = os.path.abspath(f'../data/{parent_dir}/{proj_dir}/{proj_dir}_{track_cam}.avi')
+            prompt = f'{proj_dir}_{track_cam}.avi'
             print(" "*8 + "-"*(len(prompt)+4)+"\n"
                   f"Target: | {prompt} |\n"+
                   " "*8 + "-"*(len(prompt)+4))
@@ -77,4 +57,3 @@ if __name__ == '__main__':
                                     f'--end_frame_idx {end_frame_idx} ' \
                                     f'--instrument {instrument}'
             os.system(trackkeypoint_command)
-        #break
