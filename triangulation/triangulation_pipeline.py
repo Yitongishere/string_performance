@@ -729,7 +729,10 @@ KPT_NUM = 142
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='triangulation_pipeline')
-    parser.add_argument('--summary_jsonfile', default='../data/cello/cello01/cello01_summary.json', type=str, required=True)
+    parser.add_argument('--summary_jsonfile',
+                        default='../data/cello/cello01/cello01_summary.json',
+                        type=str, 
+                        required=True)
     parser.add_argument('--instrument', default='cello', type=str, required=True)
     parser.add_argument('--parent_dir', default=None, type=str, required=False)
     parser.add_argument('--proj_dir', default=None, type=str, required=False)
@@ -770,19 +773,22 @@ if __name__ == "__main__":
 
     """read 2d results."""
     # cello used cams
-    used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
+    customed_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
                  'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
                  'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19', 'cam20', 'cam21', 'cam22', 'cam23']
-
+    
     if instrument == 'violin':
-        # used_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
-        used_cams = ['cam10', 'cam11', 'cam12', 'cam13', 'cam21', 'cam22']
+        customed_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
         CELLO_LINKS = CELLO_LINKS[:-3]
         CELLO_LINKS.append([136, 137])
         BOW_LINKS = np.array(BOW_LINKS) - 2
+    
+    listed_cames = list(cam_param.keys())
+    used_cams = sorted(set(listed_cames).intersection(set(customed_cams)),key=lambda s: int(s.split('cam')[1]))
+    print(used_cams)
     # used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
-    #              'cam7', 'cam11', 'cam12', 'cam13',
-    #              'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19']
+    #              'cam7', 'cam11', 'cam12', 'cam13', 'cam14', 'cam15', 'cam16',
+    #              'cam17', 'cam18', 'cam19','cam20','cam21','cam22','cam23']
 
     # start_frame = 128
     # end_frame = 129
@@ -824,7 +830,7 @@ if __name__ == "__main__":
             except FileNotFoundError as e:
                 pass
             try:
-                print(1)
+                #print(1)
                 human_joint = f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 human_2d_cc_ff = np.array(json.load(open(human_joint)))
             except FileNotFoundError as e:
@@ -834,7 +840,7 @@ if __name__ == "__main__":
             # TODO: EDIT CELLO KEY POINTS
             cello_2d_cc_ff = np.zeros([9-point_offset, 3])  # 9 cello key points in total (default score 0 will not be used)
             try:
-                print(2)
+                #print(2)
                 cello_json_path = f'../cello_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
                 # Resolve XML

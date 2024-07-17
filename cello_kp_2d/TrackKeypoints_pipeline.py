@@ -364,7 +364,12 @@ def TAPIR_infer(summary):
                             continue
 
                     kpdict = dict(sorted(kpdict.items(), key=lambda item: item[0], reverse=False))
-
+                    
+                    # If the label is lost, use a 0 matrix to represent the result 
+                    # Identify lost tags -> lacked_instrument_kps
+                    losted_instrument_kps = list(set(range(len(instrument_kps))) ^ set(kpdict.keys()))
+                    #print("losted_instrument_kps: ",losted_instrument_kps)
+                    
                     query_points = np.concatenate(
                         (np.ones((len(kpdict), 1)) * (num - iter_frames + 1), np.flip(list(kpdict.values())-origin, axis=1)), axis=1)
                     #print('qp_ori:',query_points)
@@ -426,8 +431,11 @@ def TAPIR_infer(summary):
                                 diff_guided = tracks[-1][false_indices[i]] - tracks[-1][false_indices[i] - 1]
                             tracks[keypoints_num][false_indices[i]] = tracks[keypoints_num][false_indices[i]-1] + diff_guided
                             visibles[keypoints_num][false_indices[i]] = True
-
-
+                
+                for kp_idx in losted_instrument_kps:
+                    tracks = np.insert(tracks, kp_idx, 0, axis = 0)
+                    visibles = np.insert(visibles, kp_idx, 0, axis = 0)
+                
                 if len(frame_alllist) == 1:
                     tracks_result = tracks
                     visibles_result = visibles
@@ -442,9 +450,14 @@ def TAPIR_infer(summary):
                     visibles_result = np.concatenate((visibles_result, visibles[:,:-1]), axis=1)
                 frames = media.resize_video(frames[-1][np.newaxis, :], (resize_pixel, resize_pixel))
                 
+                for kp_idx in sorted(losted_instrument_kps,reverse = True):
+                    tracks = np.delete(tracks, kp_idx, axis = 0)
+                    visibles = np.delete(visibles, kp_idx, axis = 0)
+                
                 print('-' * 80)
     
     summary.update(instrument_kp_tracks = tracks_result[:len(instrument_kps),:])
+    summary.update(instrument_kp_tracks_conf = visibles_result[:len(instrument_kps),:])
     summary.update(guided_kp_tracks = tracks_result[len(instrument_kps):,:])
     return summary
 ################################# TAPIR #################################
@@ -664,11 +677,17 @@ def verify_handpos(summary,longest_line,video_num):
     infer_image = summary['DeepLSD_infer_image']
     longest_line_k,longest_line_b = line_equation_two_points(longest_line[0][0], longest_line[0][1],
                                                              longest_line[1][0],longest_line[1][1])
-
-    if longest_line_k>=0:
-        handpos = (0,0)
+                                                             
+    if abs(x2-x1) > abs(y2-y1):
+        if longest_line_k>=0:
+            handpos = (0,0)
+        else:
+            handpos = (0,y2-y1)
     else:
-        handpos = (0,y2-y1)
+        if longest_line_k>=0:
+            handpos = (x2-x1,y2-y1)
+        else:
+            handpos = (0,y2-y1)
     return handpos
 
 
@@ -718,6 +737,8 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
         condition2 = math.dist((x2,y2),tip)>math.dist((x1,y1),(x2,y2))/3
     elif handpos == (0,y2-y1):
         condition2 = math.dist((x2,0),tip)>math.dist((x1,y1),(x2,y2))/3
+    elif handpos == (x2-x1,y2-y1):
+        condition2 = math.dist((0,0),tip)>math.dist((x1,y1),(x2,y2))/3
     condition3 = abs(detected_line_angle-cal_angle(tip,(x2,y2))) <= angle_threshhold or abs(detected_line_angle-cal_angle(tip,(x2,y2))) >= 180 - angle_threshhold
     
     if conf > 0:
@@ -727,12 +748,12 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
             tip[0] = (x2-x1)
             tip += (x1,y1)
         elif condition2 and instrument != 'cello':
-            if handpos == (0,0):
+            if handpos == (0,0) or handpos == (x2-x1,0):
                 tip[1] = (y2-y1)
                 tip[0] = ((y2-y1)-bow_b)/bow_k
                 tip += (x1,y1)
                 tip = np.array((min(tip[0],x2),min(tip[1],y2)))
-            elif handpos == (0,y2-y1):
+            elif handpos == (0,y2-y1) or handpos == (x2-x1,y2-y1):
                 tip[1] = 0 
                 tip[0] = (0-bow_b)/bow_k
                 tip += (x1,y1)
@@ -798,7 +819,7 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
         plot_images([image], ['previous lines'], cmaps='gray')
         plot_lines([bow_res], line_colors='red', indices=range(1))
         plt.show()
-
+        
 
         bow_res = np.array([frog,tip]).reshape(1, 2, 2)
         plot_images([image], ['improved lines'], cmaps='gray')
@@ -822,7 +843,31 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
         plt.show()
         '''
         return np.asarray(frog),np.asarray(tip),previous_frog_id
-        
+
+
+def revise_frog_tip(summary,video_num,bow_results,previous_frog_id):
+    instrument = summary['instrument']
+    proj_dir = summary['proj_dir']
+    cam_num = summary['cam_num']
+    previous_frog,previous_tip = bow_results[:,-1]
+    print(previous_frog,previous_tip)
+    with open(f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{cam_num}/{video_num + 1}.json','r') as f:
+        human2D_data = np.asarray(json.load(f))#,dtype = np.int32
+    f.close()
+    if instrument == 'cello':
+        frog_pos = [
+                    (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2
+                    ]
+    else:
+        frog_pos = [(human2D_data[126-1][:2]+human2D_data[122-1][:2])/2,
+                    (human2D_data[127-1][:2]+human2D_data[123-1][:2])/2,
+                    (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2,
+                    (human2D_data[129-1][:2]+human2D_data[125-1][:2])/2
+                    ]
+    frog = frog_pos[previous_frog_id]
+    tip = previous_tip + (frog - previous_frog)
+    return np.asarray(frog),np.asarray(tip),previous_frog_id
+
 
 def adjust_image_factor(img, contrast=1, brightness=1):
     from PIL import Image, ImageEnhance
@@ -888,7 +933,7 @@ if __name__ == '__main__':
     parent_folder = os.path.dirname(video_path)
     base_name = os.path.basename(video_path)
 
-    labeled_json = f'labeled_jsons/{parent_dir}/{proj_dir}/{cam_num}_{start_frame_idx}.json'
+    labeled_json = f'labeled_json/{parent_dir}/{proj_dir}/{cam_num}_{start_frame_idx}.json'
     inform.update(var_to_dict(labeled_json = labeled_json))
 
     inform.update(get_seperate_list(inform))
@@ -948,7 +993,8 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
+        
+        insturment_results_conf = inform['instrument_kp_tracks_conf']
         insturment_results = inform['instrument_kp_tracks']+inform['origin']
 
 
@@ -971,7 +1017,8 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
+        
+        insturment_results_conf = np.concatenate((insturment_results_conf,inform['instrument_kp_tracks_conf']), axis=0)
         insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
 
         # ------------------------------------------------------------------------
@@ -992,9 +1039,10 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
+        
+        insturment_results_conf = np.concatenate((insturment_results_conf,inform['instrument_kp_tracks_conf']), axis=0)
         insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
-
+        insturment_results = insturment_results*insturment_results_conf[:,:, np.newaxis]
 
     # ------------------------------------------------------------------------
     else:
@@ -1010,7 +1058,7 @@ if __name__ == '__main__':
         inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
-        instrument_kps = ['scroll_top', 'nut_l', 'nut_r']#+['bridge_l', 'bridge_r']
+        instrument_kps = ['scroll_top', 'nut_l', 'nut_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
 
         guided_kps = ['nut_guide']#'nut_guide'
@@ -1019,7 +1067,8 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
+        
+        insturment_results_conf = inform['instrument_kp_tracks_conf']
         insturment_results = inform['instrument_kp_tracks']+inform['origin']
 
 
@@ -1046,9 +1095,10 @@ if __name__ == '__main__':
         inform.update(get_origin(inform))
 
         inform.update(TAPIR_infer(inform))
-
-        insturment_results=np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
-
+        
+        insturment_results_conf = np.concatenate((insturment_results_conf,inform['instrument_kp_tracks_conf']), axis=0)
+        insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
+        insturment_results = insturment_results*insturment_results_conf[:,:, np.newaxis]
 
 
     # ------------------------------------------------------------------------
@@ -1062,7 +1112,7 @@ if __name__ == '__main__':
         if not os.path.exists(os.path.dirname(YOLOv8_ckpt_path)):
             os.makedirs(os.path.dirname(YOLOv8_ckpt_path), exist_ok=True)
     YOLOv8_ckpt = YOLO(YOLOv8_ckpt_path+os.sep+'bow_detection.pt')
-    inform.update(var_to_dict(YOLO_conf_threshhold=0.5))
+    inform.update(var_to_dict(YOLO_conf_threshhold=0.25))
     
     # DeepLSD checkpoint loading
     DeepLSD_ckpt_path = os.path.abspath('.')+'/deeplsd/checkpoints/deeplsd_md.tar'
@@ -1128,19 +1178,25 @@ if __name__ == '__main__':
                 handpos = verify_handpos(inform,longest_line,num)
                 frog,tip = detect_frog_tip(inform,image,handpos,longest_line)
                 frog,tip,previous_frog_id = improved_frog_tip(inform,num,frog,tip,handpos,image,previous_frog_id)
-                bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
-                bow_conf = np.ones((bow_result.shape[0],1))
+                #bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
+                #bow_conf = np.ones((bow_result.shape[0],1))
             
             else:
-                bow_result = np.zeros((2,1,2))
-                bow_conf = np.zeros((bow_result.shape[0],1))
-            
+                #bow_result = np.zeros((2,1,2))
+                frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
+                #bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
+                #bow_conf = np.zeros((bow_result.shape[0],1))
+                print(frog,tip)
+                print('revised')
+            bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
+            bow_conf = np.ones((bow_result.shape[0],1))            
             if (num + 1) == start_frame_idx:
                 bow_results = bow_result
                 bow_confs = bow_conf
             else:
                 bow_results = np.concatenate((bow_results,bow_result),axis=1)
-                bow_confs = np.concatenate((bow_confs,bow_conf),axis=0)
+                bow_confs = np.concatenate((bow_confs,bow_conf),axis=1)
+            
             #break
     
     # ------------------------------------------------------------------------
@@ -1148,6 +1204,10 @@ if __name__ == '__main__':
     
     # Final_results
     all_results = np.concatenate((insturment_results,bow_results),axis=0)
+    all_results_confs = np.concatenate((insturment_results_conf,bow_confs),axis=0)[:, :, np.newaxis]
+    
+    # all_results_confs = np.concatenate((np.ones((insturment_results.shape[:2]))[:, :, np.newaxis],bow_confs[:, :, np.newaxis]),axis=0)
+    #all_results_confs = np.ones((all_results.shape[:2]))[:, :, np.newaxis]
     
     #Visualize
     # ------------------------------------------------------------------------    
@@ -1155,13 +1215,12 @@ if __name__ == '__main__':
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     frame_size = tuple(np.flip(video.get_data(0).shape)[1:]//4)  # tuple->(width,height):(2300,2656)
     
-    save_folder_path = './kp_result_videos'
+    save_folder_path = './kp_result_video'
     save_sub_sub_dir_path = save_folder_path + os.sep + parent_dir + os.sep + proj_dir
     if not os.path.exists(save_sub_sub_dir_path):
         os.makedirs(save_sub_sub_dir_path, exist_ok=True)
     
     out = cv2.VideoWriter(f'{save_folder_path}/{parent_dir}/{proj_dir}/{proj_dir}_{cam_num}_TAPIR_{TAPIR_model_type}.avi', fourcc=fourcc, fps=30, frameSize=np.flip(frame_size))# frame.shape[0:2]
-    #print(f'{proj_dir}/{file_name}.avi')
 
     # Visualize and generate a video.
     for num in tqdm(range(end_frame_idx),desc=f'Create the inferring results of video for "Camera:{cam_num}"'):
@@ -1170,9 +1229,10 @@ if __name__ == '__main__':
             image = frame_rotate(cam_num, image)#[origin[1]:origin[1]+ROI_size,origin[0]:origin[0]+ROI_size,:]
             image = cv2.putText(image, str(num-start_frame_idx+1), (150, 150), cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 0), 2)
             for j, color in enumerate(colormap):
-                frame = cv2.circle(image,
-                                   tuple(np.array(all_results[j][num-start_frame_idx+1],#+origin
-                                                  dtype=np.uint32)), 1, color, 10)
+                if all_results_confs[j][num-start_frame_idx+1][0]:
+                    frame = cv2.circle(image,
+                                       tuple(np.array(all_results[j][num-start_frame_idx+1],#+origin
+                                                      dtype=np.uint32)), 1, color, 10)
             frame = cv2.resize(frame,np.flip(frame_size))
             out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
       
@@ -1181,8 +1241,8 @@ if __name__ == '__main__':
     
     # Get the outputs
     # ------------------------------------------------------------------------
-    visibles_results = np.ones((all_results.shape[:2]))[:, :, np.newaxis]
-    pos = np.concatenate((all_results, visibles_results), axis=2).transpose(1, 0, 2)
+    
+    pos = np.concatenate((all_results, all_results_confs), axis=2).transpose(1, 0, 2)
 
     save_folder_path = './kp_result'
     save_sub_sub_dir_path = save_folder_path + os.sep + parent_dir + os.sep + proj_dir + os.sep + cam_num
