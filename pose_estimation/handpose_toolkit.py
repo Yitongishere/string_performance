@@ -1,6 +1,8 @@
 import numpy as np
 import os
 import json
+import sys
+sys.path.append('..')
 from icecream import ic
 from scipy.spatial.transform import Rotation, Slerp
 from triangulation.triangulation_pipeline import visualize_3d, CAM_DICT
@@ -10,11 +12,14 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 
 def get6d_from_txt(filepath):
-    with open(filepath) as f:
+    with open(filepath,'r') as f:
         lines = f.readlines()
-
-    lh = np.array([float(x) for x in lines[3].rstrip().split(' ')]).reshape(16, 6)
-    rh = np.array([float(x) for x in lines[1].rstrip().split(' ')]).reshape(16, 6)
+    
+    #before
+    #lh = np.array([float(x) for x in lines[3].rstrip().split(' ')]).reshape(16, 6)
+    #rh = np.array([float(x) for x in lines[1].rstrip().split(' ')]).reshape(16, 6)
+    lh = np.array([float(x) for x in lines[5].rstrip().split(' ')]).reshape(16, 6)
+    rh = np.array([float(x) for x in lines[2].rstrip().split(' ')]).reshape(16, 6)
     # ic(lh)
     f.close()
     return lh, rh
@@ -51,12 +56,14 @@ def get_mano_init(hand_type='left'):
 
     return init_pose
 
+
 def normalize_vector(v):
     magnitude = np.linalg.norm(v)
     if magnitude == 0:
         return v
     normalized_vector = v / magnitude
     return normalized_vector
+
 
 def cal_dist(point1, point2):
     return np.sqrt(np.sum(np.square(point1 - point2)))
@@ -114,8 +121,7 @@ def get_joint_positions(init_positions, rotations, bone_lengths, parent_indices)
 
 
 def get_frame_info(proj_dir, frame_num):
-
-    cam_dirs = os.listdir(proj_dir)
+    cam_dirs = [d for d in os.listdir(proj_dir) if os.path.isdir(proj_dir+os.sep+d)]
     frame_info = {}
     for cam_dir in cam_dirs:
         cam_num = cam_dir.split('_')[-1]
@@ -136,6 +142,7 @@ def get_frame_info(proj_dir, frame_num):
 
     return frame_info
 
+
 def weighted_average_quaternion(q1, q2, q1_t, q2_t, w):
     key_rots = Rotation.from_quat((q1, q2))
 
@@ -147,13 +154,14 @@ def weighted_average_quaternion(q1, q2, q1_t, q2_t, w):
 
     return interpolated_quaternion.as_quat()
 
-def get_converted_R0(R0_cam, R0, cam_file_path):
+
+def get_converted_R0(R0_cam, R0, cam_param):
     # cam_R_path = '../triangulation/jsons/cello_1113_scale_camera.json'
-
-    with open(cam_file_path, 'r') as f:
-        data_dict = json.load(f)
-
-    cam_R = np.array(data_dict[R0_cam]['R']).reshape(3, 3)
+    
+    #with open(cam_file_path, 'r') as f:
+    #    data_dict = json.load(f)
+    
+    cam_R = np.array(cam_param[R0_cam]['R']).reshape(3, 3)
 
     converted_R0 = np.dot(cam_R, R0)
     converted_R0 = converted_R0[np.newaxis, :]
@@ -161,7 +169,7 @@ def get_converted_R0(R0_cam, R0, cam_file_path):
     return converted_R0
 
 
-def get_averaged_R(frame_info, R0_cam, cam_weights_lh, cam_weights_rh, cam_file_path):
+def get_averaged_R(frame_info, R0_cam, cam_weights_lh, cam_weights_rh, cam_param):
     cams = list(cam_weights_lh.keys())
 
     averaged_Qs_lh = []
@@ -219,11 +227,11 @@ def get_averaged_R(frame_info, R0_cam, cam_weights_lh, cam_weights_rh, cam_file_
     cam_num = str(CAM_DICT[R0_cam])
 
     R0_lh = frame_info[cam_num]['R_lh'][0]
-    R0_lh_converted = get_converted_R0(R0_cam, R0_lh, cam_file_path)
+    R0_lh_converted = get_converted_R0(R0_cam, R0_lh, cam_param)
     R_matrix_lh = np.vstack((R0_lh_converted, R_matrix_lh))
 
     R0_rh = frame_info[cam_num]['R_rh'][0]
-    R0_rh_converted = get_converted_R0(R0_cam, R0_rh, cam_file_path)
+    R0_rh_converted = get_converted_R0(R0_cam, R0_rh, cam_param)
     R_matrix_rh = np.vstack((R0_rh_converted, R_matrix_rh))
 
 
@@ -245,9 +253,3 @@ def visualize_hand(data, connections):
     axes3.add_collection(left_hand_coll_3d)
     axes3.view_init(elev=30, azim=45)
     plt.show()
-
-
-
-
-
-
