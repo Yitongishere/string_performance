@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from scipy.spatial.transform import Rotation
 from handpose_toolkit import get6d_from_txt, rotation_6d_to_R, get_joint_positions, get_mano_init, get_converted_R0, \
     cal_dist
-from integrate_handpose_pipeline import get_bone_length_dw, MANO_PARENTS_INDICES, LEFT_WRIST_INDEX, MANO_TO_DW
+from integrate_handpose_pipeline import get_bone_length_dw, MANO_PARENTS_INDICES, LEFT_WRIST_INDEX, RIGHT_WRIST_INDEX, MANO_TO_DW
 import json
 from icecream import ic
 
@@ -231,18 +231,27 @@ ROT_FINGER_INDICES = [[2, 3],
                       [5, 6],
                       [11, 12],
                       [8, 9]]
+                      
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(prog='integrate_handpose_pipeline')
-    parser.add_argument('--cam_file', default='../triangulation/jsons/cello_1113_scale_camera.json', type=str,
+    parser.add_argument('--summary_jsonfile',
+                        default='../data/cello/cello01/cello01_summary.json',
+                        type=str, 
                         required=True)
     parser.add_argument('--parent_dir', default='cello_1113', type=str, required=True)
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
     parser.add_argument('--start_frame', default=128, type=str, required=True)
     parser.add_argument('--visualize', default=False, required=False, action='store_true')
     parser.add_argument('--cam_num', default='cam0', type=str, required=False)
+    
     args = parser.parse_args()
-    cam_file = args.cam_file
+    
+    with open(args.summary_jsonfile,'r') as f:
+        summary = json.load(f)
+    f.close()
+    
     parent_dir = args.parent_dir
     proj_dir = args.proj_dir
     start_frame = int(args.start_frame)
@@ -251,14 +260,14 @@ if __name__ == '__main__':
 
     # parent_dir = 'cello_1113'
     # proj_dir = "cello_1113_scale"
-    dir_6d = f"./6d_result/{proj_dir}"
+    dir_6d = f"./6d_result/{parent_dir}/{proj_dir}"
     # cam_file = '../triangulation/jsons/cello_1113_scale_camera.json'
     # start_frame = 128
     # cam_num = 'cam0'
 
     overlay_img_path = f'../data/{parent_dir}/{proj_dir}/frames/{CAM_DICT[cam_num]}/{CAM_DICT[cam_num]}'
 
-    with open(f'../audio/cp_result/{proj_dir}/kp_3d_all_dw_cp.json', 'r') as f:
+    with open(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_dw = np.array(data_dict['kp_3d_all_dw_cp'])
     #
@@ -266,14 +275,14 @@ if __name__ == '__main__':
     #     data_dict = json.load(f)
     # kp_3d_pe = np.array(data_dict['kp_3d_all_pe'])
 
-    with open(f'../pose_estimation/fk_result/{proj_dir}/kp_3d_all_pe_fk.json', 'r') as f:
+    with open(f'../pose_estimation/fk_result/{parent_dir}/{proj_dir}/kp_3d_all_pe_fk.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_pe = np.array(data_dict['kp_3d_all_pe_fk'])
 
     kp_3d_ik = kp_3d_pe.copy()
     kp_3d_ik_without_music = kp_3d_pe.copy()
 
-    with open(f'../pose_estimation/fk_result/{proj_dir}/integrated_hand_rot.json', 'r') as f:
+    with open(f'../pose_estimation/fk_result/{parent_dir}/{proj_dir}/integrated_hand_rot.json', 'r') as f:
         data_dict = json.load(f)
     integrated_hand_rot = np.array(data_dict['integrated_hand_rot'])
 
@@ -281,8 +290,8 @@ if __name__ == '__main__':
     BONE_LENGTHS = get_bone_length_dw(kp_3d_pe, 1)
     BONE_LENGTH = BONE_LENGTHS[0]  # IK only involves left hand
 
-    if not os.path.exists(f'./ik_result/{proj_dir}'):
-        os.makedirs(f'./ik_result/{proj_dir}')
+    if not os.path.exists(f'./ik_result/{parent_dir}/{proj_dir}'):
+        os.makedirs(f'./ik_result/{parent_dir}/{proj_dir}', exist_ok=True)
     # fourcc = cv2.VideoWriter_fourcc(*'XVID')
     # out = cv2.VideoWriter(f'./ik_result/{proj_dir}/output_ik_v2.avi', fourcc, fps=30, frameSize=[2300, 2656])
 
@@ -304,11 +313,17 @@ if __name__ == '__main__':
         lh_rot_vec = get_rot_vec(lh_rot)
         lh_wrist_rot_vec = lh_rot_vec[0]
         lh_rot_vec_except_wrist = lh_rot_vec[1:]
+        
+        rh_rot_vec = get_rot_vec(rh_rot)
+        rh_wrist_rot_vec = rh_rot_vec[0]
+        rh_rot_vec_except_wrist = rh_rot_vec[1:]
 
         lh_wrist = kp_3d_pe[frame_id][LEFT_WRIST_INDEX]
+        rh_wrist = kp_3d_pe[frame_id][RIGHT_WRIST_INDEX]
         extracted_frame = kp_3d_pe[frame_id]
         intermediate_frame = extracted_frame.copy()
         lh_pos_dw = kp_3d_dw[frame_id][91:112]
+        rh_pos_dw = kp_3d_dw[frame_id][112:133]
 
         cp = kp_3d_dw[frame_id][150]
         used_finger = find_finger(frame_id, kp_3d_dw)
@@ -318,9 +333,21 @@ if __name__ == '__main__':
             used_finger_arr.append(used_finger)
         else:
             used_finger_arr.append(np.nan)
+        
+        # Translation vector initialization(right_hand)
+        rh_wrist_trans_vec = [0, 0, 0]
+        
+        rh_wrist_vec = np.hstack((rh_wrist_rot_vec, rh_wrist_trans_vec))
 
-
-        # Translation vector initialization
+        wrist_result = minimize(wrist_obj_func, rh_wrist_vec,
+                                args=(rh_rot_vec_except_wrist, rh_pos_dw),
+                                method='L-BFGS-B')
+        optimized_wrist_vec = wrist_result.x
+        optimized_rotvec_wrist = optimized_wrist_vec[0:3]
+        optimized_trans_wrist = optimized_wrist_vec[3:]
+        rh_rot_vec = np.vstack((optimized_rotvec_wrist, rh_rot_vec_except_wrist))
+        
+        # Translation vector initialization(left_hand)
         lh_wrist_trans_vec = [0, 0, 0]
 
         lh_wrist_vec = np.hstack((lh_wrist_rot_vec, lh_wrist_trans_vec))
@@ -372,7 +399,9 @@ if __name__ == '__main__':
         optimized_tip = optimized_pos_dw[DW_TIP[used_finger]]
         optimized_pip = optimized_pos_dw[DW_PIP[used_finger]]
         optimized_wrist = optimized_pos_dw[0]
-        hand_rot_vec.append(lh_rot_vec.tolist())
+        
+        hand_rot_vec.append(np.vstack((lh_rot_vec, rh_rot_vec)).tolist())
+        # hand_rot_vec.append(lh_rot_vec.tolist())
 
         # 中间无cp帧
         if np.isnan(cp).any():
@@ -386,14 +415,14 @@ if __name__ == '__main__':
         extracted_frame[91:112] = optimized_pos_dw
         extracted_frame[112:133] = kp_3d_dw[frame_id][112:133]  # right hand should follow dw result
         # extracted_frame = np.vstack((extracted_frame, kp_3d_dw[frame_id][142:]))
-
+        
         kp_3d_ik[frame_id] = extracted_frame
 
-        print(f'{frame_id} IKed.')
+        print(f'{frame_id} IKed. -> [{proj_dir}]')
 
     data_dict = {'hand_rot_vec': hand_rot_vec}
 
-    with open(f'ik_result/{proj_dir}/hand_rot_vec.json', 'w') as f:
+    with open(f'ik_result/{parent_dir}/{proj_dir}/hand_rot_vec.json', 'w') as f:
         json.dump(data_dict, f)
 
     # global translation: 712, 3
@@ -437,7 +466,7 @@ if __name__ == '__main__':
 
     data_dict = {'kp_3d_ik_smooth': kp_3d_ik_smooth.tolist()}
 
-    with open(f'ik_result/{proj_dir}/kp_3d_ik_smooth.json', 'w') as f:
+    with open(f'ik_result/{parent_dir}/{proj_dir}/kp_3d_ik_smooth.json', 'w') as f:
         json.dump(data_dict, f)
 
     kp_3d_partial_without_music = kp_3d_ik_without_music[:, :140, :]
@@ -452,7 +481,7 @@ if __name__ == '__main__':
 
     data_dict = {'kp_3d_ik_without_music_smooth': kp_3d_ik_without_music_smooth.tolist()}
 
-    with open(f'ik_result/{proj_dir}/kp_3d_ik_without_music_smooth.json', 'w') as f:
+    with open(f'ik_result/{parent_dir}/{proj_dir}/kp_3d_ik_without_music_smooth.json', 'w') as f:
         json.dump(data_dict, f)
 
     # visualize_3d(kp_3d_ik_smooth, proj_dir, 'pe_cp_smooth_ik_v2', 'finger')
@@ -461,7 +490,8 @@ if __name__ == '__main__':
     kpt_num = kp_3d_ik_smooth.shape[1]
 
     # cam_file = "../triangulation/jsons/cello_1113_scale_camera.json"
-    cam_param = json.load(open(cam_file))
+    #cam_param = json.load(open(cam_file))
+    cam_param = summary['CameraParameter']
 
     # find reprojection of the specific camera
     repro_2d = np.empty([framenum, kpt_num, 2])
@@ -479,4 +509,4 @@ if __name__ == '__main__':
             repro_2d[ff, kpt, :] = kp2d[:2]
 
     if visualize:
-        visualize_overlay(proj_dir, repro_2d, overlay_img_path, start_frame)
+        visualize_overlay(f'{parent_dir}/{proj_dir}', repro_2d, overlay_img_path, start_frame)
