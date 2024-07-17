@@ -25,6 +25,8 @@ sys.path.append('..')
 # libraries for computing
 import numpy as np
 import math
+import itertools
+from scipy import stats
 
 # libraries for processing images
 import cv2
@@ -41,10 +43,13 @@ import requests
 
 # libraries of tapnet
 import jax
-from tapnet import tapir_model
+#from tapnet import tapir_model
+from tapnet.models import tapir_model
 from tapnet.utils import transforms
 from tapnet.utils import viz_utils
 from tapnet.utils import model_utils
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
 # libraries of YOLOv8
 from ultralytics import YOLO
@@ -102,13 +107,15 @@ def DeepLSD_download_checkpoint(summary):
 ################################# TAPIR #################################
 def TAPIR_download_checkpoint(summary):
     MODEL_TYPE = summary['TAPIR_model_type']
+    print(MODEL_TYPE )
     ckpt_path = summary['TAPIR_ckpt_path']
     ckpt_urls = {'tapnet':'https://storage.googleapis.com/dm-tapnet/checkpoint.npy',# TAP-Net
                  'tapir':'https://storage.googleapis.com/dm-tapnet/tapir_checkpoint_panning.npy',# TAPIR
                  'causal':'https://storage.googleapis.com/dm-tapnet/causal_tapir_checkpoint.npy',# Online TAPIR
                  'bootstapir':'https://storage.googleapis.com/dm-tapnet/bootstapir_checkpoint.npy',# BootsTAPIR
+                 'causal_boots':'https://storage.googleapis.com/dm-tapnet/bootstap/causal_bootstapir_checkpoint.npy'# Online BootsTAPIR
                 }
-    ckpt_url = ckpt_urls['TAPIR_model_type']
+    ckpt_url = ckpt_urls[MODEL_TYPE]
     
     if not download_checkpoints(ckpt_url,ckpt_path):
         raise requests.exceptions.ConnectTimeout(
@@ -153,7 +160,7 @@ def TAPIR_test_checkpoint(summary):
         tracks = trajectories['tracks'][-1]
         occlusions = trajectories['occlusion'][-1]
         uncertainty = trajectories['expected_dist'][-1]
-        visibles = model_utils.postprocess_occlusions(occlusions, uncertainty, 0.9)
+        visibles = model_utils.postprocess_occlusions(occlusions, uncertainty, 0.975)
         return tracks, visibles, causal_context
     
     def inference(frames, query_points):
@@ -177,7 +184,7 @@ def TAPIR_test_checkpoint(summary):
         tracks, occlusions, expected_dist = outputs['tracks'], outputs['occlusion'], outputs['expected_dist']
 
         # Binarize occlusions
-        visibles = model_utils.postprocess_occlusions(occlusions, expected_dist, 0.9)
+        visibles = model_utils.postprocess_occlusions(occlusions, expected_dist, 0.95)
         return tracks[0], visibles[0]
     
     
@@ -185,22 +192,21 @@ def TAPIR_test_checkpoint(summary):
     ck_path = summary['TAPIR_ckpt_path']
     ckpt_state = np.load(ck_path, allow_pickle=True).item()
     params, state = ckpt_state['params'], ckpt_state['state']
-    if MODEL_TYPE == 'causal':
+    if 'causal' in MODEL_TYPE:
         kwargs = dict(use_causal_conv=True, bilinear_interp_with_depthwise_conv=False)
-    elif MODEL_TYPE == 'tapir':
+
+    elif 'tapir' in MODEL_TYPE :
         kwargs = dict(bilinear_interp_with_depthwise_conv=False, pyramid_level=0)
-    elif MODEL_TYPE == 'bootstapir':
-        kwargs = dict(bilinear_interp_with_depthwise_conv=False, pyramid_level=0)
+    
+    if 'boots' in MODEL_TYPE:
         kwargs.update(dict(
         pyramid_level=1,
         extra_convs=True,
         softmax_temperature=10.0
-      ))
-    else:
-        pass
+        ))
     
     tapir = tapir_model.ParameterizedTAPIR(params, state, tapir_kwargs=kwargs)
-    if MODEL_TYPE == 'causal':
+    if 'causal' in MODEL_TYPE:
         online_model_init= jax.jit(online_model_init)
         online_model_predict = jax.jit(online_model_predict)
         return tapir, online_model_init, online_model_predict
@@ -310,7 +316,7 @@ def TAPIR_infer(summary):
     else:
         TAPIR_model, TAPIR_inference = TAPIR_test_checkpoint(summary)
     '''
-    if MODEL_TYPE == 'causal':
+    if 'causal' in MODEL_TYPE:
         TAPIR_online_model_init = summary['TAPIR_online_model_init']
         TAPIR_online_model_predict = summary['TAPIR_online_model_predict']
     else:
@@ -370,6 +376,7 @@ def TAPIR_infer(summary):
                     losted_instrument_kps = list(set(range(len(instrument_kps))) ^ set(kpdict.keys()))
                     #print("losted_instrument_kps: ",losted_instrument_kps)
                     
+                    
                     query_points = np.concatenate(
                         (np.ones((len(kpdict), 1)) * (num - iter_frames + 1), np.flip(list(kpdict.values())-origin, axis=1)), axis=1)
                     #print('qp_ori:',query_points)
@@ -381,7 +388,7 @@ def TAPIR_infer(summary):
                 query_points = transforms.convert_grid_coordinates(
                                     query_points, (1, height, width), (1, resize_pixel, resize_pixel), coordinate_format='tyx')
                 
-                if MODEL_TYPE == 'causal':
+                if 'causal' in MODEL_TYPE:
                     query_features = TAPIR_online_model_init(frames[None, 0:1], query_points[None])
                     causal_state = TAPIR_model.construct_initial_causal_state(query_points.shape[0], len(query_features.resolutions) - 1)
                     # Predict point tracks frame by frame
@@ -419,6 +426,20 @@ def TAPIR_infer(summary):
                 for keypoints_num in range(visibles.shape[0]):
                     if not np.alltrue(visibles[keypoints_num]):
                         false_indices = np.squeeze(np.where(visibles[keypoints_num] == False),axis = 0)
+                        '''
+                        #use kmeans to insert the indexes in false_indices
+                        if len(false_indices) >= 3:
+                            shapiro_statistic, shapiro_p = stats.shapiro(false_indices)
+                            if shapiro_p < 0.05:
+                                n_clusters = silhouette_method(false_indices, max_clusters = min(5,len(false_indices)-1))
+                                false_indices_divided = divide_by_kmeans(false_indices, n_clusters)
+                                false_indices_divided = [complete_sequence(i) for i in false_indices_divided]
+                                false_indices = sorted(list(set(list(itertools.chain.from_iterable(false_indices_divided)))))
+                            else:
+                                false_indices = complete_sequence(false_indices)
+                        else:
+                            false_indices = complete_sequence(false_indices)
+                        '''
                         for i in range(len(false_indices)):
                             dist_li = []
                             for j in range(visibles.shape[0]):
@@ -460,6 +481,36 @@ def TAPIR_infer(summary):
     summary.update(instrument_kp_tracks_conf = visibles_result[:len(instrument_kps),:])
     summary.update(guided_kp_tracks = tracks_result[len(instrument_kps):,:])
     return summary
+
+
+def silhouette_method(arr, max_clusters):
+    scores = []
+    array = np.array(arr).reshape(-1, 1)
+    for i in range(2, max_clusters + 1):
+        kmeans = KMeans(n_clusters=i, random_state=0).fit(array)
+        labels = kmeans.labels_
+        score = silhouette_score(array, labels)
+        scores.append(score)
+    return np.argmax(scores)+2
+
+
+def divide_by_kmeans(arr, n_clusters):
+    array = np.array(arr).reshape(-1, 1)
+    # use KMeans
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(array)
+    labels = kmeans.labels_
+    divided_arrays = [[] for _ in range(n_clusters)]
+    for idx, label in enumerate(labels):
+        divided_arrays[label].append(arr[idx])
+    return divided_arrays
+
+
+def complete_sequence(arr):
+    sorted_arr = sorted(list(arr))
+    min_val = sorted_arr[0]
+    max_val = sorted_arr[-1]
+    complete_arr = list(range(min_val, max_val + 1))
+    return complete_arr
 ################################# TAPIR #################################
 
 
@@ -952,10 +1003,18 @@ if __name__ == '__main__':
     
     # Load the checkpoint (TAP)
     print('Loading the checkpoint...')
-    TAPIR_ckpt_path = os.path.abspath(".") + os.sep + 'tapnet/checkpoints/causal_tapir_checkpoint.npy'
+    TAPIR_model_type = 'causal' # causal_boots or causal
+    TAPIR_models = {
+                    'tapnet':'checkpoint.npy',# TAP-Net
+                    'tapir':'tapir_checkpoint_panning.npy',# TAPIR
+                    'causal':'causal_tapir_checkpoint.npy',# Online TAPIR
+                    'bootstapir':'bootstapir_checkpoint.npy',# BootsTAPIR
+                    'causal_boots':'causal_bootstapir_checkpoint.npy'# Online BootsTAPIR
+                   }
+    TAPIR_ckpt_path = os.path.abspath(".") + '/tapnet/checkpoints/'+ TAPIR_models[TAPIR_model_type]
     #TAPIR_checkpoint_path = os.path.abspath(".") + os.sep + 'tapnet/checkpoints/bootstapir_checkpoint.npy'
     inform.update(var_to_dict(TAPIR_ckpt_path=TAPIR_ckpt_path))
-    TAPIR_model_type = os.path.basename(TAPIR_ckpt_path).split('_')[0]
+    
     inform.update(var_to_dict(TAPIR_model_type=TAPIR_model_type))
 
     if not os.path.exists(TAPIR_ckpt_path):
@@ -963,7 +1022,7 @@ if __name__ == '__main__':
 
     # Build the model (TAP)
     print('Building the model...')
-    if TAPIR_model_type == 'causal':
+    if 'causal' in TAPIR_model_type:
         TAPIR_model, TAPIR_online_model_init, TAPIR_online_model_predict=TAPIR_test_checkpoint(inform)
         inform.update(var_to_dict(TAPIR_online_model_init=TAPIR_online_model_init))
         inform.update(var_to_dict(TAPIR_online_model_predict=TAPIR_online_model_predict))
@@ -987,7 +1046,7 @@ if __name__ == '__main__':
         instrument_kps = ['scroll_top', 'nut_l', 'nut_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
 
-        guided_kps = ['nut_guide']#'nut_guide'
+        guided_kps = ['scroll_top']#'nut_guide'
         inform.update(var_to_dict(guided_kps=guided_kps))
 
         inform.update(get_origin(inform))
@@ -1011,7 +1070,7 @@ if __name__ == '__main__':
         instrument_kps = ['bridge_l', 'bridge_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
 
-        guided_kps = ['bridge_guide']#'bridge_guide'
+        guided_kps = []#'bridge_guide'
         inform.update(var_to_dict(guided_kps = guided_kps))
 
         inform.update(get_origin(inform))
@@ -1046,7 +1105,7 @@ if __name__ == '__main__':
 
     # ------------------------------------------------------------------------
     else:
-        iter_frames = 200 # Number of iteration frames per model insertion <=video.count_frames()
+        iter_frames = 500 # Number of iteration frames per model insertion <=video.count_frames()
         inform.update(var_to_dict(iter_frames=iter_frames))
 
         inform.update(get_seperate_list(inform))
@@ -1054,14 +1113,15 @@ if __name__ == '__main__':
         ROI_size = 1024
         inform.update(var_to_dict(ROI_size=ROI_size))
 
-        resize_pixel = 1024
+        resize_pixel = 512
         inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
         instrument_kps = ['scroll_top', 'nut_l', 'nut_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
 
-        guided_kps = ['nut_guide']#'nut_guide'
+        #guided_kps = ['nut_guide']#'nut_guide'
+        guided_kps = ['scroll_top']
         inform.update(var_to_dict(guided_kps=guided_kps))
 
         inform.update(get_origin(inform))
@@ -1089,7 +1149,8 @@ if __name__ == '__main__':
         instrument_kps = ['bridge_l', 'bridge_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
 
-        guided_kps = ['bridge_guide']#'bridge_guide'
+        #guided_kps = ['bridge_guide']#'bridge_guide'
+        guided_kps = []
         inform.update(var_to_dict(guided_kps=guided_kps))
 
         inform.update(get_origin(inform))
@@ -1180,12 +1241,18 @@ if __name__ == '__main__':
                 frog,tip,previous_frog_id = improved_frog_tip(inform,num,frog,tip,handpos,image,previous_frog_id)
                 #bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
                 #bow_conf = np.ones((bow_result.shape[0],1))
+                
+                #previous_frog,previous_tip = bow_results[:,-1]
+                #if 
+                #frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
             
             else:
                 #bow_result = np.zeros((2,1,2))
                 frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
                 #bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
                 #bow_conf = np.zeros((bow_result.shape[0],1))
+                print('num+1',num + 1)
+                print(previous_frog_id)
                 print(frog,tip)
                 print('revised')
             bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
@@ -1228,6 +1295,7 @@ if __name__ == '__main__':
             image = np.asarray(video.get_data(num), dtype=np.uint8)
             image = frame_rotate(cam_num, image)#[origin[1]:origin[1]+ROI_size,origin[0]:origin[0]+ROI_size,:]
             image = cv2.putText(image, str(num-start_frame_idx+1), (150, 150), cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 0), 2)
+            image = cv2.putText(image, str(num+1), (image.shape[1]-150*len(str(num+1)), 150), cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 0, 255), 2)
             for j, color in enumerate(colormap):
                 if all_results_confs[j][num-start_frame_idx+1][0]:
                     frame = cv2.circle(image,
