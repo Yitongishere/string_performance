@@ -29,11 +29,18 @@ for i in range(1, 128 - 21):
 #     [NOTE_FREQ[36], NOTE_FREQ[48]],  # 四弦  C2: 65.406 Hz  --  C3: 130.813 Hz
 # ]
 
-PITCH_RANGES = [
+PITCH_RANGES_CELLO = [
     [NOTE_FREQ[57], NOTE_FREQ[84]],  # 一弦  A3: 220.000 Hz --  C6: 1046.502 Hz
     [NOTE_FREQ[50], NOTE_FREQ[74]],  # 二弦  D3: 146.832 Hz --  D5: 587.330 Hz
     [NOTE_FREQ[43], NOTE_FREQ[67]],  # 三弦  G2: 97.999 Hz  --  G4: 391.995 Hz
     [NOTE_FREQ[36], NOTE_FREQ[60]],  # 四弦  C2: 65.406 Hz  --  C4: 261.626 Hz
+]
+
+PITCH_RANGES_VIOLIN = [
+    [NOTE_FREQ[76], NOTE_FREQ[100]],  # 一弦  E5
+    [NOTE_FREQ[69], NOTE_FREQ[93]],   # 二弦  A4
+    [NOTE_FREQ[62], NOTE_FREQ[86]],   # 三弦  D4
+    [NOTE_FREQ[55], NOTE_FREQ[75]],   # 四弦  G3
 ]
 # ic(PITCH_RANGES)
 
@@ -83,11 +90,17 @@ def _write_raw_index(path, text):
         f.write(text + '\n' + content)
 
 
-def get_contact_position(pitch_info):
+def get_contact_position(pitch_info, instrument):
     # 设置音高检测置信度门槛
     conf_threshold = 0.6
     # 空弦判断门槛
     base_threshold = 0.04
+
+    if instrument == 'cello':
+        pitch_ranges = PITCH_RANGES_CELLO
+    elif instrument == 'violin':
+        pitch_ranges = PITCH_RANGES_VIOLIN
+
     # shape in (n_timesteps, 7)
     #      ->  dim1: (timestep, frequency, confidence, string1_pos, string2_pos, string3_pos, string4_pos)
     info_all = []
@@ -98,14 +111,14 @@ def get_contact_position(pitch_info):
         if step[2] >= conf_threshold:
             freq_cur = step[1]
             # 确定在哪些弦上可得到该音
-            for i in range(len(PITCH_RANGES)):
+            for i in range(len(pitch_ranges)):
                 # 留50音分的误差包容度
-                if cent_dev(PITCH_RANGES[i][0], -50) < freq_cur < cent_dev(PITCH_RANGES[i][1], 50):
+                if cent_dev(pitch_ranges[i][0], -50) < freq_cur < cent_dev(pitch_ranges[i][1], 50):
                     possible_strings.append(i + 1)
             # 确定在各弦上的演奏位置
             if len(possible_strings) != 0:
                 for i in possible_strings:
-                    position_cur[i + 2] = freq2position(PITCH_RANGES[i - 1][0], freq_cur)
+                    position_cur[i + 2] = freq2position(pitch_ranges[i - 1][0], freq_cur)
                     if abs(position_cur[i + 2] - 1) < base_threshold:
                         position_cur[i + 2] = 1
         info_all.append(position_cur)
