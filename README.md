@@ -1,14 +1,8 @@
 # String Performace
-
+[![Alt text](https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/blob/main/static/images/poster.png)](https://www.youtube.com/watch?v=VID)
 This is the repository of Digital Human Instrument Performance Research Group.
 
 We are now concentrating on cello playing.
-
-https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/static/videos/SPD_TheOverallResult.mp4
-
-https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/raw/main/static/videos/SPD_TheOverallResult.mp4
-
-[![Alt text](https://img.youtube.com/vi/VID/0.jpg)](https://www.youtube.com/watch?v=VID)
 
 ## Install & Data Prep
 
