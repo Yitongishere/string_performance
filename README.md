@@ -89,7 +89,7 @@ Here is an effect of presentation.
 
 ## 2. MoCap Pipeline: Acquire MoCap Results from Raw Data
 
-## 2.1 Human Keypoints Detection from 2D imagery
+### 2.1 Human Keypoints Detection from 2D imagery
 `model.pth` for pose estimator should be downloaded ahead for `infer.py`
 
 Preferred pose estimator model is [this](https://drive.google.com/file/d/1Oy9O18cYk8Dk776DbxpCPWmJtJCl-OCm/view).
