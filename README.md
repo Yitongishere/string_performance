@@ -7,7 +7,7 @@ Get the [String Performance Dataset (SPD)](https://drive.google.com/drive/folder
 
 And if you want to delve into the code or reproduce the final MoCap results from the raw data, please check the following.
 
-## 1. Data Prepration & Install 
+## 1. Data Prepration & Installation
 
 ### 1.1 Get the data
 Download the raw data from the dataset. By downloading any piece of data, you will get the RGB videos from various shooting angles (format in .avi), the performance audio (format in .wav), and the info summary of the corresponding piece (format in .json). The `summary.json` include the metadata of the performance itself, the camara parameters, and the frame range of the MoCap results corresponding to the original video.
