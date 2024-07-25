@@ -1,7 +1,7 @@
 # String Performace 
 Visit our [project page](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/) for more details.
 
-Get the [String Performance Dataset](https://drive.google.com/drive/folders/1FPEYvRKKc7_xoSDDh4KY68gjZb3Qfs-l). 
+Get the [String Performance Dataset (SPD)](https://drive.google.com/drive/folders/1FPEYvRKKc7_xoSDDh4KY68gjZb3Qfs-l). 
 
 [![Alt text](https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/blob/main/static/images/poster.png)](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/static/images/poster.png)
 
