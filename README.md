@@ -1,4 +1,5 @@
-# [String Performace](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/)
+# String Performace 
+visiting our project page [here](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/)
 [![Alt text](https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/blob/main/static/images/poster.png)](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/static/images/poster.png)
 
 ## Install & Data Prep
