@@ -1,18 +1,16 @@
 # String Performace 
 Visit our [project page](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/) for more details.
+
 Get the [String Performance Dataset](https://drive.google.com/drive/folders/1FPEYvRKKc7_xoSDDh4KY68gjZb3Qfs-l). 
 
 [![Alt text](https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/blob/main/static/images/poster.png)](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/static/images/poster.png)
-
-
-
 
 And if you want to delve into the code or reproduce the final MoCap results from the raw data, please check the following.
 
 ## 1. Data Prepration & Install 
 
 ### 1.1 Get the data
-Download the raw data from the dataset. By downloading any piece of data, you will get the RGB videos from various shooting angles, the performance audio (format in .wav), and the info summary of the corresponding piece. The `summary.json` include the metadata of the performance itself, the camara parameters, and the frame range of the MoCap results corresponding to the original video.
+Download the raw data from the dataset. By downloading any piece of data, you will get the RGB videos from various shooting angles (format in .avi), the performance audio (format in .wav), and the info summary of the corresponding piece (format in .json). The `summary.json` include the metadata of the performance itself, the camara parameters, and the frame range of the MoCap results corresponding to the original video.
 
 ### 1.2 Get the code
 Clone this repo, and install the dependencies.
