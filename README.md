@@ -1,8 +1,5 @@
 # [String Performace](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/)
 [![Alt text](https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/blob/main/static/images/poster.png)](https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/static/images/poster.png)
-This is the repository of Digital Human Instrument Performance Research Group.
-
-We are now concentrating on cello playing.
 
 ## Install & Data Prep
 
@@ -14,10 +11,10 @@ The total installation process includes three steps.
 
 We use python=3.8 here. Actually python ~= 3.8 should be fine.
 ```
-git clone https://github.com/Yitongishere/cello_performance.git
-cd cello_performance
-conda create -n cello_performance python=3.8
-conda activate cello_performance
+git clone https://github.com/Yitongishere/string_performance.git
+cd string_performance
+conda create -n string_performance python=3.8
+conda activate string_performance
 pip install -r requirements.txt
 ```
 
@@ -45,7 +42,7 @@ Tensorflow: Please refer to [CREPE Documentation](https://github.com/marl/crepe)
 Torch: Please refer to [TORCHCREPE Documentation](https://github.com/maxrmorrison/torchcrepe)
 
 ### 5. TAP-Net installation
-If you want to track the cello key points using [TAPIR](https://deepmind-tapir.github.io/), you can either
+If you want to track the keypoints of instruments using [TAPIR](https://deepmind-tapir.github.io/), you can either
 follow the instructions below or the [official guide](https://github.com/google-deepmind/tapnet#live-demo) provided by google.
 
 Note: For inferring by pytorch models of TAPIR (TAP-Net/BootsTAPIR), you are required to install pytorch>=2.1.0 or you will miss key(s) in state_dict of the checkpoints when loading them and get wrong outputs.
