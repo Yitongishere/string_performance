@@ -107,4 +107,4 @@ You need to prepare 2D key points coordinates in order to run our `triangulation
 ### 2.5 Pitch Detection & String Mapping
 You need to prepare audio file with `.wav` format in 'audio' directory. Run `pitch_detect.py` for audio pitch detection, while `freq_position.py` for locating thoses pitches on cello.
 
-### 2.6 Pose Refinement from HPE and audio-guided approach
+### 2.6 Pose Refinement by HPE and audio-guided approach
