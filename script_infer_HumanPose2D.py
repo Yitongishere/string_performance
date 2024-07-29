@@ -16,25 +16,25 @@ shell_python_cmd = getPython3_command()
 if __name__ == '__main__':
     cuda = 0
     writevideo = 0
-    
-    instrument = 'cello' # cello or violin
+
+    instrument = 'violin' # cello or violin
     root_path = os.path.abspath(f'./data/{instrument}')
-    folder_names = get_folder(instrument,root_path)
-    
+    folder_names = get_folder(instrument,root_path)[25:]
+
     #If you want to process these data in batches, you can use the following annotated code.
-    
-    
+
+    '''
     index = -1
     batch_size = 85
-    
+
     if (index == -1 and batch_size == 1):
         folder_names = [folder_names[-1]]
     elif index == -1:
         folder_names = folder_names[index-batch_size+1:index] + [folder_names[-1]]
     else:
         folder_names = folder_names[index-batch_size+1:index+1]
-    
-    
+    '''
+
     print(folder_names)
     parent_dir = instrument
     os.chdir('./human_kp_2d/')    
@@ -62,6 +62,7 @@ if __name__ == '__main__':
         
         infer_command = f'{shell_python_cmd} infer_pipeline.py ' \
                         f'--dirs_path {dirs_path} ' \
+                        f'--parent_dir {parent_dir} ' \
                         f'--proj_dir {proj_dir} '\
                         f'--end_frame_idx {end_frame_idx} '\
                         f'--start_frame_idx {start_frame_idx} '\
