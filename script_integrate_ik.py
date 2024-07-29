@@ -1,10 +1,10 @@
 """
 The script facilitates a clearer and faster execution of the project.
 This is the SIXTH script.
-You may need to edit: parent_dir, proj_dir, cam_file, start_frame_idx, visualize, cam_num, instrument
+You may need to edit: parent_dir, proj_dir, cam_file, start_frame_idx, end_frame_idx, visualize, cam_num, instrument
 7. CONTACT POINTS should be detected. (Pre-request)
-8. INTEGRATE the hand poses by HPE. (Run this script)
-9. INVERSE KINEMATIC. (Run this script)
+8. INTEGRATE the hand poses by HPE. (Run this script)[The 1st step in this script]
+9. INVERSE KINEMATIC. (Run this script)[The 2nd step in this script]
 """
 
 import os
