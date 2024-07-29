@@ -6,7 +6,7 @@ You may need to edit: parent_dir, proj_dir, start_frame_idx, end_frame_idx, reso
 4. Human key points should be inferred. (Pre-request)
 5. Instrument key points should be tracked. (Pre-request)
 6. TRIANGULATION (Run this script)
-7. CONTACT POINTS DETECTION (Next script)
+7. CONTACT POINTS DETECTION [python 'script_cp_detection.py'](Next script)
 """
 
 import os
