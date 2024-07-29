@@ -55,6 +55,7 @@ def integrate_ik_process(folder_name):
                     f'--summary_jsonfile {summary_jsonfile_path} ' \
                     f'--parent_dir {parent_dir} ' \
                     f'--proj_dir {proj_dir} ' \
+                    f'--instrument {instrument} ' \
                     f'--start_frame {start_frame_idx}'
                     #f'--end_frame {end_frame_idx}'
 
