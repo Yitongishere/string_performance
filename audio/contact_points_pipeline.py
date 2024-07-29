@@ -161,11 +161,7 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
     pitch_results = np.stack((time, frequency, confidence), axis=1)
     # Pitch Data Persistence
     # np.savetxt("pitch.csv", pitch_results, delimiter=",")
-    ic(pitch_results.shape)
     pitch_results = pitch_results[:frame_num, :]
-    print(frame_num)
-    print(pitch_results.shape)
-    # ic(pitch_results)
     return pitch_results
 
 
@@ -176,10 +172,7 @@ def pitch_detect_pyin(proj, audio_path='wavs/background.wav'):
     # step_size: 10 milliseconds
     # center: False, don't need to pad!
     sample_num = y.shape[0]
-    ic(y.shape)
-    ic(sr)
     frame_num = math.floor(sample_num / sr * 30)
-    ic(frame_num)
     f0, voiced_flag, voiced_probs = librosa.pyin(y, sr=sr, frame_length=1600, hop_length=1600, center=True,
                                                  fmin=librosa.note_to_hz('B1'), fmax=librosa.note_to_hz('C6'))
     time = librosa.times_like(f0)
@@ -187,9 +180,7 @@ def pitch_detect_pyin(proj, audio_path='wavs/background.wav'):
     pitch_results = np.stack((time, f0, voiced_probs), axis=1)
     # Pitch Data Persistence
     # np.savetxt("pitch.csv", pitch_results, delimiter=",")
-    ic(pitch_results.shape)
     pitch_results = pitch_results[:frame_num, :]
-    ic(pitch_results)
     return pitch_results
 
 
@@ -209,15 +200,7 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_all_dw'])
     ic(kp_3d_all.shape)
-
-    # with open(f'../pose_estimation/{proj_dir}/kp_3d_all_pe.json', 'r') as f:
-    #     data_dict = json.load(f)
-    # kp_3d_all = np.array(data_dict['kp_3d_all_pe'])
-    # ic(kp_3d_all.shape)
-
-    # positions = np.ones([712, 4]) * -1  # n, 4
-    # positions[0] = np.array([-1, 0, 1 / 2, -1])
-    # positions[1] = np.array([-1, 1 / 2, 1 / 3, -1])
+    
     kp_3d_all_cp = kp_3d_all.copy().tolist()
     last_freq = np.nan
     vibrato_freq_list = []
@@ -241,7 +224,6 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
         finger_board.append(string_4_top - string_4_bottom)
 
         position = positions[frame]
-        # ic(position)
         # Used to filter out the contact point closest to the playing wrist
         # TODO： if ratio == 0, how to calculate the distance?
         left_wrist = kp_3d[91, :]
@@ -325,13 +307,17 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
         used_finger_dip = point_init()
         used_finger_tip = point_init()
         within_mean_range = False
+        if perform_style == 'normal':
+            vib_thresh = 30
+        else:
+            vib_thresh = 60
         if not np.isnan(current_freq):
-            within_last_range = freq_position.cent_dev(last_freq, -60) < current_freq < freq_position.cent_dev(last_freq, 60)
+            within_last_range = freq_position.cent_dev(last_freq, -vib_thresh) < current_freq < freq_position.cent_dev(last_freq, vib_thresh)
             if within_last_range:
                 # Potential Vibrato Detected
                 vibrato_freq_list.append(current_freq)
                 vibrato_freq_mean = np.mean(vibrato_freq_list)
-                within_mean_range = freq_position.cent_dev(vibrato_freq_mean, -60) < current_freq < freq_position.cent_dev(vibrato_freq_mean, 60)
+                within_mean_range = freq_position.cent_dev(vibrato_freq_mean, -vib_thresh) < current_freq < freq_position.cent_dev(vibrato_freq_mean, vib_thresh)
                 if within_mean_range:
                     # Vibrato Detected and Finger Not Changed
                     used_finger_mcp = mcps[used_finger_index]
@@ -410,7 +396,6 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
     #     if True not in np.isnan(kp_3d_all_cp[frame_num][150]):  # whether contact point (index: 150) exists
     #         for i in range(96, 100):
     #             kp_3d_all_cp_smooth[frame_num][finger + i] = kp_3d_all_cp[frame_num][finger + i]
-    # ic(kp_3d_all_cp_smooth.shape)
     if visualize:
         visualize_3d(kp_3d_all_cp_smooth, proj_dir, 'dw_cp_smooth_3d', 'whole')
 
@@ -439,6 +424,7 @@ if __name__ == '__main__':
     parser.add_argument('--draw_cps', default=False, required=False, action='store_true')
     parser.add_argument('--draw_filtered_cps', default=False, required=False, action='store_true')
     parser.add_argument('--save_position', default=False, required=False, action='store_true')
+    parser.add_argument('--style', default='normal', required=False)
     parser.add_argument('--crepe_backend', default='torch', required=False)
     args = parser.parse_args()
     
@@ -450,13 +436,13 @@ if __name__ == '__main__':
     draw_cps = args.draw_cps
     draw_filtered_cps = args.draw_filtered_cps
     save_position = args.save_position
+    perform_style = args.style
     crepe_backend = args.crepe_backend
     
     proj = parent_dir + os.sep + proj_dir
     
     pitch_results = pitch_detect_crepe(crepe_backend, proj, instrument, wav_path)
-    print(pitch_results)
-    print(pitch_results.shape)
+    
     pitch_with_positions = freq_position.get_contact_position(pitch_results,instrument)
     positions = pitch_with_positions[:, -4:]
     print(positions)
