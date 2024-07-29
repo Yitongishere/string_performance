@@ -18,13 +18,32 @@ shell_python_cmd = getPython3_command()
 if __name__ == '__main__':
     instrument = 'cello' # cello or violin
     parent_dir = instrument
+
     root_path = os.path.abspath(f'./data/{parent_dir}')
+
     folder_names = get_folder(parent_dir,root_path)
-    if instrument == 'cello':
-        track_cams = ['21334181','21334190','21334211'] # cello
-    else:
-        track_cams = ['21334207','21334218','21334220','21293324']] # violin
     
+    if instrument == 'cello':
+        track_cams = ['21334181','21334190','21334211'] # cello 
+    else:
+        track_cams = ['21334207','21334218','21334220','21293324']  # violin 
+
+    #If you want to process these data in batches, you can use the following annotated code.
+    """
+    index = -1
+    batch_size = 85
+
+    if (index == -1 and batch_size == 1):
+        folder_names = [folder_names[-1]]
+    elif index == -1:
+        folder_names = folder_names[index-batch_size+1:index] + [folder_names[-1]]
+    else:
+        folder_names = folder_names[index-batch_size+1:index+1]
+    """
+    '''
+    proj_range = range(1,85+1)
+    folder_names = [parent_dir+'0'*(2-len(str(i)))+str(i) for i in proj_range]
+    '''
     print(folder_names)
     
     os.chdir('./cello_kp_2d/')
@@ -33,15 +52,15 @@ if __name__ == '__main__':
         proj_dir = folder_name
         start_frame_idx = summary['StartFrame'] # obtained by audio and video alignment
         end_frame_idx = summary['EndFrame']# obtained by audio and video alignment
-
+        
         
         """
         TRACK KEY POINTS
         2D key points on cello/violin are collected in this section.
         Multi-view 2D key points will be triangulated to obtain the 3D coordinates.
         """
-
-      
+        
+        
         for track_cam in track_cams:
             video_path = os.path.abspath(f'../data/{parent_dir}/{proj_dir}/{proj_dir}_{track_cam}.avi')
             prompt = f'{proj_dir}_{track_cam}.avi'
@@ -57,3 +76,4 @@ if __name__ == '__main__':
                                     f'--end_frame_idx {end_frame_idx} ' \
                                     f'--instrument {instrument}'
             os.system(trackkeypoint_command)
+        #break
