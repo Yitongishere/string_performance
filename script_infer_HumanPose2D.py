@@ -1,9 +1,10 @@
 """
 The script facilitates a clearer and faster execution of the project.
 This is the SECOND script.
-You may need to edit: parent_dir, proj_dir, end_frame_idx
-4. INFER human key points (Run this script)
-5. TRACK instrument key points (Next script)
+You may need to edit: instrument, cuda, writevideo, parent_dir, proj_dir, start_frame_idx, end_frame_idx
+
+4. INFER human2d key points (Run this script)
+5. TRACK instrument key points [python 'script_track_key_points.py'](Next script)
 """
 
 import os
@@ -14,10 +15,10 @@ from tools.load_summary import get_folder, get_inform
 shell_python_cmd = getPython3_command()
 
 if __name__ == '__main__':
-    cuda = 0
-    writevideo = 0
+    cuda = 0 # gpu_device_id
+    writevideo = 0 # bool: the flag to control the generation of the videos by the inferred results
 
-    instrument = 'violin' # cello or violin
+    instrument = 'cello' # cello or violin
     root_path = os.path.abspath(f'./data/{instrument}')
     folder_names = get_folder(instrument,root_path)[25:]
 
