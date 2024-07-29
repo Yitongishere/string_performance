@@ -401,11 +401,7 @@ def make_projection_matrix(calibration_data, cams=["cam0", "cam1", "cam2"],
             world_orientation = world_orientation @ rm_inv
             # world_location = rm_inv @ world_location
         if offset is not None:
-            # ic(cam, world_location)
-            # ic(offset)
-            # ic(world_orientation@offset)
             world_location = R0 @ offset.reshape([3, 1]) + world_location
-            # ic(cam, offset, world_location)
         # print(cam_matrix, np.concatenate([world_orientation, world_location], axis=1))
         projection_matrix = np.matmul(cam_matrix, np.concatenate([world_orientation, world_location], axis=1))
         projection_matrices.append(projection_matrix)
@@ -446,8 +442,6 @@ def triangulate(image_coordinates, projection_matrices):
     '''
     u_3d = np.zeros((1, 3))
     u_3d.fill(np.nan)
-
-    # ic(image_coordinates)
 
     # Check if image coordinates are formatted properly
     if isinstance(image_coordinates, list):
@@ -502,12 +496,9 @@ def triangulate_joints(keypoints_mview, projection_matrices, num_joint, kpt_thr=
     # keypoints_mview = np.array([pose_mview[i][0]['keypoints'] for i in range(num_cams)])    #[num_cams, num_joints, 3], [x, y, score]
     for j in range(num_joint):
         cams_detected = keypoints_mview[:, j, 2] > kpt_thr
-        # ic(cams_detected)
         cam_idx = np.where(cams_detected)[0]
-        # ic(np.where(cams_detected)[0])
         if np.sum(cams_detected) < 2:
             continue
-        # ic(cam_idx)
         u_3d = triangulate(keypoints_mview[cam_idx, j, :2], projection_matrices[cam_idx])
         keypoints_3d[j, :] = u_3d
     return keypoints_3d
@@ -528,9 +519,7 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, eps
     for j in range(num_kpt):
 
         cams_detected = keypoints_mview[:, j, 2] > kpt_thr
-        # ic(cams_detected)
         cam_idx = np.where(cams_detected)[0]
-        # ic(cam_idx)
         if np.sum(cams_detected) < 2:
             continue
         cam_combinations = list(itertools.combinations(cam_idx, 2))
@@ -565,7 +554,6 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, eps
             inlier_set = sampled_cam.copy()
 
         inlier_list = sorted(list(inlier_set))
-        # ic(j, inlier_list)
         kp3d = triangulate(keypoints_mview[inlier_list, j, :2], projection_matrices[inlier_list])
         keypoints_3d[j, :] = kp3d
 
@@ -573,12 +561,9 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, eps
 
 
 def compute_axis_lim(triangulated_points, scale_factor=1):
-    # ic(triangulated_points.shape)
     # triangulated_points in shape [num_frame, num_keypoint, 3 axis]
     xlim, ylim, zlim = None, None, None
-    # ic(triangulated_points.shape)
     minmax = np.nanpercentile(triangulated_points, q=[0, 100], axis=0).T
-    # ic(minmax)
     minmax *= 1.
     minmax_range = (minmax[:, 1] - minmax[:, 0]).max() / 2
     if xlim is None:
@@ -597,12 +582,6 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
     xlim, ylim, zlim = None, None, None
     framenum = data.shape[0]
     key_points_num = data.shape[1]
-
-    # if not os.path.exists(f'../kp_3d_result/'):
-    #     os.makedirs(f'../kp_3d_result/')
-    #
-    # if not os.path.exists(f'../kp_3d_result/{proj_path}/'):
-    #     os.makedirs(f'../kp_3d_result/{proj_path}/')
 
     if not os.path.exists(f'./kp_3d_result/{proj_path}/{file_path}'):
         os.makedirs(f'./kp_3d_result/{proj_path}/{file_path}', exist_ok=True)
@@ -779,7 +758,7 @@ if __name__ == "__main__":
     
     if instrument == 'violin':
         customed_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
-        #customed_cams = ['cam10', 'cam11', 'cam12', 'cam13', 'cam21', 'cam22', 'cam0','cam1']
+        
         CELLO_LINKS = CELLO_LINKS[:-3]
         CELLO_LINKS.append([136, 137])
         BOW_LINKS = np.array(BOW_LINKS) - 2
@@ -787,14 +766,7 @@ if __name__ == "__main__":
     listed_cames = list(cam_param.keys())
     used_cams = sorted(set(listed_cames).intersection(set(customed_cams)),key=lambda s: int(s.split('cam')[1]))
     print(used_cams)
-    # used_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
-    #              'cam7', 'cam11', 'cam12', 'cam13', 'cam14', 'cam15', 'cam16',
-    #              'cam17', 'cam18', 'cam19','cam20','cam21','cam22','cam23']
 
-    # start_frame = 128
-    # end_frame = 129
-    # end_frame = 786
-    # end_frame = 190
 
     kp_3d_all = []
     for ff in range(start_frame, end_frame + 1):
@@ -831,7 +803,6 @@ if __name__ == "__main__":
             except FileNotFoundError as e:
                 pass
             try:
-                #print(1)
                 human_joint = f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 human_2d_cc_ff = np.array(json.load(open(human_joint)))
             except FileNotFoundError as e:
@@ -841,7 +812,6 @@ if __name__ == "__main__":
             # TODO: EDIT CELLO KEY POINTS
             cello_2d_cc_ff = np.zeros([9-point_offset, 3])  # 9 cello key points in total (default score 0 will not be used)
             try:
-                #print(2)
                 cello_json_path = f'../cello_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
                 # Resolve XML
