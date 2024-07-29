@@ -5,7 +5,7 @@ You may need to edit: parent_dir, proj_dir, start_frame_idx, end_frame_idx, inst
 3.1. The cello/violin key points should be manually labeled. (Pre-request)
 4. INFER human key points (Pre-request)
 5. TRACK instrument key points (Run this script)
-6. TRIANGULATION (Next script)
+6. TRIANGULATION [python 'script_triangulation.py'](Next script)
 """
 
 import os
