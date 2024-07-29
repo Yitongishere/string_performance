@@ -18,6 +18,7 @@ from multiprocessing import Pool
 def triangulation_process(folder_name):
     summary, summary_jsonfile_path = get_inform(folder_name, root_path)
     proj_dir = folder_name
+    
     start_frame_idx = summary['StartFrame']
     end_frame_idx = summary['EndFrame']
     cam_parm = summary['CameraParameter']
