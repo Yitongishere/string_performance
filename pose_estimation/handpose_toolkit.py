@@ -15,12 +15,12 @@ def get6d_from_txt(filepath):
     with open(filepath,'r') as f:
         lines = f.readlines()
     
-    #before
+    # before
     #lh = np.array([float(x) for x in lines[3].rstrip().split(' ')]).reshape(16, 6)
     #rh = np.array([float(x) for x in lines[1].rstrip().split(' ')]).reshape(16, 6)
+    # now
     lh = np.array([float(x) for x in lines[5].rstrip().split(' ')]).reshape(16, 6)
     rh = np.array([float(x) for x in lines[2].rstrip().split(' ')]).reshape(16, 6)
-    # ic(lh)
     f.close()
     return lh, rh
 
@@ -68,31 +68,6 @@ def normalize_vector(v):
 def cal_dist(point1, point2):
     return np.sqrt(np.sum(np.square(point1 - point2)))
 
-# def get_joint_positions(positions, rotations, bone_lengths, parent_indices):
-#
-#     positions_original = positions.copy()
-#     for i in range(1, 21):
-#         parent_index = parent_indices[i]
-#         parent_position = positions[parent_index]
-#
-#         R = rotations[parent_index]
-#         while parent_index != 0:
-#             parent_index = parent_indices[parent_index]
-#             R = np.dot(rotations[parent_index], R)
-#
-#         bone_length = bone_lengths[i - 1]
-#         original_parent_position = positions_original[parent_index]
-#         original_self_position = positions_original[i]
-#         original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
-#
-#         # 计算相对于父关节的位移
-#         relative_position = np.dot(R, original_vector)
-#
-#         # 累加得到全局位置
-#         positions[i] = relative_position + parent_position
-#
-#     return positions
-
 
 def get_joint_positions(init_positions, rotations, bone_lengths, parent_indices):
 
@@ -111,10 +86,10 @@ def get_joint_positions(init_positions, rotations, bone_lengths, parent_indices)
         original_self_position = init_positions[i]
         original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
 
-        # 计算相对于父关节的位移
+        # calculate the displacement relative to the parent joint
         relative_position = np.dot(R, original_vector)
 
-        # 累加得到全局位置
+        # accumulate to obtain global position
         positions[i] = relative_position + parent_position
 
     return positions
@@ -146,20 +121,16 @@ def get_frame_info(proj_dir, frame_num):
 def weighted_average_quaternion(q1, q2, q1_t, q2_t, w):
     key_rots = Rotation.from_quat((q1, q2))
 
-    # 创建 Slerp 对象
+    # create the object of Slerp 
     slerp = Slerp([q1_t, q2_t], key_rots)
 
-    # 进行球面线性插值
+    # perform slerp
     interpolated_quaternion = slerp(w)
 
     return interpolated_quaternion.as_quat()
 
 
 def get_converted_R0(R0_cam, R0, cam_param):
-    # cam_R_path = '../triangulation/jsons/cello_1113_scale_camera.json'
-    
-    #with open(cam_file_path, 'r') as f:
-    #    data_dict = json.load(f)
     
     cam_R = np.array(cam_param[R0_cam]['R']).reshape(3, 3)
 
@@ -202,28 +173,11 @@ def get_averaged_R(frame_info, R0_cam, cam_weights_lh, cam_weights_rh, cam_param
         averaged_Qs_lh.append(q_current_lh)
         averaged_Qs_rh.append(q_current_rh)
 
-    # 创建旋转对象，q 转 r
+    # creat the object of rotation, transfor q to r
     R_matrix_lh = Rotation.from_quat(averaged_Qs_lh).as_matrix()
     R_matrix_rh = Rotation.from_quat(averaged_Qs_rh).as_matrix()
 
-
-    # 直接用cam0-181的所有R参数, 注释掉则用averaged R
-    #===========================================================
-    # R_matrix_lh = []
-    # R_matrix_rh = []
-    # for i in range(15):
-    #     joint_index = i + 1
-    #     R_lh_181 = frame_info[cams[0]]['R_lh'][joint_index]
-    #     R_rh_181 = frame_info[cams[0]]['R_rh'][joint_index]
-    #     R_matrix_lh.append(R_lh_181)
-    #     R_matrix_rh.append(R_rh_181)
-    # R_matrix_lh = np.array(R_matrix_lh)
-    # R_matrix_rh = np.array(R_matrix_rh)
-    # ic(R_matrix_lh.shape)
-    #===========================================================
-
-
-    # 在最开始添加R0
+    # add R0 initially
     cam_num = str(CAM_DICT[R0_cam])
 
     R0_lh = frame_info[cam_num]['R_lh'][0]
@@ -233,8 +187,6 @@ def get_averaged_R(frame_info, R0_cam, cam_weights_lh, cam_weights_rh, cam_param
     R0_rh = frame_info[cam_num]['R_rh'][0]
     R0_rh_converted = get_converted_R0(R0_cam, R0_rh, cam_param)
     R_matrix_rh = np.vstack((R0_rh_converted, R_matrix_rh))
-
-
     return R_matrix_lh, R_matrix_rh
 
 
