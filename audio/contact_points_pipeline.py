@@ -38,7 +38,7 @@ def draw_contact_points(data, file_name, proj):
     string_low = 1
     string_high = 10
     string_length = string_high - string_low
-
+    
     # string
     string_xloc = [4, 3, 2, 1]
 
@@ -144,7 +144,6 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         frequency = frequency.reshape(-1,)
         confidence = confidence.reshape(-1,)
         time = np.arange(0,100/3.*frequency.size()[0],100/3.).reshape(-1,)[:len(frequency)]
-        print(frequency)
     elif crepe_backend == 'tensorflow':
         import crepe
         sr, audio = wavfile.read(audio_path)
@@ -152,7 +151,6 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         frame_num = math.floor(30 * sample_num / sr)
         time, frequency, confidence, activation = crepe.predict(
         audio, sr, viterbi=True, step_size=100 / 3, model_capacity='full', center=True)
-        print(frequency)
     else:
         print('the argument "crepe_backend" is either "tensorflow" or "torch"')
     
@@ -199,7 +197,6 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
     with open(f'../triangulation/kp_3d_result/{proj}/kp_3d_all_dw.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_all_dw'])
-    ic(kp_3d_all.shape)
     
     kp_3d_all_cp = kp_3d_all.copy().tolist()
     last_freq = np.nan
@@ -208,7 +205,6 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
     used_finger = []
     filtered_positions = []
     for frame, kp_3d in enumerate(kp_3d_all):
-        # ic(kp_3d.shape)
         finger_board = []
         string_4_top = kp_3d[134, :]
         string_1_top = kp_3d[135, :]
@@ -272,13 +268,6 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
             freq_range = freq_position.PITCH_RANGES_VIOLIN
         for pos_idx, ratio in enumerate(position):
             if ratio > 0:
-                # temp_contact_point = finger_board[pos_idx] * ratio + locals()[f'string_{pos_idx + 1}_bottom']
-                # temp_dist = cal_dist(rf, temp_contact_point)
-                # if temp_dist < dist:
-                #     dist = temp_dist
-                #     contact_point = temp_contact_point
-                #     string_fund_freq = freq_position.PITCH_RANGES[pos_idx][0]
-                #     current_freq = freq_position.positon2freq(string_fund_freq, ratio)
                 potential_contact_point = finger_board[pos_idx] * ratio + locals()[f'string_{pos_idx + 1}_bottom']
                 potential_dist = cal_dist(rf, potential_contact_point)
                 dist_list.append(potential_dist)
@@ -299,8 +288,6 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
                     contact_point = contact_point_list[i]
                     current_freq = current_freq_list[i]
                     pressed_string_id = pressed_string_id_list[i]
-                    # ic(pressed_string_id)
-                    # ic(i)
         
         used_finger_mcp = point_init()
         used_finger_pip = point_init()
@@ -370,8 +357,7 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
             filtered_positions.append(filtered_position)
         else:
             filtered_positions.append(filtered_position)
-
-        # ic(contact_point)
+        
         temp_list = kp_3d_all_cp[frame]
         # index from 142 to 154
         temp_list.extend(
@@ -382,20 +368,19 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
         kp_3d_all_cp[frame] = temp_list
 
     kp_3d_all_cp = np.array(kp_3d_all_cp)
-    # ic(kp_3d_all_cp.shape)
     # Bow Points are currently not available, otherwise index should be set to 142
-    kp_3d_all = kp_3d_all_cp[:, :140, :]
-    kp_3d_all_smooth = Savgol_Filter(kp_3d_all, 140)
-    cp = kp_3d_all_cp[:, 140:, :]
+    bias = 0
+    
+    if instrument == 'violin':
+        bias -= 2
+    kp_3d_all = kp_3d_all_cp[:, :(142+bias), :]
+    kp_3d_all_smooth = Savgol_Filter(kp_3d_all, 142+bias)
+    cp = kp_3d_all_cp[:, (142+bias):, :]
     kp_3d_all_cp_smooth = np.concatenate((kp_3d_all_smooth, cp), axis=1)
     for frame_id, finger_id in enumerate(used_finger):
         if not np.isnan(finger_id):
-           kp_3d_all_cp_smooth[frame_id][151:155] = kp_3d_all_cp_smooth[frame_id][FULL_FINGER_INDICES[finger_id]]
+           kp_3d_all_cp_smooth[frame_id][(151+bias):(155+bias)] = kp_3d_all_cp_smooth[frame_id][FULL_FINGER_INDICES[finger_id]]
 
-    # for frame_num, finger in enumerate(used_finger):
-    #     if True not in np.isnan(kp_3d_all_cp[frame_num][150]):  # whether contact point (index: 150) exists
-    #         for i in range(96, 100):
-    #             kp_3d_all_cp_smooth[frame_num][finger + i] = kp_3d_all_cp[frame_num][finger + i]
     if visualize:
         visualize_3d(kp_3d_all_cp_smooth, proj_dir, 'dw_cp_smooth_3d', 'whole')
 
@@ -448,7 +433,7 @@ if __name__ == '__main__':
     print(positions)
     if draw_cps:
         draw_contact_points(positions, proj, 'virtual_contact_point')
-    new_positions = mapping(proj, positions, visualize=visualize)
+    new_positions = mapping(proj, positions, instrument=instrument, visualize=visualize)
     if save_position:
         np.savetxt(f'positions_{proj_dir}', new_positions)
     if draw_filtered_cps:
