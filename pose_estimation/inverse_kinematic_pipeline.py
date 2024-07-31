@@ -11,7 +11,6 @@ from handpose_toolkit import get6d_from_txt, rotation_6d_to_R, get_joint_positio
 from integrate_handpose_pipeline import get_bone_length_dw, MANO_PARENTS_INDICES, LEFT_WRIST_INDEX, RIGHT_WRIST_INDEX, MANO_TO_DW
 import json
 from icecream import ic
-
 from triangulation.smooth import Savgol_Filter
 from triangulation.triangulation_pipeline import make_projection_matrix, HUMAN_LINKS, CELLO_LINKS, BOW_LINKS, STRING_LINKS, \
     visualize_3d
