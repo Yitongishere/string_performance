@@ -26,6 +26,10 @@ def integrate_ik_process(folder_name):
     print(f'start_frame_idx:{start_frame_idx}')
     print(f'end_frame_idx:{end_frame_idx}')
     
+    if instrument == 'cello':
+        cam_num = 'cam0'
+    else:
+        cam_num = 'cam10'
     
     """
     INTEGRATE handpose
