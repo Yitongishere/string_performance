@@ -1,10 +1,10 @@
 import argparse
 import contextlib
+import math
 import os.path
 import cv2
 import imageio
 import numpy as np
-from matplotlib import pyplot as plt
 from scipy.spatial.transform import Rotation
 from handpose_toolkit import get6d_from_txt, rotation_6d_to_R, get_joint_positions, get_mano_init, get_converted_R0, \
     cal_dist
@@ -16,100 +16,8 @@ from triangulation.smooth import Savgol_Filter
 from triangulation.triangulation_pipeline import make_projection_matrix, HUMAN_LINKS, CELLO_LINKS, BOW_LINKS, STRING_LINKS, \
     visualize_3d
 from scipy.optimize import minimize
-
 from triangulation.triangulation_pipeline import CAM_DICT, FULL_FINGER_INDICES
-
-
-@contextlib.contextmanager
-def plot_over(img, extent=None, origin="upper", dpi=100):
-    """用于基于原图画点"""
-    h, w, d = img.shape
-    assert d == 3
-    if extent is None:
-        xmin, xmax, ymin, ymax = -0.5, w + 0.5, -0.5, h + 0.5
-    else:
-        xmin, xmax, ymin, ymax = extent
-    if origin == "upper":
-        ymin, ymax = ymax, ymin
-    elif origin != "lower":
-        raise ValueError("origin must be 'upper' or 'lower'")
-    fig = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
-    ax = plt.Axes(fig, (0, 0, 1, 1))
-    ax.set_axis_off()
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(ymin, ymax)
-    fig.add_axes(ax)
-    fig.set_facecolor((0, 0, 0, 0))
-    yield ax
-    fig.canvas.draw()
-    plot = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).reshape(h, w, 4)
-    plt.close(fig)
-    rgb = plot[..., :3]
-    alpha = plot[..., 3, None]
-    img[...] = ((255 - alpha) * img.astype(np.uint16) + alpha * rgb.astype(np.uint16)) // 255
-
-
-def visualize_overlay(proj_dir, data, img_path, frame_offset):
-    framenum = data.shape[0]
-    # if not os.path.exists(f'../reproj_result/'):
-    #     os.makedirs(f'../reproj_result/')
-    #
-    # if not os.path.exists(f'../reproj_result/{proj_path}/'):
-    #     os.makedirs(f'../reproj_result/{proj_path}/')
-    #
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'./ik_result/{proj_dir}/output_ik_v2.avi', fourcc, fps=30, frameSize=[2300, 2656])
-
-    for f in range(framenum):
-        kp_2d = data[f]
-        fig = plt.figure(figsize=[10, 10])
-        axes = fig.add_subplot()
-        img = imageio.v2.imread(f"{img_path}_{f + frame_offset}.jpg")
-        img_with_plot = img.copy()
-        with plot_over(img_with_plot) as axes:
-            # axes.scatter(kp_2d[0:133, 0],
-            #              kp_2d[0:133, 1], s=50)
-            axes.scatter(kp_2d[0:92, 0],
-                         kp_2d[0:92, 1], c='#1f77b4', s=50, zorder=2)
-            axes.scatter(kp_2d[92:96, 0],
-                         kp_2d[92:96, 1], c='grey', s=50, zorder=1)
-            axes.scatter(kp_2d[96:133, 0],
-                         kp_2d[96:133, 1], c='#1f77b4', s=50, zorder=2)
-            axes.scatter(kp_2d[133:140, 0],
-                         kp_2d[133:140, 1], c='saddlebrown', s=50)
-            axes.scatter(kp_2d[140:142, 0],
-                         kp_2d[140:142, 1], c='goldenrod', s=50)
-            axes.scatter(kp_2d[142:150, 0],
-                         kp_2d[142:150, 1], c='w', s=50)
-            if True not in np.isnan(kp_2d[150]):
-                axes.scatter(kp_2d[150, 0],
-                             kp_2d[150, 1], c='r', s=25,
-                             zorder=100)  # zorder must be the biggest so that it would not be occluded
-                axes.scatter(kp_2d[151:155, 0],
-                             kp_2d[151:155, 1], c='orange', s=0,
-                             zorder=99)
-            else:
-                print(f'Frame {f} contact point not exist.')
-
-            for human in HUMAN_LINKS:
-                plt.plot([kp_2d[human[0]][0], kp_2d[human[1]][0]], [kp_2d[human[0]][1], kp_2d[human[1]][1]], c='blue')
-            for cello in CELLO_LINKS:
-                plt.plot([kp_2d[cello[0]][0], kp_2d[cello[1]][0]], [kp_2d[cello[0]][1], kp_2d[cello[1]][1]],
-                         c='saddlebrown')
-            for bow in BOW_LINKS:
-                plt.plot([kp_2d[bow[0]][0], kp_2d[bow[1]][0]], [kp_2d[bow[0]][1], kp_2d[bow[1]][1]], c='goldenrod')
-
-            for string in STRING_LINKS:
-                plt.plot([kp_2d[string[0]][0], kp_2d[string[1]][0]], [kp_2d[string[0]][1], kp_2d[string[1]][1]], c='w')
-
-        img_with_plot = img_with_plot[:, :, ::-1]
-        cv2.imwrite(f"./ik_result/{proj_dir}/ik_v2_{f + frame_offset}.jpg", img_with_plot)
-        # img_with_plot = cv2.resize(img_with_plot, (1150, 1328))
-        # cv2.imshow('img', img_with_plot)
-        # cv2.waitKey(0)
-        out.write(img_with_plot)
-        plt.close()
-        print(f'Frame {f} ik image generated.')
+from tqdm import tqdm
 
 
 def get_rot_vec(matrix):
@@ -231,7 +139,9 @@ ROT_FINGER_INDICES = [[2, 3],
                       [5, 6],
                       [11, 12],
                       [8, 9]]
-                      
+
+REAL_CELLO_NUT_L_BRIDGE_L = 695
+REAL_VIOLIN_NUT_L_BRIDGE_L = 328
 
 if __name__ == '__main__':
 
@@ -243,8 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('--parent_dir', default='cello_1113', type=str, required=True)
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
     parser.add_argument('--start_frame', default=128, type=str, required=True)
-    parser.add_argument('--visualize', default=False, required=False, action='store_true')
-    parser.add_argument('--cam_num', default='cam0', type=str, required=False)
+    parser.add_argument('--instrument', default='cello', type=str, required=False)
     
     args = parser.parse_args()
     
@@ -257,19 +166,33 @@ if __name__ == '__main__':
     start_frame = int(args.start_frame)
     visualize = args.visualize
     cam_num = args.cam_num
-
-    # parent_dir = 'cello_1113'
-    # proj_dir = "cello_1113_scale"
+    instrument = args.instrument
+    
     dir_6d = f"./6d_result/{parent_dir}/{proj_dir}"
-    # cam_file = '../triangulation/jsons/cello_1113_scale_camera.json'
-    # start_frame = 128
-    # cam_num = 'cam0'
 
     overlay_img_path = f'../data/{parent_dir}/{proj_dir}/frames/{CAM_DICT[cam_num]}/{CAM_DICT[cam_num]}'
 
     with open(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_dw = np.array(data_dict['kp_3d_all_dw_cp'])
+
+    # first frame is labeled manually
+    manual_label = kp_3d_dw[0]
+
+    label_nut_l = manual_label[134]
+    label_bridge_l = manual_label[136]
+
+    label_nut_l_bridge_l = math.dist(label_nut_l, label_bridge_l)
+
+    if instrument == 'cello':
+        real_nul_l_bridge_l = REAL_CELLO_NUT_L_BRIDGE_L
+    elif instrument == 'violin':
+        real_nul_l_bridge_l = REAL_VIOLIN_NUT_L_BRIDGE_L
+    else:
+        raise Exception('Instrument type is not supported, please modify it into "cello" or "violin"!')
+
+    ratio = real_nul_l_bridge_l / label_nut_l_bridge_l
+
     #
     # with open(f'../pose_estimation/{proj_dir}/kp_3d_all_pe.json', 'r') as f:
     #     data_dict = json.load(f)
@@ -299,13 +222,6 @@ if __name__ == '__main__':
     global_translation = []
     used_finger_arr = []
     for frame_id in range(kp_3d_pe.shape[0]):
-        # file_path = f'6d_result/{proj_dir}/{proj_dir}_21334181/{start_frame + frame_id}.txt'
-        # left_hand, right_hand = get6d_from_txt(file_path)
-        # lh_rot = rotation_6d_to_R(left_hand)
-        # R0 = lh_rot[0]
-        # converted_R0 = get_converted_R0('cam0', R0, cam_file)
-        # lh_rot[0] = converted_R0
-
         lh_rh_rot = integrated_hand_rot[frame_id]
         lh_rot = lh_rh_rot[0:16]
         rh_rot = lh_rh_rot[16:]
@@ -395,15 +311,13 @@ if __name__ == '__main__':
         optimized_rot_mat = get_rot_mat(lh_rot_vec)
         optimized_pos_mano = get_joint_positions(INIT_POS, optimized_rot_mat, BONE_LENGTH, MANO_PARENTS_INDICES)
         optimized_pos_dw = mano_to_dw(optimized_pos_mano, lh_wrist)
-        # optimized_pos_dw = optimized_pos_dw + optimized_trans_wrist
         optimized_tip = optimized_pos_dw[DW_TIP[used_finger]]
         optimized_pip = optimized_pos_dw[DW_PIP[used_finger]]
         optimized_wrist = optimized_pos_dw[0]
         
         hand_rot_vec.append(np.vstack((lh_rot_vec, rh_rot_vec)).tolist())
-        # hand_rot_vec.append(lh_rot_vec.tolist())
 
-        # 中间无cp帧
+        # to deal with the circumstance about no cp frame
         if np.isnan(cp).any():
             global_translation.append([np.nan, np.nan, np.nan])
         else:
@@ -414,7 +328,6 @@ if __name__ == '__main__':
         extracted_frame[10] = extracted_frame[112]
         extracted_frame[91:112] = optimized_pos_dw
         extracted_frame[112:133] = kp_3d_dw[frame_id][112:133]  # right hand should follow dw result
-        # extracted_frame = np.vstack((extracted_frame, kp_3d_dw[frame_id][142:]))
         
         kp_3d_ik[frame_id] = extracted_frame
 
@@ -425,59 +338,39 @@ if __name__ == '__main__':
     with open(f'ik_result/{parent_dir}/{proj_dir}/hand_rot_vec.json', 'w') as f:
         json.dump(data_dict, f)
 
-    # global translation: 712, 3
-    global_translation = np.array(global_translation)
-    interp_global_translation = global_translation.copy()
-    for idx, translation in enumerate(global_translation):
-        if not np.isnan(translation).any():
-            previous_id = idx
-        else:
-            next_id = idx + 1
-            while np.isnan(global_translation[next_id]).any():
-                next_id += 1
-                if next_id >= global_translation.shape[0] - 1:
-                    break
-            if np.isnan(global_translation[next_id]).any():
-                interp_global_translation[idx] = [0, 0, 0]
-                break
-            try:
-                interp_global_translation[idx] = interpolation(previous_id, global_translation[previous_id], next_id,
-                                                               global_translation[next_id], idx)
-            except NameError:
-                interp_global_translation[idx] = [0, 0, 0]
-
-    interp_global_translation = np.nan_to_num(interp_global_translation, nan=0)
-
-    # for i, trans in enumerate(interp_global_translation):
-    #     kp_3d_ik[i][91:112] = kp_3d_ik[i][91:112] + trans
-    #     kp_3d_ik[i][9] = kp_3d_ik[i][91]
-
     # TODO 140 change to 142
-    kp_3d_partial_ik = kp_3d_ik[:, :140, :]
-    kp_3d_partial_ik_smooth = Savgol_Filter(kp_3d_partial_ik, 140, WindowLength=[13, 11, 23, 45],
+    point_offset = 0
+    if instrument == 'violin':
+        point_offset -= 2
+    kp_3d_partial_ik = kp_3d_ik[:, :(142+point_offset), :]
+    kp_3d_partial_ik_smooth = Savgol_Filter(kp_3d_partial_ik, (142+point_offset), WindowLength=[13, 11, 23, 45],
                                             PolyOrder=[6, 6, 4, 2])
     ic(kp_3d_partial_ik_smooth.shape)
-    ik_cp = kp_3d_ik[:, 140:, :]
+    ik_cp = kp_3d_ik[:, (142+point_offset):, :]
     kp_3d_ik_smooth = np.concatenate((kp_3d_partial_ik_smooth, ik_cp), axis=1)
 
     for frame_id, finger_id in enumerate(used_finger_arr):
         if not np.isnan(finger_id):
-            kp_3d_ik_smooth[frame_id][151:155] = kp_3d_ik_smooth[frame_id][FULL_FINGER_INDICES[finger_id]]
+            kp_3d_ik_smooth[frame_id][(151+point_offset):(155+point_offset)] = kp_3d_ik_smooth[frame_id][FULL_FINGER_INDICES[finger_id]]
+
+    kp_3d_partial_without_music = kp_3d_ik_without_music[:, :(142+point_offset), :]
+    kp_3d_partial_without_music_smooth = Savgol_Filter(kp_3d_partial_without_music, (142+point_offset), WindowLength=[13, 11, 23, 45],
+                                                       PolyOrder=[6, 6, 4, 2])
+    without_music_cp = kp_3d_ik_without_music[:, (142+point_offset):, :]
+    kp_3d_ik_without_music_smooth = np.concatenate((kp_3d_partial_without_music_smooth, without_music_cp), axis=1)
+
+    for frame_id, finger_id in enumerate(used_finger_arr):
+        if not np.isnan(finger_id):
+            kp_3d_ik_without_music_smooth[frame_id][(151+point_offset):(155+point_offset)] = kp_3d_ik_without_music_smooth[frame_id][FULL_FINGER_INDICES[finger_id]]
+
+    # scale to mm
+    kp_3d_ik_smooth *= ratio
+    kp_3d_ik_without_music_smooth *= ratio
 
     data_dict = {'kp_3d_ik_smooth': kp_3d_ik_smooth.tolist()}
 
     with open(f'ik_result/{parent_dir}/{proj_dir}/kp_3d_ik_smooth.json', 'w') as f:
         json.dump(data_dict, f)
-
-    kp_3d_partial_without_music = kp_3d_ik_without_music[:, :140, :]
-    kp_3d_partial_without_music_smooth = Savgol_Filter(kp_3d_partial_without_music, 140, WindowLength=[13, 11, 23, 45],
-                                                       PolyOrder=[6, 6, 4, 2])
-    without_music_cp = kp_3d_ik_without_music[:, 140:, :]
-    kp_3d_ik_without_music_smooth = np.concatenate((kp_3d_partial_without_music_smooth, without_music_cp), axis=1)
-
-    for frame_id, finger_id in enumerate(used_finger_arr):
-        if not np.isnan(finger_id):
-            kp_3d_ik_without_music_smooth[frame_id][151:155] = kp_3d_ik_without_music_smooth[frame_id][FULL_FINGER_INDICES[finger_id]]
 
     data_dict = {'kp_3d_ik_without_music_smooth': kp_3d_ik_without_music_smooth.tolist()}
 
@@ -488,9 +381,7 @@ if __name__ == '__main__':
 
     framenum = kp_3d_ik_smooth.shape[0]
     kpt_num = kp_3d_ik_smooth.shape[1]
-
-    # cam_file = "../triangulation/jsons/cello_1113_scale_camera.json"
-    #cam_param = json.load(open(cam_file))
+    
     cam_param = summary['CameraParameter']
 
     # find reprojection of the specific camera
@@ -507,6 +398,3 @@ if __name__ == '__main__':
             kp2d = kp2d.reshape((3,))
             kp2d = kp2d / kp2d[2:3]
             repro_2d[ff, kpt, :] = kp2d[:2]
-
-    if visualize:
-        visualize_overlay(f'{parent_dir}/{proj_dir}', repro_2d, overlay_img_path, start_frame)
