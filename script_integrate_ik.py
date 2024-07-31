@@ -26,8 +26,6 @@ def integrate_ik_process(folder_name):
     print(f'start_frame_idx:{start_frame_idx}')
     print(f'end_frame_idx:{end_frame_idx}')
     
-    visualize = False  # whether to overlay the 3D result
-    cam_num = 'cam0'  # choose the camera as the overlay camera
     
     """
     INTEGRATE handpose
@@ -58,9 +56,6 @@ def integrate_ik_process(folder_name):
                     f'--instrument {instrument} ' \
                     f'--start_frame {start_frame_idx}'
                     #f'--end_frame {end_frame_idx}'
-
-    if visualize:
-        ik_command += f' --visualize --cam_num {cam_num}'
 
     os.system(ik_command)
     
