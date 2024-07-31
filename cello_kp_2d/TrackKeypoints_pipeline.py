@@ -251,9 +251,9 @@ def get_seperate_list(summary):
             frame_cyclelist.append(frame_alllist[(frame_alllist.index(frame_jsonlist[i])+1)])
     frame_alllist = frame_alllist[1:]
     
-    frame_jsonlist = [item for item in frame_jsonlist if item <= end_frame_idx]
-    frame_alllist = [item for item in frame_alllist if item <= end_frame_idx]
-    frame_cyclelist = [item for item in frame_cyclelist if item <= end_frame_idx]
+    frame_jsonlist = [item for item in frame_jsonlist if item <= end_frame_idx and item >= start_frame_idx]
+    frame_alllist = [item for item in frame_alllist if item <= end_frame_idx and item > start_frame_idx]
+    frame_cyclelist = [item for item in frame_cyclelist if item <= end_frame_idx and item > start_frame_idx]
     
     summary.update(var_to_dict(frame_jsonlist = frame_jsonlist))
     summary.update(var_to_dict(frame_alllist = frame_alllist))
@@ -291,6 +291,7 @@ def get_origin(summary):
 
 
 def TAPIR_infer(summary):
+    instrument = summary['instrument']
     start_frame_idx = summary['start_frame_idx']
     end_frame_idx = summary['end_frame_idx']
     iter_frames = summary['iter_frames']
@@ -325,11 +326,15 @@ def TAPIR_infer(summary):
     
     instrument_kps = summary['instrument_kps']
     guided_kps = summary['guided_kps']
+    guided_kp_idx = -1
+    if guided_kps != []:
+        if guided_kps[0] in instrument_kps:
+            guided_kp_idx = instrument_kps.index(guided_kps[0])
     keypoints = instrument_kps + guided_kps
     
     video = imageio.get_reader(os.path.abspath(video_path),  'ffmpeg')
     
-
+    
     frames = None
     frame_jsonlist_round = 0
     ceaseflag = 0
@@ -339,7 +344,6 @@ def TAPIR_infer(summary):
             image = np.asarray(video.get_data(num), dtype=np.uint8)
             image = frame_rotate(cam_num, image) 
             image = image[origin[1]:origin[1]+ROI_size,origin[0]:origin[0]+ROI_size,:]
-            #image = remove_flash(image)
             frame = media.resize_video(image[np.newaxis, :], (resize_pixel, resize_pixel))
 
             if frames is None:
@@ -368,18 +372,33 @@ def TAPIR_infer(summary):
                         if item['label'] in keypoints:
                             kpdict[(keypoints).index(item['label'])] = item['points'][0]
                             continue
-
                     kpdict = dict(sorted(kpdict.items(), key=lambda item: item[0], reverse=False))
+                    
                     
                     # If the label is lost, use a 0 matrix to represent the result 
                     # Identify lost tags -> lacked_instrument_kps
                     losted_instrument_kps = list(set(range(len(instrument_kps))) ^ set(kpdict.keys()))
-                    #print("losted_instrument_kps: ",losted_instrument_kps)
+                    factor = {}
+                    if instrument == 'cello':
+                        for item in labelled_info['shapes']:
+                            if item['label'] == 'end_pin':
+                                ep_location = item['points'][0]
+                                break
+                        guided_kp_location = kpdict[keypoints.index(keypoints[guided_kp_idx])]
+                        for i in range(len(instrument_kps)):
+                            if guided_kp_location == ep_location or cam_num in ['21334181']:
+                                factor[i] = 1
+                            else:
+                                factor[i] = cal_dist(kpdict[i],ep_location)/cal_dist(guided_kp_location,ep_location)
+                        
+                    else:
+                        for i in range(1,len(instrument_kps)):
+                            factor[i] = 0.8
+                        factor[0] = 1
                     
                     
                     query_points = np.concatenate(
                         (np.ones((len(kpdict), 1)) * (num - iter_frames + 1), np.flip(list(kpdict.values())-origin, axis=1)), axis=1)
-                    #print('qp_ori:',query_points)
 
                 else:
                     query_points = np.concatenate(
@@ -393,7 +412,7 @@ def TAPIR_infer(summary):
                     causal_state = TAPIR_model.construct_initial_causal_state(query_points.shape[0], len(query_features.resolutions) - 1)
                     # Predict point tracks frame by frame
                     predictions = []
-                    for infer_idx in tqdm(range(frames.shape[0]), desc="(TAP_causal) Inferring:", leave=False):
+                    for infer_idx in tqdm(range(frames.shape[0]), desc=f"(TAP:{MODEL_TYPE}) Inferring:", leave=False):
                       # Note: we add a batch dimension.
                       tracks, visibles, causal_state = TAPIR_online_model_predict(
                           frames=frames[None, infer_idx:infer_idx+1],
@@ -405,7 +424,7 @@ def TAPIR_infer(summary):
                     tracks = np.concatenate([x['tracks'][0] for x in predictions], axis=1)
                     visibles = np.concatenate([x['visibles'][0] for x in predictions], axis=1)
                 else:
-                    for _ in tqdm(range(1), desc="(TAP) Inferring:", leave=False):
+                    for _ in tqdm(range(1), desc=f"(TAP:{MODEL_TYPE}) Inferring:", leave=False):
                         tracks, visibles = TAPIR_inference(frames, query_points)
                         tracks = np.array(tracks)
                         visibles = np.array(visibles)
@@ -421,11 +440,15 @@ def TAPIR_infer(summary):
 
                 # Visualize sparse point tracks    
                 diff_qp = tracks.transpose(1,2,0)[0].T-np.flip(query_points[:,1:],axis = 1)
-                tracks= tracks - diff_qp[:,np.newaxis,:]
+                tracks = tracks - diff_qp[:,np.newaxis,:]
                 tracks = transforms.convert_grid_coordinates(tracks, (resize_pixel, resize_pixel), (height, width))
-                for keypoints_num in range(visibles.shape[0]):
+                
+                visibles_range = visibles.shape[0] if guided_kps==[] or guided_kp_idx != -1 else visibles.shape[0]-1
+                for keypoints_num in range(visibles_range):
                     if not np.alltrue(visibles[keypoints_num]):
                         false_indices = np.squeeze(np.where(visibles[keypoints_num] == False),axis = 0)
+                        
+                        #false_indices = complete_sequence(false_indices)
                         '''
                         #use kmeans to insert the indexes in false_indices
                         if len(false_indices) >= 3:
@@ -436,21 +459,25 @@ def TAPIR_infer(summary):
                                 false_indices_divided = [complete_sequence(i) for i in false_indices_divided]
                                 false_indices = sorted(list(set(list(itertools.chain.from_iterable(false_indices_divided)))))
                             else:
+                            
                                 false_indices = complete_sequence(false_indices)
                         else:
                             false_indices = complete_sequence(false_indices)
                         '''
                         for i in range(len(false_indices)):
                             dist_li = []
-                            for j in range(visibles.shape[0]):
+                            for j in range(visibles_range):
                                 dist = cal_dist(tracks[keypoints_num][false_indices[i]], tracks[j][false_indices[i]])
                                 dist_li.append(dist if dist != 0 else np.inf)
                             dist_argmin = np.argmin(dist_li)
                             if visibles[dist_argmin][false_indices[i] - 1] == True and visibles[dist_argmin][false_indices[i]] == True:
                                 diff_guided = tracks[dist_argmin][false_indices[i]] - tracks[dist_argmin][false_indices[i] - 1]
+                                
                             else:
-                                diff_guided = tracks[-1][false_indices[i]] - tracks[-1][false_indices[i] - 1]
-                            tracks[keypoints_num][false_indices[i]] = tracks[keypoints_num][false_indices[i]-1] + diff_guided
+                                diff_guided = tracks[guided_kp_idx][false_indices[i]] - tracks[guided_kp_idx][false_indices[i] - 1]
+                            diff_guided = tracks[guided_kp_idx][false_indices[i]] - tracks[guided_kp_idx][false_indices[i] - 1]
+                            tracks[keypoints_num][false_indices[i]] = tracks[keypoints_num][false_indices[i]-1] + diff_guided * factor[j]
+                            #previous_frog,previous_tip = bow_results[:,-1]
                             visibles[keypoints_num][false_indices[i]] = True
                 
                 for kp_idx in losted_instrument_kps:
@@ -487,7 +514,7 @@ def silhouette_method(arr, max_clusters):
     scores = []
     array = np.array(arr).reshape(-1, 1)
     for i in range(2, max_clusters + 1):
-        kmeans = KMeans(n_clusters=i, random_state=0).fit(array)
+        kmeans = KMeans(n_clusters=i, init='k-means++', n_init="auto", max_iter = 100).fit(array)
         labels = kmeans.labels_
         score = silhouette_score(array, labels)
         scores.append(score)
@@ -497,7 +524,7 @@ def silhouette_method(arr, max_clusters):
 def divide_by_kmeans(arr, n_clusters):
     array = np.array(arr).reshape(-1, 1)
     # use KMeans
-    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(array)
+    kmeans = KMeans(n_clusters=n_clusters, init='k-means++', n_init="auto", max_iter = 100).fit(array)
     labels = kmeans.labels_
     divided_arrays = [[] for _ in range(n_clusters)]
     for idx, label in enumerate(labels):
@@ -607,6 +634,7 @@ def get_neighborhood_average(image, x, y, radius):
 
 
 def cal_dist(point1, point2):
+    point1,point2 = np.asarray(point1), np.asarray(point2)
     return np.sqrt(np.sum(np.square(point1 - point2)))
 
 
@@ -946,7 +974,7 @@ if __name__ == '__main__':
     parser.add_argument('--start_frame_idx', default='128', type=int, required=True)
     parser.add_argument('--end_frame_idx', default='786', type=int, required=True)
     # Number of iteration frames per model insertion <=video.count_frames()
-    parser.add_argument('--iter_frames', default='500', type=int, required=False) 
+    parser.add_argument('--iter_frames', default='800', type=int, required=False) 
     
     args = parser.parse_args()
     
@@ -1003,7 +1031,7 @@ if __name__ == '__main__':
     
     # Load the checkpoint (TAP)
     print('Loading the checkpoint...')
-    TAPIR_model_type = 'causal' # causal_boots or causal
+    TAPIR_model_type = 'causal_boots' # causal_boots or causal 
     TAPIR_models = {
                     'tapnet':'checkpoint.npy',# TAP-Net
                     'tapir':'tapir_checkpoint_panning.npy',# TAPIR
@@ -1031,7 +1059,7 @@ if __name__ == '__main__':
         inform.update(var_to_dict(TAPIR_inference=TAPIR_inference))
     inform.update(var_to_dict(TAPIR_model=TAPIR_model))
     
-
+    
     # Track[Infer] (TAP)
     # ------------------------------------------------------------------------
     if instrument == 'cello':
@@ -1039,13 +1067,14 @@ if __name__ == '__main__':
         ROI_size = 512
         inform.update(var_to_dict(ROI_size=ROI_size))
 
-        resize_pixel = 512
+        resize_pixel = 256
         inform.update(var_to_dict(resize_pixel=resize_pixel))
-
-
+        
+        
         instrument_kps = ['scroll_top', 'nut_l', 'nut_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
-
+        
+        
         guided_kps = ['scroll_top']#'nut_guide'
         inform.update(var_to_dict(guided_kps=guided_kps))
 
@@ -1056,21 +1085,19 @@ if __name__ == '__main__':
         insturment_results_conf = inform['instrument_kp_tracks_conf']
         insturment_results = inform['instrument_kp_tracks']+inform['origin']
 
-
         # ------------------------------------------------------------------------
-
-
+        
         ROI_size = 512
         inform.update(var_to_dict(ROI_size=ROI_size))
 
-        resize_pixel = 512
+        #resize_pixel = 512
         inform.update(var_to_dict(resize_pixel=resize_pixel))
-
-
+        
+        
         instrument_kps = ['bridge_l', 'bridge_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
-
-        guided_kps = []#'bridge_guide'
+        
+        guided_kps = ['bridge_r']#'bridge_guide'
         inform.update(var_to_dict(guided_kps = guided_kps))
 
         inform.update(get_origin(inform))
@@ -1081,18 +1108,18 @@ if __name__ == '__main__':
         insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
 
         # ------------------------------------------------------------------------
-
+        
         ROI_size = 512
         inform.update(var_to_dict(ROI_size=ROI_size))
 
-        resize_pixel = 512
+        #resize_pixel = 512
         inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
         instrument_kps = ['tail_gut', 'end_pin']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
 
-        guided_kps = []
+        guided_kps = ['bridge_r']
         inform.update(var_to_dict(guided_kps=guided_kps))
 
         inform.update(get_origin(inform))
@@ -1102,7 +1129,7 @@ if __name__ == '__main__':
         insturment_results_conf = np.concatenate((insturment_results_conf,inform['instrument_kp_tracks_conf']), axis=0)
         insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
         insturment_results = insturment_results*insturment_results_conf[:,:, np.newaxis]
-
+        
     # ------------------------------------------------------------------------
     else:
         iter_frames = 500 # Number of iteration frames per model insertion <=video.count_frames()
@@ -1117,7 +1144,7 @@ if __name__ == '__main__':
         inform.update(var_to_dict(resize_pixel=resize_pixel))
 
 
-        instrument_kps = ['scroll_top', 'nut_l', 'nut_r']
+        instrument_kps = ['scroll_top', 'nut_l', 'nut_r']+['bridge_l', 'bridge_r']
         inform.update(var_to_dict(instrument_kps=instrument_kps))
 
         #guided_kps = ['nut_guide']#'nut_guide'
@@ -1131,7 +1158,7 @@ if __name__ == '__main__':
         insturment_results_conf = inform['instrument_kp_tracks_conf']
         insturment_results = inform['instrument_kp_tracks']+inform['origin']
 
-
+        '''
         # ------------------------------------------------------------------------
 
         iter_frames = 500 # Number of iteration frames per model insertion <=video.count_frames()
@@ -1160,7 +1187,7 @@ if __name__ == '__main__':
         insturment_results_conf = np.concatenate((insturment_results_conf,inform['instrument_kp_tracks_conf']), axis=0)
         insturment_results = np.concatenate((insturment_results,inform['instrument_kp_tracks']+inform['origin']), axis=0)
         insturment_results = insturment_results*insturment_results_conf[:,:, np.newaxis]
-
+        '''
 
     # ------------------------------------------------------------------------
     # That's it!
@@ -1207,7 +1234,6 @@ if __name__ == '__main__':
             YOLO_results = YOLOv8_ckpt.predict(image.copy()[:,:,::-1],conf=inform['YOLO_conf_threshhold'],
                                                imgsz=640,device =torch_device,verbose=False)
             num_bbox = len(YOLO_results[0].boxes.cls)
-            #print('bbox_num',num_bbox)
             if num_bbox >= 1:
                 inform.update(var_to_dict(bow_bbox = YOLO_results[0].boxes[0].cpu()))
 
@@ -1239,24 +1265,19 @@ if __name__ == '__main__':
                 handpos = verify_handpos(inform,longest_line,num)
                 frog,tip = detect_frog_tip(inform,image,handpos,longest_line)
                 frog,tip,previous_frog_id = improved_frog_tip(inform,num,frog,tip,handpos,image,previous_frog_id)
-                #bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
-                #bow_conf = np.ones((bow_result.shape[0],1))
-                
-                #previous_frog,previous_tip = bow_results[:,-1]
-                #if 
-                #frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
+                if (num + 1) > start_frame_idx:
+                    previous_frog,previous_tip = bow_results[:,-1]
+                    if cal_dist(tip,previous_tip)>300:
+                        frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
             
-            else:
+            elif (num + 1) == start_frame_idx:
                 #bow_result = np.zeros((2,1,2))
+                frog = (0,0)
+                tip = (0,0)
+            else:
                 frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
-                #bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
-                #bow_conf = np.zeros((bow_result.shape[0],1))
-                print('num+1',num + 1)
-                print(previous_frog_id)
-                print(frog,tip)
-                print('revised')
             bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
-            bow_conf = np.ones((bow_result.shape[0],1))            
+            bow_conf = np.ones((bow_result.shape[0],1))
             if (num + 1) == start_frame_idx:
                 bow_results = bow_result
                 bow_confs = bow_conf
