@@ -196,6 +196,23 @@ CAM_WEIGHTS_RH_VIOLIN = {
     '21334206': 0
 }
 
+# CAM_WEIGHTS_LH_CELLO = {
+#     '21334181': 0.30,
+#     '21334237': 0.10,
+#     '21334190': 0.15,
+#     '21334211': 0.10,
+#     '21334180': 0.10,
+#     '21334209': 0.05,
+#     '21334221': 0.05,
+#     '21334219': 0.05,
+#     '21334208': 0.025,
+#     '21334186': 0.025,
+#     '21334184': 0.025,  # TODO remove
+#     '21334238': 0.025,  # TODO remove
+#     '21293326': 0,
+#     '21293325': 0
+# }
+
 CAM_WEIGHTS_LH_CELLO = {
     '21334181': 0.65,
     '21334237': 0.,
@@ -212,6 +229,23 @@ CAM_WEIGHTS_LH_CELLO = {
     '21293326': 0.,
     '21293325': 0.
 }
+
+# CAM_WEIGHTS_RH_CELLO = {
+#     '21334181': 0.30,
+#     '21334237': 0.10,
+#     '21334190': 0.10,
+#     '21334211': 0.10,
+#     '21334180': 0.10,
+#     '21334209': 0.10,
+#     '21334221': 0.05,
+#     '21334219': 0.025,
+#     '21334208': 0.025,
+#     '21334186': 0.025,
+#     '21334184': 0,
+#     '21334238': 0.025,
+#     '21293326': 0.025,
+#     '21293325': 0.025
+# }
 
 CAM_WEIGHTS_RH_CELLO = {
     '21334181': 0.65,
@@ -287,7 +321,7 @@ if __name__ == "__main__":
     with open(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_all_dw_cp'])
-
+    
     # bone_lengths = get_bone_length_dw(kp_3d_all, 1)
     
     rh_bone_length = get_bone_length_dw(kp_3d_all, 1)[1]
@@ -308,12 +342,14 @@ if __name__ == "__main__":
 
         lh_joints_pano = lh_joints + lh_wrist
         rh_joints_pano = rh_joints + rh_wrist
-        
+
+        # kp_3d_all[frame][LEFT_WRIST_INDEX:LEFT_WRIST_INDEX+42] = np.vstack((lh_joints_pano, rh_joints_pano))
         kp_3d_all[frame][LEFT_WRIST_INDEX:RIGHT_WRIST_INDEX] = lh_joints_pano
         kp_3d_all[frame][RIGHT_WRIST_INDEX:RIGHT_WRIST_INDEX+21] = rh_joints_pano
         
         print(f'Hand pose integrated for frame {frame + start_frame}. -> [{proj_dir}]')
-    
+        
+
     if not os.path.exists(f'./fk_result/{parent_dir}/{proj_dir}'):
         os.makedirs(f'./fk_result/{parent_dir}/{proj_dir}', exist_ok=True)
 
