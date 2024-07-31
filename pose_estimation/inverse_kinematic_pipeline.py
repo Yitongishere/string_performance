@@ -164,13 +164,9 @@ if __name__ == '__main__':
     parent_dir = args.parent_dir
     proj_dir = args.proj_dir
     start_frame = int(args.start_frame)
-    visualize = args.visualize
-    cam_num = args.cam_num
     instrument = args.instrument
     
     dir_6d = f"./6d_result/{parent_dir}/{proj_dir}"
-
-    overlay_img_path = f'../data/{parent_dir}/{proj_dir}/frames/{CAM_DICT[cam_num]}/{CAM_DICT[cam_num]}'
 
     with open(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp.json', 'r') as f:
         data_dict = json.load(f)
@@ -376,25 +372,3 @@ if __name__ == '__main__':
 
     with open(f'ik_result/{parent_dir}/{proj_dir}/kp_3d_ik_without_music_smooth.json', 'w') as f:
         json.dump(data_dict, f)
-
-    # visualize_3d(kp_3d_ik_smooth, proj_dir, 'pe_cp_smooth_ik_v2', 'finger')
-
-    framenum = kp_3d_ik_smooth.shape[0]
-    kpt_num = kp_3d_ik_smooth.shape[1]
-    
-    cam_param = summary['CameraParameter']
-
-    # find reprojection of the specific camera
-    repro_2d = np.empty([framenum, kpt_num, 2])
-    repro_2d.fill(np.nan)
-    proj_mat_cam_x = make_projection_matrix(cam_param, cams=[cam_num])  # change here for various perspectives
-    for ff in range(framenum):
-        for kpt in range(kpt_num):
-            ones = np.ones((1))
-            kp4d = np.concatenate([kp_3d_ik_smooth[ff][kpt], ones], axis=0)
-            kp4d = kp4d.reshape(-1)
-            # reprojection: p = mP
-            kp2d = np.matmul(proj_mat_cam_x, kp4d)
-            kp2d = kp2d.reshape((3,))
-            kp2d = kp2d / kp2d[2:3]
-            repro_2d[ff, kpt, :] = kp2d[:2]
