@@ -71,11 +71,7 @@ def get_hands_joints(dir_6d, frame, bone_lengths, cam_param, show_cam, instrumen
         for key in keys:
             actual_frame = frame
             frame_num_dict[f'{key}'] = actual_frame
-            try:
-                
-                #frame_drop_path = f'../data/{parent_dir}/{proj_dir}/videos/{key}_FrameDropIDLog.txt'
-                #drop_frames = np.array(open(frame_drop_path).readlines(), dtype=int)
-                
+            try:       
                 if cam_drop_frames is not None:
                     drop_frames = [] if cam_drop_frames[key] == None else np.array(cam_drop_frames[key],dtype = int)
                 
@@ -108,12 +104,9 @@ def get_hands_joints(dir_6d, frame, bone_lengths, cam_param, show_cam, instrumen
     cam_weight_lh = dict(sorted(cam_weight_lh.items(), key=lambda x: x[1], reverse=True))
     cam_weight_rh = dict(sorted(cam_weight_rh.items(), key=lambda x: x[1], reverse=True))
 
-    # ic(frame_num_dict)
 
     frame_info = get_frame_info(dir_6d, frame_num_dict)
 
-    # ic(cam_weight_lh)
-    # ic(frame_num_dict)
 
     lh_rot_averaged, rh_rot_averaged = get_averaged_R(frame_info,
                                                       show_cam,
@@ -143,41 +136,32 @@ def get_lh_bone_length(proj_dir):
         data_dict = json.load(f)
     kp_3d_dw = np.array(data_dict['kp_3d_all_dw_cp_smooth'])
 
-    kp_3d = kp_3d_dw[0]
-
-    # hand_joints_dw = kp_3d[91:112]
-    hand_joints_dw_rh = kp_3d[112:133]
+    hand_joints_dw_lh = kp_3d_dw[:, 91:112, :]
 
     # Initialize MANO layer
     mano_layer = ManoLayer(mano_root='./mano/models', use_pca=False, flat_hand_mean=True, side='right')
     pose_0 = np.zeros([1, 48])
-    # pose_0 = np.zeros([16, 3])
-    # pose_0[0] = global_rot
-    # pose_0 = pose_0.reshape(1, 48)
     pose_0 = torch.tensor(pose_0, dtype=torch.float32)
     # Forward pass through MANO layer
     _, hand_joints_rh_0 = mano_layer(pose_0)
     hand_joints_rh_0 = hand_joints_rh_0.numpy().squeeze()
 
     bone_length_mano_rh = get_hand_length(hand_joints_rh_0)
-    # ic(bone_length_mano_rh)
 
     mano_layer = ManoLayer(mano_root='./mano/models', use_pca=False, flat_hand_mean=True, side='left')
     _, hand_joints_lh_0 = mano_layer(pose_0)
     hand_joints_lh_0 = hand_joints_lh_0.numpy().squeeze()
 
     bone_length_mano_lh = get_hand_length(hand_joints_lh_0)
-    # ic(bone_length_mano_lh)
 
-    bone_length_dw_rh = get_hand_length(hand_joints_dw_rh)
-    # ic(bone_length_dw_rh)
+    # bone_length_dw_rh = get_hand_length(hand_joints_dw_rh)
 
-    ratio = np.average(bone_length_mano_rh / bone_length_dw_rh)
-    # ic(ratio)
+    bone_length_dw_lh_frameavg = np.average([get_hand_length(i) for i in hand_joints_dw_lh])
+
+    ratio = np.average(bone_length_mano_rh / bone_length_dw_lh_frameavg)
 
     bone_length_mano_lh_scale = bone_length_mano_lh / ratio
     bone_length_mano_lh_scale = bone_length_mano_lh_scale.tolist()
-    # ic(bone_length_mano_lh_scale)
 
     return bone_length_mano_lh_scale
 
@@ -212,23 +196,6 @@ CAM_WEIGHTS_RH_VIOLIN = {
     '21334206': 0
 }
 
-# CAM_WEIGHTS_LH_CELLO = {
-#     '21334181': 0.30,
-#     '21334237': 0.10,
-#     '21334190': 0.15,
-#     '21334211': 0.10,
-#     '21334180': 0.10,
-#     '21334209': 0.05,
-#     '21334221': 0.05,
-#     '21334219': 0.05,
-#     '21334208': 0.025,
-#     '21334186': 0.025,
-#     '21334184': 0.025,  # TODO remove
-#     '21334238': 0.025,  # TODO remove
-#     '21293326': 0,
-#     '21293325': 0
-# }
-
 CAM_WEIGHTS_LH_CELLO = {
     '21334181': 0.65,
     '21334237': 0.,
@@ -245,23 +212,6 @@ CAM_WEIGHTS_LH_CELLO = {
     '21293326': 0.,
     '21293325': 0.
 }
-
-# CAM_WEIGHTS_RH_CELLO = {
-#     '21334181': 0.30,
-#     '21334237': 0.10,
-#     '21334190': 0.10,
-#     '21334211': 0.10,
-#     '21334180': 0.10,
-#     '21334209': 0.10,
-#     '21334221': 0.05,
-#     '21334219': 0.025,
-#     '21334208': 0.025,
-#     '21334186': 0.025,
-#     '21334184': 0,
-#     '21334238': 0.025,
-#     '21293326': 0.025,
-#     '21293325': 0.025
-# }
 
 CAM_WEIGHTS_RH_CELLO = {
     '21334181': 0.65,
@@ -329,25 +279,17 @@ if __name__ == "__main__":
     
     start_frame = summary['StartFrame']
     end_frame = summary['EndFrame']
-    
-    # proj_dir = "cello_1113_scale"
-    # start_frame = 128
-    # cam_file = '../triangulation/jsons/cello_1113_scale_camera.json'
 
     dir_6d = f"./6d_result/{parent_dir}/{proj_dir}"
 
     lh_bone_length = get_lh_bone_length(proj_dir)
-
-    # with open(f'../kp_3d_result/{proj_dir}/kp_3d_all_dw.json', 'r') as f:
-    #     data_dict = json.load(f)
-    # kp_3d_all = np.array(data_dict['kp_3d_all_dw'])
 
     with open(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_all_dw_cp'])
 
     # bone_lengths = get_bone_length_dw(kp_3d_all, 1)
-    # print(bone_lengths)
+    
     rh_bone_length = get_bone_length_dw(kp_3d_all, 1)[1]
     bone_lengths = np.array([lh_bone_length, rh_bone_length])
 
@@ -364,29 +306,14 @@ if __name__ == "__main__":
         hand_rot = np.concatenate([lh_rot, rh_rot], axis=0)
         integrated_hand_rot.append(hand_rot.tolist())
 
-        # if frame == 0:
-        #     visualize_hand(lh_joints, DW_CONNECTIONS)
-
         lh_joints_pano = lh_joints + lh_wrist
         rh_joints_pano = rh_joints + rh_wrist
-
-        # kp_3d_all[frame][LEFT_WRIST_INDEX:LEFT_WRIST_INDEX+42] = np.vstack((lh_joints_pano, rh_joints_pano))
+        
         kp_3d_all[frame][LEFT_WRIST_INDEX:RIGHT_WRIST_INDEX] = lh_joints_pano
         kp_3d_all[frame][RIGHT_WRIST_INDEX:RIGHT_WRIST_INDEX+21] = rh_joints_pano
-
         
         print(f'Hand pose integrated for frame {frame + start_frame}. -> [{proj_dir}]')
-
-    ic(kp_3d_all.shape)
-    # visualize_3d(kp_3d_all, proj_dir, 'integrated_fk_3d_pe')
-
-    # if not os.path.exists(f'../kp_3d_result/{proj_dir}'):
-    #     os.mkdir(f'../kp_3d_result/{proj_dir}')
-    #
-    # data_dict = {'kp_3d_all_pe': kp_3d_all.tolist()}
-    # with open(f'../kp_3d_result/{proj_dir}/kp_3d_all_pe.json', 'w') as f:
-    #     json.dump(data_dict, f)
-
+    
     if not os.path.exists(f'./fk_result/{parent_dir}/{proj_dir}'):
         os.makedirs(f'./fk_result/{parent_dir}/{proj_dir}', exist_ok=True)
 
