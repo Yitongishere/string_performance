@@ -1267,7 +1267,7 @@ if __name__ == '__main__':
                 frog,tip,previous_frog_id = improved_frog_tip(inform,num,frog,tip,handpos,image,previous_frog_id)
                 if (num + 1) > start_frame_idx:
                     previous_frog,previous_tip = bow_results[:,-1]
-                    if cal_dist(tip,previous_tip)>300:
+                    if cal_dist(tip,previous_tip) > 300:
                         frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
             
             elif (num + 1) == start_frame_idx:
