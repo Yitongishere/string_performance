@@ -160,7 +160,7 @@ def TAPIR_test_checkpoint(summary):
         tracks = trajectories['tracks'][-1]
         occlusions = trajectories['occlusion'][-1]
         uncertainty = trajectories['expected_dist'][-1]
-        visibles = model_utils.postprocess_occlusions(occlusions, uncertainty, 0.975)
+        visibles = model_utils.postprocess_occlusions(occlusions, uncertainty, 0.925)
         return tracks, visibles, causal_context
     
     def inference(frames, query_points):
@@ -255,6 +255,7 @@ def get_seperate_list(summary):
     frame_alllist = [item for item in frame_alllist if item <= end_frame_idx and item > start_frame_idx]
     frame_cyclelist = [item for item in frame_cyclelist if item <= end_frame_idx and item > start_frame_idx]
     
+    
     summary.update(var_to_dict(frame_jsonlist = frame_jsonlist))
     summary.update(var_to_dict(frame_alllist = frame_alllist))
     summary.update(var_to_dict(frame_cyclelist = frame_cyclelist))
@@ -334,7 +335,6 @@ def TAPIR_infer(summary):
     
     video = imageio.get_reader(os.path.abspath(video_path),  'ffmpeg')
     
-    
     frames = None
     frame_jsonlist_round = 0
     ceaseflag = 0
@@ -379,23 +379,36 @@ def TAPIR_infer(summary):
                     # Identify lost tags -> lacked_instrument_kps
                     losted_instrument_kps = list(set(range(len(instrument_kps))) ^ set(kpdict.keys()))
                     factor = {}
+                    guided_kp_location = kpdict[keypoints.index(keypoints[guided_kp_idx])]
                     if instrument == 'cello':
                         for item in labelled_info['shapes']:
                             if item['label'] == 'end_pin':
                                 ep_location = item['points'][0]
                                 break
-                        guided_kp_location = kpdict[keypoints.index(keypoints[guided_kp_idx])]
+                        
                         for i in range(len(instrument_kps)):
                             if guided_kp_location == ep_location or cam_num in ['21334181']:
                                 factor[i] = 1
                             else:
                                 factor[i] = cal_dist(kpdict[i],ep_location)/cal_dist(guided_kp_location,ep_location)
-                        
+                    '''
                     else:
-                        for i in range(1,len(instrument_kps)):
-                            factor[i] = 0.8
-                        factor[0] = 1
-                    
+                        print(f'{str(frame_jsonlist[ceaseflag-1])}.json')
+                        print(ceaseflag)
+                        with open(f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{cam_num}/{str(frame_jsonlist[ceaseflag-1])}.json','r') as f:
+                            human2D_data = np.asarray(json.load(f))#,dtype = np.int32
+                        f.close()
+                        
+                        human_point_dist = []
+                        for i in range(24,40):
+                            human_point_dist.append(cal_dist(guided_kp_location,human2D_data[i][:2]))
+                        human_point_index = 24 + np.argmin(human_point_dist)
+                        print('human_point_index: ',human_point_index)
+                        ep_location = human2D_data[human_point_index][:2]
+                        for i in range(len(kpdict.items())):
+                            factor[i] = cal_dist(kpdict[list(kpdict.keys())[i]],ep_location)/cal_dist(guided_kp_location,ep_location)
+                        print('factor: ',factor)
+                    '''
                     
                     query_points = np.concatenate(
                         (np.ones((len(kpdict), 1)) * (num - iter_frames + 1), np.flip(list(kpdict.values())-origin, axis=1)), axis=1)
@@ -465,6 +478,7 @@ def TAPIR_infer(summary):
                             false_indices = complete_sequence(false_indices)
                         '''
                         for i in range(len(false_indices)):
+                            '''
                             dist_li = []
                             for j in range(visibles_range):
                                 dist = cal_dist(tracks[keypoints_num][false_indices[i]], tracks[j][false_indices[i]])
@@ -475,8 +489,35 @@ def TAPIR_infer(summary):
                                 
                             else:
                                 diff_guided = tracks[guided_kp_idx][false_indices[i]] - tracks[guided_kp_idx][false_indices[i] - 1]
+                            '''
                             diff_guided = tracks[guided_kp_idx][false_indices[i]] - tracks[guided_kp_idx][false_indices[i] - 1]
-                            tracks[keypoints_num][false_indices[i]] = tracks[keypoints_num][false_indices[i]-1] + diff_guided * factor[j]
+                            
+                            if instrument == 'violin':
+                                with open(f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{cam_num}/{str(num+1-tracks.shape[1]+false_indices[i])}.json','r') as f:
+                                    human2D_data_now = np.asarray(json.load(f))#,dtype = np.int32
+                                f.close()
+                                with open(f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{cam_num}/{str(num+1-tracks.shape[1]+false_indices[i]-1)}.json','r') as f:
+                                    human2D_data_previous = np.asarray(json.load(f))#,dtype = np.int32
+                                f.close()
+                                
+                                factor = {}
+                                human_point_dist = []
+                                for j in range(24,40):
+                                    human_point_dist.append(cal_dist(guided_kp_location,human2D_data_now[j][:2]))
+                                human_point_index = 24 + np.argmin(human_point_dist)
+                                print('human_point_index: ',human_point_index)
+                                ep_location = human2D_data_now[human_point_index][:2]
+                                for j in range(len(kpdict.items())):
+                                    factor[j] = cal_dist(kpdict[list(kpdict.keys())[j]],ep_location)/cal_dist(guided_kp_location,ep_location)
+                                print('factor: ',factor)
+                                
+                                human2D_data_diff = human2D_data_now[human_point_index][:2] - human2D_data_previous[human_point_index][:2]
+                                
+                                tracks[keypoints_num][false_indices[i]] = tracks[keypoints_num][false_indices[i]-1] + diff_guided * factor[keypoints_num] + human2D_data_diff *(1-factor[keypoints_num])
+                            
+                            else:
+                                tracks[keypoints_num][false_indices[i]] = tracks[keypoints_num][false_indices[i]-1] + diff_guided * factor[keypoints_num]
+                            
                             #previous_frog,previous_tip = bow_results[:,-1]
                             visibles[keypoints_num][false_indices[i]] = True
                 
@@ -881,8 +922,8 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
     else:
         frog_pos = [(human2D_data[126-1][:2]+human2D_data[122-1][:2])/2,
                     (human2D_data[127-1][:2]+human2D_data[123-1][:2])/2,
-                    (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2,
-                    (human2D_data[129-1][:2]+human2D_data[125-1][:2])/2
+                    (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2
+                    #(human2D_data[129-1][:2]+human2D_data[125-1][:2])/2
                     ]
     
     if not wrongflag:
@@ -940,8 +981,8 @@ def revise_frog_tip(summary,video_num,bow_results,previous_frog_id):
     else:
         frog_pos = [(human2D_data[126-1][:2]+human2D_data[122-1][:2])/2,
                     (human2D_data[127-1][:2]+human2D_data[123-1][:2])/2,
-                    (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2,
-                    (human2D_data[129-1][:2]+human2D_data[125-1][:2])/2
+                    (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2
+                    #(human2D_data[129-1][:2]+human2D_data[125-1][:2])/2
                     ]
     frog = frog_pos[previous_frog_id]
     tip = previous_tip + (frog - previous_frog)
@@ -1158,9 +1199,9 @@ if __name__ == '__main__':
         insturment_results_conf = inform['instrument_kp_tracks_conf']
         insturment_results = inform['instrument_kp_tracks']+inform['origin']
 
-        '''
+        
         # ------------------------------------------------------------------------
-
+        '''
         iter_frames = 500 # Number of iteration frames per model insertion <=video.count_frames()
         inform.update(var_to_dict(iter_frames = iter_frames))
 
@@ -1276,6 +1317,8 @@ if __name__ == '__main__':
                 tip = (0,0)
             else:
                 frog,tip,previous_frog_id = revise_frog_tip(inform,num,bow_results,previous_frog_id)
+                print(frog,tip)
+                print(f'{num+1} '+'revised')
             bow_result = np.concatenate(([frog],[tip]),axis=0)[:,np.newaxis,:]
             bow_conf = np.ones((bow_result.shape[0],1))
             if (num + 1) == start_frame_idx:
