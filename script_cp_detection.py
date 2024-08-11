@@ -62,7 +62,6 @@ def cp_detection_process(folder_name):
 
 shell_python_cmd = getPython3_command()
 
-
 if __name__ == '__main__':
     instrument = 'cello'
     parent_dir = instrument
