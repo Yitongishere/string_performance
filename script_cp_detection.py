@@ -13,12 +13,14 @@ from tools.Python_in_Shell import getPython3_command
 from tools.load_summary import get_folder, get_inform
 from multiprocessing import Pool
 
+
 def remove_chinese_and_brackets(text):
     # remove Chinese
     text_without_chinese = re.sub(r'[\u4e00-\u9fff]', '', text)
     # remove special symbols
     cleaned_text = re.sub(r'\(.*?\)|\[.*?\]|（.*?）|【.*?】', '', text_without_chinese)
     return cleaned_text.strip()
+
 
 def cp_detection_process(folder_name):
     summary, summary_jsonfile_path = get_inform(folder_name, root_path)
@@ -59,6 +61,7 @@ def cp_detection_process(folder_name):
 
 
 shell_python_cmd = getPython3_command()
+
 
 if __name__ == '__main__':
     instrument = 'cello'
