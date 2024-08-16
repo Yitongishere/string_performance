@@ -11,9 +11,9 @@ from handpose_toolkit import get6d_from_txt, rotation_6d_to_R, get_joint_positio
 from integrate_handpose_pipeline import get_bone_length_dw, MANO_PARENTS_INDICES, LEFT_WRIST_INDEX, RIGHT_WRIST_INDEX, MANO_TO_DW
 import json
 from icecream import ic
+
 from triangulation.smooth import Savgol_Filter
-from triangulation.triangulation_pipeline import make_projection_matrix, HUMAN_LINKS, CELLO_LINKS, BOW_LINKS, STRING_LINKS, \
-    visualize_3d
+from triangulation.triangulation_pipeline import make_projection_matrix, visualize_3d
 from scipy.optimize import minimize
 from triangulation.triangulation_pipeline import CAM_DICT, FULL_FINGER_INDICES
 from tqdm import tqdm
@@ -178,21 +178,21 @@ if __name__ == '__main__':
     label_bridge_l = manual_label[136]
 
     label_nut_l_bridge_l = math.dist(label_nut_l, label_bridge_l)
-
+    
     if instrument == 'cello':
+        from triangulation.triangulation_pipeline import HUMAN_LINKS, CELLO_LINKS as INSTRMENT_LINKS, CELLO_STRING_LINKS as STRING_LINKS, CELLO_BOW_LINKS as BOW_LINKS
         real_nul_l_bridge_l = REAL_CELLO_NUT_L_BRIDGE_L
+        point_offset = 0
     elif instrument == 'violin':
+        from triangulation.triangulation_pipeline import HUMAN_LINKS, VIOLIN_LINKS as INSTRMENT_LINKS, VIOLIN_STRING_LINKS as STRING_LINKS, VIOLIN_BOW_LINKS as BOW_LINKS
         real_nul_l_bridge_l = REAL_VIOLIN_NUT_L_BRIDGE_L
+        # TODO 140 change to 142
+        point_offset = -2
     else:
         raise Exception('Instrument type is not supported, please modify it into "cello" or "violin"!')
 
     ratio = real_nul_l_bridge_l / label_nut_l_bridge_l
-
-    #
-    # with open(f'../pose_estimation/{proj_dir}/kp_3d_all_pe.json', 'r') as f:
-    #     data_dict = json.load(f)
-    # kp_3d_pe = np.array(data_dict['kp_3d_all_pe'])
-
+    
     with open(f'../pose_estimation/fk_result/{parent_dir}/{proj_dir}/kp_3d_all_pe_fk.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_pe = np.array(data_dict['kp_3d_all_pe_fk'])
@@ -236,7 +236,7 @@ if __name__ == '__main__':
         lh_pos_dw = kp_3d_dw[frame_id][91:112]
         rh_pos_dw = kp_3d_dw[frame_id][112:133]
 
-        cp = kp_3d_dw[frame_id][150]
+        cp = kp_3d_dw[frame_id][150+point_offset]
         used_finger = find_finger(frame_id, kp_3d_dw)
         used_finger_indices = ROT_FINGER_INDICES[used_finger]
 
@@ -260,7 +260,7 @@ if __name__ == '__main__':
         
         # Translation vector initialization(left_hand)
         lh_wrist_trans_vec = [0, 0, 0]
-
+        
         lh_wrist_vec = np.hstack((lh_wrist_rot_vec, lh_wrist_trans_vec))
 
         wrist_result = minimize(wrist_obj_func, lh_wrist_vec,
@@ -333,10 +333,7 @@ if __name__ == '__main__':
     with open(f'ik_result/{parent_dir}/{proj_dir}/hand_rot_vec.json', 'w') as f:
         json.dump(data_dict, f)
 
-    # TODO 140 change to 142
-    point_offset = 0
-    if instrument == 'violin':
-        point_offset -= 2
+    
     kp_3d_partial_ik = kp_3d_ik[:, :(142+point_offset), :]
     kp_3d_partial_ik_smooth = Savgol_Filter(kp_3d_partial_ik, (142+point_offset), WindowLength=[13, 11, 23, 45],
                                             PolyOrder=[6, 6, 4, 2])
