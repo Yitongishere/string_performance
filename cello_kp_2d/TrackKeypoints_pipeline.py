@@ -920,8 +920,8 @@ def improved_frog_tip(summary,video_num,frog,tip,handpos,image,previous_frog_id 
                     (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2
                     ]
     else:
-        frog_pos = [(human2D_data[126-1][:2]+human2D_data[122-1][:2])/2,
-                    (human2D_data[127-1][:2]+human2D_data[123-1][:2])/2,
+        frog_pos = [#(human2D_data[126-1][:2]+human2D_data[122-1][:2])/2,
+                    #(human2D_data[127-1][:2]+human2D_data[123-1][:2])/2,
                     (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2
                     #(human2D_data[129-1][:2]+human2D_data[125-1][:2])/2
                     ]
@@ -979,8 +979,8 @@ def revise_frog_tip(summary,video_num,bow_results,previous_frog_id):
                     (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2
                     ]
     else:
-        frog_pos = [(human2D_data[126-1][:2]+human2D_data[122-1][:2])/2,
-                    (human2D_data[127-1][:2]+human2D_data[123-1][:2])/2,
+        frog_pos = [#(human2D_data[126-1][:2]+human2D_data[122-1][:2])/2,
+                    #(human2D_data[127-1][:2]+human2D_data[123-1][:2])/2,
                     (human2D_data[128-1][:2]+human2D_data[124-1][:2])/2
                     #(human2D_data[129-1][:2]+human2D_data[125-1][:2])/2
                     ]
