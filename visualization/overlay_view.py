@@ -10,9 +10,8 @@ import sys
 import imageio
 sys.path.append('..')
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
-from triangulation.triangulation_pipeline import make_projection_matrix, BOW_LINKS, HUMAN_WITHOUT_LH_THUMB_LINKS, \
+from triangulation.triangulation_pipeline import make_projection_matrix, HUMAN_WITHOUT_LH_THUMB_LINKS, \
     LH_THUMB_LINKS
-from triangulation.triangulation_pipeline import HUMAN_LINKS, CELLO_LINKS, STRING_LINKS
 from tools.load_summary import get_folder, get_inform, get_folder_extra
 from tools.rotate import frame_rotate
 from multiprocessing import Pool
@@ -52,11 +51,19 @@ def plot_over(img, extent=None, origin="upper", dpi=100):
     img[...] = ((255 - alpha) * img.astype(np.uint16) + alpha * rgb.astype(np.uint16)) // 255
 
 
-def visualize_overlay(proj_path, overlay_cam, data, cam_num, video, start_frame = 1,parent_dir = None,saveframes = True):
+def visualize_overlay(proj_path, overlay_cam, data, cam_num, video, start_frame = 1, parent_dir = None, saveframes = True):
     if parent_dir is None:
         parent_dir = proj_path[:-2]
     framenum = data.shape[0]
     
+    if data.shape[1] == 155:
+        from triangulation.triangulation_pipeline import HUMAN_LINKS, CELLO_LINKS as INSTRMENT_LINKS, CELLO_STRING_LINKS as STRING_LINKS, CELLO_BOW_LINKS as BOW_LINKS
+        offset = 0
+        
+    elif data.shape[1] == 153:
+        from triangulation.triangulation_pipeline import HUMAN_LINKS, VIOLIN_LINKS as INSTRMENT_LINKS, VIOLIN_STRING_LINKS as STRING_LINKS, VIOLIN_BOW_LINKS as BOW_LINKS
+        offset = 2
+        
     if not os.path.exists(f'./reproj_result/{parent_dir}/{proj_path}/{overlay_cam}'):
         os.makedirs(f'./reproj_result/{parent_dir}/{proj_path}/{overlay_cam}', exist_ok=True)
 
@@ -77,19 +84,19 @@ def visualize_overlay(proj_path, overlay_cam, data, cam_num, video, start_frame 
             # human body
             axes.scatter(kp_2d[0:133, 0],
                          kp_2d[0:133, 1], c='#1f77b4', s=50, zorder=5)
-            # cello body
-            axes.scatter(kp_2d[133:140, 0],
-                         kp_2d[133:140, 1], c='saddlebrown', s=50, zorder=13)
-            axes.scatter(kp_2d[140:142, 0],
-                         kp_2d[140:142, 1], c='cyan', s=50, zorder=13)
-            axes.scatter(kp_2d[142:150, 0],
-                         kp_2d[142:150, 1], c='w', s=50, zorder=13)
+            # instrument body
+            axes.scatter(kp_2d[133:140-offset, 0],
+                         kp_2d[133:140-offset, 1], c='saddlebrown', s=50, zorder=13)
+            axes.scatter(kp_2d[140-offset:142-offset, 0],
+                         kp_2d[140-offset:142-offset, 1], c='cyan', s=50, zorder=13)
+            axes.scatter(kp_2d[142-offset:150-offset, 0],
+                         kp_2d[142-offset:150-offset, 1], c='w', s=50, zorder=13)
             # axes.scatter(kp_2d[142, 0],
             #              kp_2d[142, 1], c='r', s=50,
             #              zorder=100)
-            if True not in np.isnan(kp_2d[150]):
-                axes.scatter(kp_2d[150, 0],
-                             kp_2d[150, 1], c='r', s=50,
+            if True not in np.isnan(kp_2d[150-offset]):
+                axes.scatter(kp_2d[150-offset, 0],
+                             kp_2d[150-offset, 1], c='r', s=50,
                              zorder=100)  # zorder must be the biggest so that it would not be occluded
                 # axes.scatter(kp_2d[147:152, 0],
                 #              kp_2d[147:152, 1], c='orange', s=50,
@@ -98,22 +105,28 @@ def visualize_overlay(proj_path, overlay_cam, data, cam_num, video, start_frame 
             #     print(f'Frame {f} contact point not exist.')
 
             for human in HUMAN_WITHOUT_LH_THUMB_LINKS:
-                plt.plot([kp_2d[human[0]][0], kp_2d[human[1]][0]], [kp_2d[human[0]][1], kp_2d[human[1]][1]], c='b',
-                         linewidth=3, zorder=11)
+                plt.plot([kp_2d[human[0]][0], kp_2d[human[1]][0]], [kp_2d[human[0]][1], kp_2d[human[1]][1]],
+                          c='b',linewidth=3, zorder=11)
             for human in LH_THUMB_LINKS:
                 plt.plot([kp_2d[human[0]][0], kp_2d[human[1]][0]], [kp_2d[human[0]][1], kp_2d[human[1]][1]],
-                         c='b',
-                         linewidth=3, zorder=11)
-            for cello in CELLO_LINKS:
-                plt.plot([kp_2d[cello[0]][0], kp_2d[cello[1]][0]], [kp_2d[cello[0]][1], kp_2d[cello[1]][1]],
+                          c='b', linewidth=3, zorder=11)
+            for instrument in INSTRMENT_LINKS:
+                plt.plot([kp_2d[instrument[0]][0], kp_2d[instrument[1]][0]], [kp_2d[instrument[0]][1], kp_2d[instrument[1]][1]],
                          c='saddlebrown', zorder=10)
             for bow in BOW_LINKS:
-                plt.plot([kp_2d[bow[0]][0], kp_2d[bow[1]][0]], [kp_2d[bow[0]][1], kp_2d[bow[1]][1]], c='cyan', zorder=10)
+                plt.plot([kp_2d[bow[0]][0], kp_2d[bow[1]][0]], [kp_2d[bow[0]][1], kp_2d[bow[1]][1]], 
+                         c='cyan', zorder=10)
 
             for string in STRING_LINKS:
-                plt.plot([kp_2d[string[0]][0], kp_2d[string[1]][0]], [kp_2d[string[0]][1], kp_2d[string[1]][1]], c='w', zorder=10)
-
+                plt.plot([kp_2d[string[0]][0], kp_2d[string[1]][0]], [kp_2d[string[0]][1], kp_2d[string[1]][1]], 
+                         c='w', zorder=10)
+        
+            plt.text(x = img_with_plot.shape[1]-150*len(str(f + start_frame - 1)), y = 150,
+                     s = str(f + start_frame - 1), c = 'b', fontsize = 125
+                    )
+        
         img_with_plot = img_with_plot[:, :, ::-1]
+        #img_with_plot = cv2.putText(img_with_plot, str(f + start_frame - 1), (img_with_plot.shape[1]-150*len(str(f + start_frame - 1)), 150), cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 0, 255), 2)
         # vis = cv2.resize(img_with_plot, (1150, 1328))
         # cv2.imshow('test', vis)
         # cv2.waitKey(0)
@@ -131,10 +144,39 @@ def overlay_process(proj_dir):
     root_path = os.path.abspath(f'../data/{parent_dir}')
     summary, summary_jsonfile_path = get_inform(proj_dir,root_path)
     
-    overlay_cam = '21334181'
-    cam_num = 'cam0'
+    CAM_DICT = {
+                'cam0': 21334181,
+                'cam1': 21334237,
+                'cam2': 21334180,
+                'cam3': 21334209,
+                'cam4': 21334208,
+                'cam5': 21334186,
+                'cam6': 21293326,
+                'cam7': 21293325,
+                'cam8': 21293324,
+                'cam9': 21334206,
+                'cam10': 21334220,
+                'cam11': 21334183,
+                'cam12': 21334207,
+                'cam13': 21334191,
+                'cam14': 21334184,
+                'cam15': 21334238,
+                'cam16': 21334221,
+                'cam17': 21334219,
+                'cam18': 21334190,
+                'cam19': 21334211,
+                'cam20': 21334218,
+                'cam21': 21334182,
+                'cam22': 21334236,
+                'cam23': 21334210
+            }
+    
+    cam_dict_index = 10
+    overlay_cam = str(list(CAM_DICT.values())[cam_dict_index])
+    cam_num = str(list(CAM_DICT.keys())[cam_dict_index])
     
     start_frame = summary['StartFrame'] # cello01 -> 128
+    #start_frame = 3000
     
     video_path = os.path.join(root_path,proj_dir,f'{proj_dir}_{overlay_cam}.avi')
     video = imageio.get_reader(os.path.abspath(video_path), 'ffmpeg')
@@ -147,22 +189,22 @@ def overlay_process(proj_dir):
     with open(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_dw = np.array(data_dict['kp_3d_all_dw_cp'])
-
+    
     # first frame is labeled manually
     manual_label = kp_3d_dw[0]
-
+    
     label_nut_l = manual_label[134]
     label_bridge_l = manual_label[136]
-
+    
     label_nut_l_bridge_l = math.dist(label_nut_l, label_bridge_l)
-
+    
     if instrument == 'cello':
-        real_nul_l_bridge_l = REAL_CELLO_NUT_L_BRIDGE_L
+        real_nul_l_bridge_l = REAL_CELLO_NUT_L_BRIDGE_L 
     elif instrument == 'violin':
         real_nul_l_bridge_l = REAL_VIOLIN_NUT_L_BRIDGE_L
     else:
         raise Exception('Instrument type is not supported, please modify it into "cello" or "violin"!')
-
+    
     ratio = real_nul_l_bridge_l / label_nut_l_bridge_l
 
     kp_3d_all /= ratio
@@ -184,10 +226,11 @@ def overlay_process(proj_dir):
             kp2d = kp2d.reshape((3,))
             kp2d = kp2d / kp2d[2:3]
             repro_2d[ff, kpt, :] = kp2d[:2]
-
+    
     visualize_overlay(proj_dir, overlay_cam, repro_2d, overlay_cam, video, start_frame, parent_dir = parent_dir, saveframes = False)
     print(f'{proj_dir} -> successful')
     print('-'*60)
+    return None
 
 
 if __name__ == "__main__":
