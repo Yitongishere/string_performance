@@ -320,6 +320,11 @@ CELLO_LINKS = [[133, 134],
                [137, 138],
                [138, 139]]
 
+CELLO_STRING_LINKS = [[142, 143],
+                      [144, 145],
+                      [146, 147],
+                      [148, 149]]
+
 CELLO_FINGERBOARD_LINKS = [[142, 144],
                            [144, 146],
                            [146, 148],
@@ -327,12 +332,21 @@ CELLO_FINGERBOARD_LINKS = [[142, 144],
                            [145, 147],
                            [147, 149]]
 
-BOW_LINKS = [[140, 141]]
+CELLO_BOW_LINKS = [[140, 141]]
 
-STRING_LINKS = [[142, 143],
-                [144, 145],
-                [146, 147],
-                [148, 149]]
+VIOLIN_LINKS = [[133, 134],
+                [133, 135],
+                [134, 136],
+                [135, 137],
+                [136, 137]]
+
+VIOLIN_STRING_LINKS = [[140, 141],
+                       [142, 143],
+                       [144, 145],
+                       [146, 147]]
+
+VIOLIN_BOW_LINKS = [[138, 139]]
+
 
 LEFT_HAND_THUMB_LINKS = [
     [91, 92],
@@ -342,7 +356,6 @@ LEFT_HAND_THUMB_LINKS = [
 ]
 
 LEFT_HAND_WITHOUT_THUMB_LINKS = [
-    # [5, 7],
     [91, 96],
     [96, 97],
     [97, 98],
@@ -578,18 +591,18 @@ def compute_axis_lim(triangulated_points, scale_factor=1):
     return xlim, ylim, zlim
 
 
-def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
+def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole',point_offset = 0):
     xlim, ylim, zlim = None, None, None
     framenum = data.shape[0]
     key_points_num = data.shape[1]
-
+    
     if not os.path.exists(f'./kp_3d_result/{proj_path}/{file_path}'):
         os.makedirs(f'./kp_3d_result/{proj_path}/{file_path}', exist_ok=True)
-
+    
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(f'./kp_3d_result/{proj_path}/{file_path}/output_{view_angle}.avi', fourcc, fps=30,
                           frameSize=[1000, 1000])
-
+    
     zoom_in = view_angle == 'finger'
     for f in range(framenum):
         kp_3d = data[f]
@@ -598,17 +611,24 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
         if xlim is None:
             if zoom_in:
                 string_data = data[f][142:155]
-                left_arm_data = data[f][5:10:2]
+                left_arm_data = data[f][5+point_offset:10:2]
                 string_with_arm = np.concatenate((string_data, left_arm_data), axis=0)
                 xlim, ylim, zlim = compute_axis_lim(string_with_arm, scale_factor=1.2)
             else:
                 xlim, ylim, zlim = compute_axis_lim(data[f])
-
-        if zoom_in:
-            axes3.view_init(azim=90, elev=-40, roll=10)
-        else:
-            # axes3.view_init(azim=90, elev=-60, roll=0)
-            axes3.view_init(azim=133, elev=-16, roll=-45)
+        
+        if point_offset == 0:
+            if zoom_in:
+                axes3.view_init(azim=90, elev=-40, roll=10)
+            else:
+                axes3.view_init(azim=133, elev=-16, roll=-45)
+        
+        elif point_offset == 2:
+            if zoom_in:
+                axes3.view_init(azim=15, elev=40, roll=180)
+            else:
+                axes3.view_init(azim=15, elev=0, roll=45)
+            
         # ic(xlim, ylim, zlim)
         # axes3.set_box_aspect(aspect=[5, 5, 5])
 
@@ -618,12 +638,12 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
         axes3.set_box_aspect((1, 1, 1))
 
         human_segs3d = kp_3d[tuple([HUMAN_LINKS])]
-        cello_segs3d = kp_3d[tuple([CELLO_LINKS])]
+        cello_segs3d = kp_3d[tuple([INSTRMENT_LINKS])]
         bow_segs3d = kp_3d[tuple([BOW_LINKS])]
         left_hand_segs3d = kp_3d[tuple([LEFT_HAND_LINKS])]
 
         if zoom_in:
-            if key_points_num > 142:
+            if key_points_num > 142-2*point_offset:
                 string_segs3d = kp_3d[tuple([STRING_LINKS])]
                 string_coll_3d = Line3DCollection(string_segs3d, edgecolors='black', linewidths=1, zorder=98)
                 axes3.add_collection(string_coll_3d)
@@ -638,14 +658,14 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
             axes3.scatter(kp_3d[5:10:2, 0],
                           kp_3d[5:10:2, 1],
                           kp_3d[5:10:2, 2], s=5, c='#1f77b4', zorder=1)
-            if key_points_num > 142:
-                axes3.scatter(kp_3d[142:150, 0],
-                              kp_3d[142:150, 1],
-                              kp_3d[142:150, 2], c='black', s=5, zorder=98)
+            if key_points_num > 142-2*point_offset:
+                axes3.scatter(kp_3d[142-2*point_offset:150-2*point_offset, 0],
+                              kp_3d[142-2*point_offset:150-2*point_offset, 1],
+                              kp_3d[142-2*point_offset:150-2*point_offset, 2], c='black', s=5, zorder=98)
             if True not in np.isnan(kp_3d[150]):
-                axes3.scatter(kp_3d[150, 0],
-                              kp_3d[150, 1],
-                              kp_3d[150, 2], c='r', s=30,
+                axes3.scatter(kp_3d[150-2*point_offset, 0],
+                              kp_3d[150-2*point_offset, 1],
+                              kp_3d[150-2*point_offset, 2], c='r', s=30,
                               zorder=100)  # zorder must be the biggest so that it would not be occluded
                 # axes3.scatter(kp_3d[151:155, 0],
                 #               kp_3d[151:155, 1],
@@ -688,9 +708,8 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
         # axes3.grid(None)
         # axes3.axis('off')
         plt.show()
-
         plt.savefig(f'./kp_3d_result/{proj_path}/{file_path}/{f}.jpg')
-
+        
         canvas = fig.canvas
         canvas.draw()
         width, height = canvas.get_width_height()
@@ -698,13 +717,13 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole'):
         image_array = image_array.reshape(height, width, 3)
         image_array = image_array[:, :, ::-1]  # rgb to bgr
         out.write(image_array)
-
+        
         print(f'{file_path} frame {f} graph generated.')
-
+        
         plt.close()
 
 # TODO: EDIT KEY POINT NUMBER
-KPT_NUM = 142
+#KPT_NUM = 142
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='triangulation_pipeline')
@@ -743,31 +762,38 @@ if __name__ == "__main__":
         end_frame = args.end_frame
     
     cam_param = summary['CameraParameter']
-
-    point_offset = 0
-    if instrument == 'violin':
-        point_offset += 2  # violin has less key points
-        KPT_NUM -= 2
     
-
     """read 2d results."""
-    # cello used cams
-    customed_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4', 'cam5', 'cam6',
-                 'cam7', 'cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13',
-                 'cam14', 'cam15', 'cam16', 'cam17', 'cam18', 'cam19', 'cam20', 'cam21', 'cam22', 'cam23']
-    
-    if instrument == 'violin':
-        customed_cams = ['cam8', 'cam9', 'cam10', 'cam11', 'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
+    if instrument == 'cello':
+        # cello used cams
+        customed_cams = ['cam0', 'cam1', 'cam2', 'cam3', 'cam4',
+                         'cam5', 'cam6','cam7', 'cam8', 'cam9',
+                         'cam10', 'cam11', 'cam12', 'cam13',
+                         'cam14', 'cam15', 'cam16', 'cam17',
+                         'cam18', 'cam19', 'cam20', 'cam21',
+                         'cam22', 'cam23']
+        point_offset = 0
+        KPT_NUM = 142
+        INSTRMENT_LINKS = CELLO_LINKS
+        STRING_LINKS = CELLO_STRING_LINKS
+        BOW_LINKS = CELLO_BOW_LINKS
         
-        CELLO_LINKS = CELLO_LINKS[:-3]
-        CELLO_LINKS.append([136, 137])
-        BOW_LINKS = np.array(BOW_LINKS) - 2
+    if instrument == 'violin':
+        # violin used cams
+        customed_cams = ['cam8', 'cam9', 'cam10', 'cam11',
+                         'cam12', 'cam13', 'cam20', 'cam21', 'cam22']
+        
+        point_offset = 2
+        KPT_NUM = 140
+        INSTRMENT_LINKS = VIOLIN_LINKS
+        STRING_LINKS = VIOLIN_STRING_LINKS
+        BOW_LINKS = VIOLIN_BOW_LINKS
     
     listed_cames = list(cam_param.keys())
     used_cams = sorted(set(listed_cames).intersection(set(customed_cams)),key=lambda s: int(s.split('cam')[1]))
     print(used_cams)
-
-
+    
+    
     kp_3d_all = []
     for ff in range(start_frame, end_frame + 1):
         kp_2d_all_cams = []
@@ -810,7 +836,7 @@ if __name__ == "__main__":
                 cam_ff.remove(cc)
                 continue
             # TODO: EDIT CELLO KEY POINTS
-            cello_2d_cc_ff = np.zeros([9-point_offset, 3])  # 9 cello key points in total (default score 0 will not be used)
+            cello_2d_cc_ff = np.zeros([9-point_offset, 3])  # 9 cello(7 violin) key points in total (default score 0 will not be used)
             try:
                 cello_json_path = f'../cello_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 cello_keypoints = json.load(open(cello_json_path))
@@ -837,18 +863,18 @@ if __name__ == "__main__":
         # kp_3d_all[ff] = kp_3d
         kp_3d_all.append(kp_3d)
         print(f'{proj_dir}: | Frame {ff} triangulation done.')
-
+    
     kp_3d_all = np.array(kp_3d_all)
-
+    
     # kp_3d_kalman = Kalman_filter(kp_3d_all, KPT_NUM)
     # kp_3d_smooth = Savgol_Filter(kp_3d_all, KPT_NUM)
-
-    # visualize_3d(kp_3d_all, f'{parent_dir}/{proj_dir}')
-
+    
+    #visualize_3d(kp_3d_all, f'{parent_dir}/{proj_dir}',point_offset = point_offset)
+    
     if not os.path.exists(f'./kp_3d_result/{parent_dir}/{proj_dir}/'):
         os.makedirs(f'./kp_3d_result/{parent_dir}/{proj_dir}/', exist_ok=True)
     data_dict = {'kp_3d_all_dw': kp_3d_all.tolist()}
     with open(f'./kp_3d_result/{parent_dir}/{proj_dir}/kp_3d_all_dw.json', 'w') as f:
         json.dump(data_dict, f)
-
+    
     # ffmpeg -r 30 -i sample%d.jpg output.mp4 -crf 0
