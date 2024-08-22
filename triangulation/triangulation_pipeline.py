@@ -811,26 +811,29 @@ if __name__ == "__main__":
         cam_ff = used_cams.copy()
         for cc in used_cams:
             actual_ff = ff
-            drop_frames = summary['FrameDropIDLog'][str(CAM_DICT[cc])]
-            #print('df:',drop_frames)
-            if drop_frames is not None:
-                drop_frames = sorted(drop_frames)
-                dropped = 0
-                removed = False  # whether the camera is removed
-                for drop_frame in drop_frames:
-                    if drop_frame < ff:
-                        dropped += 1
-                    elif drop_frame == ff:
-                        print(f'Remove cam {CAM_DICT[cc]} for frame {ff}!')
-                        cam_ff.remove(cc)
-                        removed = True
-                        break
-                    elif drop_frame > ff:
-                        break
-                if removed:
-                    continue
-                else:
-                    actual_ff -= dropped
+            try:
+                drop_frames = summary['FrameDropIDLog'][str(CAM_DICT[cc])]
+                #print('df:',drop_frames)
+                if drop_frames is not None:
+                    drop_frames = sorted(drop_frames)
+                    dropped = 0
+                    removed = False  # whether the camera is removed
+                    for drop_frame in drop_frames:
+                        if drop_frame < ff:
+                            dropped += 1
+                        elif drop_frame == ff:
+                            print(f'Remove cam {CAM_DICT[cc]} for frame {ff}!')
+                            cam_ff.remove(cc)
+                            removed = True
+                            break
+                        elif drop_frame > ff:
+                            break
+                    if removed:
+                        continue
+                    else:
+                        actual_ff -= dropped
+            except FileNotFoundError as e:
+                pass
             try:
                 human_joint = f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 human_2d_cc_ff = np.array(json.load(open(human_joint)))
