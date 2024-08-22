@@ -533,6 +533,10 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, eps
 
         cams_detected = keypoints_mview[:, j, 2] > kpt_thr
         cam_idx = np.where(cams_detected)[0]
+
+        # if j == 135:
+        #     ic(cam_idx)
+
         if np.sum(cams_detected) < 2:
             continue
         cam_combinations = list(itertools.combinations(cam_idx, 2))
@@ -567,6 +571,8 @@ def ransac_triangulate_joints(keypoints_mview, projection_matrices, num_kpt, eps
             inlier_set = sampled_cam.copy()
 
         inlier_list = sorted(list(inlier_set))
+        # if j == 135:
+        #     ic(inlier_list)
         kp3d = triangulate(keypoints_mview[inlier_list, j, :2], projection_matrices[inlier_list])
         keypoints_3d[j, :] = kp3d
 
@@ -596,12 +602,12 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole',point_o
     framenum = data.shape[0]
     key_points_num = data.shape[1]
     
-    if not os.path.exists(f'./kp_3d_result/{proj_path}/{file_path}'):
-        os.makedirs(f'./kp_3d_result/{proj_path}/{file_path}', exist_ok=True)
+    if not os.path.exists(f'./kp_3d_result_vis/{proj_path}/{file_path}'):
+        os.makedirs(f'./kp_3d_result_vis/{proj_path}/{file_path}', exist_ok=True)
     
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'./kp_3d_result/{proj_path}/{file_path}/output_{view_angle}.avi', fourcc, fps=30,
-                          frameSize=[1000, 1000])
+    # fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    # out = cv2.VideoWriter(f'./kp_3d_result/{proj_path}/{file_path}/output_{view_angle}.avi', fourcc, fps=30,
+    #                       frameSize=[1000, 1000])
     
     zoom_in = view_angle == 'finger'
     for f in range(framenum):
@@ -625,7 +631,8 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole',point_o
         
         elif point_offset == 2:
             if zoom_in:
-                axes3.view_init(azim=15, elev=40, roll=180)
+                print('zoom')
+                axes3.view_init(azim=0, elev=90, roll=90)
             else:
                 axes3.view_init(azim=15, elev=0, roll=45)
             
@@ -708,7 +715,7 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole',point_o
         # axes3.grid(None)
         # axes3.axis('off')
         plt.show()
-        plt.savefig(f'./kp_3d_result/{proj_path}/{file_path}/{f}.jpg')
+        plt.savefig(f'./kp_3d_result_vis/{proj_path}/{file_path}/{f}.jpg')
         
         canvas = fig.canvas
         canvas.draw()
@@ -716,7 +723,7 @@ def visualize_3d(data, proj_path, file_path='tri_3d', view_angle='whole',point_o
         image_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         image_array = image_array.reshape(height, width, 3)
         image_array = image_array[:, :, ::-1]  # rgb to bgr
-        out.write(image_array)
+        #out.write(image_array)
         
         print(f'{file_path} frame {f} graph generated.')
         
@@ -795,20 +802,19 @@ if __name__ == "__main__":
     
     
     kp_3d_all = []
+    
+    # start_frame = 871
+    # end_frame = 873
+    
     for ff in range(start_frame, end_frame + 1):
         kp_2d_all_cams = []
         cam_ff = used_cams.copy()
         for cc in used_cams:
             actual_ff = ff
-            try:
-                frame_drop_path = f'../data/{parent_dir}/{proj_dir}/videos/{CAM_DICT[cc]}_FrameDropIDLog.txt'
-                drop_frames = np.array(open(frame_drop_path).readlines(), dtype=int)
+            drop_frames = summary['FrameDropIDLog'][str(CAM_DICT[cc])]
+            #print('df:',drop_frames)
+            if drop_frames is not None:
                 drop_frames = sorted(drop_frames)
-                # remove camera that drop frames
-                # if ff in drop_frames:
-                #     print(f'Remove cam {CAM_DICT[cc]} for frame {ff}!')
-                #     cam_ff.remove(cc)
-                #     continue
                 dropped = 0
                 removed = False  # whether the camera is removed
                 for drop_frame in drop_frames:
@@ -825,9 +831,6 @@ if __name__ == "__main__":
                     continue
                 else:
                     actual_ff -= dropped
-
-            except FileNotFoundError as e:
-                pass
             try:
                 human_joint = f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
                 human_2d_cc_ff = np.array(json.load(open(human_joint)))
@@ -858,6 +861,9 @@ if __name__ == "__main__":
         # make projection matrix using filtered camera
         proj_mat = make_projection_matrix(cam_param, cams=cam_ff)
         kp_2d_all_cams = np.array(kp_2d_all_cams)
+        # ic(kp_2d_all_cams.shape)
+        # 324, 220, 207, 218
+        # ic(kp_2d_all_cams[2, 133:141])
         # kp_3d = triangulate_joints(kp_2d_all_cams, proj_mat, num_joint=133, kpt_thr=0.6)
         kp_3d = ransac_triangulate_joints(kp_2d_all_cams, proj_mat, num_kpt=KPT_NUM, epsilon=60, kpt_thr=0.6)
         # kp_3d_all[ff] = kp_3d
