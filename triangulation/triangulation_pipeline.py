@@ -832,7 +832,7 @@ if __name__ == "__main__":
                         continue
                     else:
                         actual_ff -= dropped
-            except FileNotFoundError as e:
+            except KeyError as e:
                 pass
             try:
                 human_joint = f'../human_kp_2d/kp_result/{parent_dir}/{proj_dir}/{CAM_DICT[cc]}/{actual_ff}.json'
