@@ -142,8 +142,8 @@ ROT_FINGER_INDICES = [[2, 3],
 REAL_CELLO_NUT_L_BRIDGE_L = 695
 REAL_VIOLIN_NUT_L_BRIDGE_L = 328
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='integrate_handpose_pipeline')
     parser.add_argument('--summary_jsonfile',
                         default='../data/cello/cello01/cello01_summary.json',
