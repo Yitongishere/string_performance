@@ -113,20 +113,20 @@ def get_hands_joints(dir_6d, frame, bone_lengths, cam_param, show_cam, instrumen
                                                       cam_weight_lh,
                                                       cam_weight_rh,
                                                       cam_param)
-
+    
     lh_bone_length = bone_lengths[0]
     rh_bone_length = bone_lengths[1]
 
     lh_joints_mano = get_joint_positions(lh_mano, lh_rot_averaged, lh_bone_length, MANO_PARENTS_INDICES)
     rh_joints_mano = get_joint_positions(rh_mano, rh_rot_averaged, rh_bone_length, MANO_PARENTS_INDICES)
     # visualize_hand(lh_joints_mano, MANO_CONNECTIONS)
-
+    
     lh_joints_dw = np.zeros(lh_joints_mano.shape)
     rh_joints_dw = np.zeros(rh_joints_mano.shape)
     for dict_id, mano_id in enumerate(MANO_TO_DW):
         lh_joints_dw[dict_id, :] = lh_joints_mano[mano_id, :]
         rh_joints_dw[dict_id, :] = rh_joints_mano[mano_id, :]
-
+    
     return lh_joints_dw, rh_joints_dw, lh_rot_averaged, rh_rot_averaged
 
 
@@ -150,16 +150,16 @@ def get_lh_bone_length(proj_dir):
 
     mano_layer = ManoLayer(mano_root='./mano/models', use_pca=False, flat_hand_mean=True, side='left')
     _, hand_joints_lh_0 = mano_layer(pose_0)
+    
     hand_joints_lh_0 = hand_joints_lh_0.numpy().squeeze()
 
     bone_length_mano_lh = get_hand_length(hand_joints_lh_0)
-
     # bone_length_dw_rh = get_hand_length(hand_joints_dw_rh)
 
-    bone_length_dw_lh_frameavg = np.average([get_hand_length(i) for i in hand_joints_dw_lh])
+    bone_length_dw_lh_frame = np.array([get_hand_length(i) for i in hand_joints_dw_lh if not np.isnan(i).any()])
 
+    bone_length_dw_lh_frameavg = np.average(bone_length_dw_lh_frame)
     ratio = np.average(bone_length_mano_rh / bone_length_dw_lh_frameavg)
-
     bone_length_mano_lh_scale = bone_length_mano_lh / ratio
     bone_length_mano_lh_scale = bone_length_mano_lh_scale.tolist()
 
@@ -326,7 +326,7 @@ if __name__ == "__main__":
     
     rh_bone_length = get_bone_length_dw(kp_3d_all, 1)[1]
     bone_lengths = np.array([lh_bone_length, rh_bone_length])
-
+    
     integrated_hand_rot = []
     for frame in range(len(kp_3d_all)):
         lh_wrist = kp_3d_all[frame][LEFT_WRIST_INDEX]
@@ -336,7 +336,7 @@ if __name__ == "__main__":
                                                                 cam_num, instrument, 
                                                                 parent_dir, proj_dir,
                                                                 cam_drop_frames)
-
+        
         hand_rot = np.concatenate([lh_rot, rh_rot], axis=0)
         integrated_hand_rot.append(hand_rot.tolist())
 
