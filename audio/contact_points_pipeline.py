@@ -4,6 +4,7 @@ import math
 import os.path
 import cv2
 from scipy.io import wavfile
+from pydub import AudioSegment
 import matplotlib.pyplot as plt
 import numpy as np
 from icecream import ic
@@ -110,6 +111,12 @@ def draw_contact_points(data, file_name, proj):
         plt.close()
 
 
+def get_sampling_rate_pydub(file_path):
+    audio = AudioSegment.from_file(file_path)
+    sample_rate = audio.frame_rate
+    return sample_rate
+    
+    
 def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs/background.wav'):
 
     # viterbi: smoothing for the pitch curve
@@ -120,7 +127,9 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         import torchcrepe
         import torch
         #audio, sr = torchcrepe.load.audio(audio_path)
-        audio, sr = librosa.load(audio_path, mono=True)
+        sr = get_sampling_rate_pydub(audio_path)
+        
+        audio, sr = librosa.load(audio_path, sr = sr, mono=True)
         audio_1channel = torch.tensor(audio).reshape(1,-1)
         sample_num = audio_1channel.shape[1]
         if instrument == 'cello':
@@ -129,6 +138,7 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
             freq_range = freq_position.PITCH_RANGES_VIOLIN
         min_freq = np.min(freq_range)
         max_freq = np.max(freq_range)
+        
         frame_num = math.floor(30 * sample_num / sr)
         frequency,confidence = torchcrepe.predict(audio_1channel,
                                                    sr,
@@ -138,12 +148,46 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
                                                    fmin = min_freq,
                                                    fmax = max_freq,
                                                    batch_size=2048,
-                                                   device='cuda:0')
+                                                   device='cuda:0') #cuda:0
         
+        
+        # We'll use a 15 millisecond window assuming a hop length of 5 milliseconds
+        win_length = 3
+        
+        # Median filter noisy confidence value
+        confidence = torchcrepe.filter.median(confidence, win_length)
+        
+        # Remove inharmonic regions
+        frequency = torchcrepe.threshold.At(.21)(frequency, confidence)
+        
+        # Optionally smooth pitch to remove quantization artifacts
+        frequency = torchcrepe.filter.mean(frequency, win_length)
+        
+        frequency = frequency[~torch.isnan(frequency)] 
+        print(torch.min(frequency))
+        print(torch.max(frequency))
+        
+        min_freq = torch.floor(torch.min(frequency))
+        max_freq = torch.ceil(torch.max(frequency))
+        
+        frequency,confidence = torchcrepe.predict(audio_1channel,
+                                                   sr,
+                                                   hop_length=int(sr / 30.),
+                                                   return_periodicity=True,
+                                                   model='full',
+                                                   fmin = min_freq,
+                                                   fmax = max_freq,
+                                                   batch_size=2048,
+                                                   device='cuda:0') #cuda:0
+        
+        confidence = torchcrepe.filter.median(confidence, win_length)
+        frequency = torchcrepe.threshold.At(.21)(frequency, confidence)
+        frequency = torchcrepe.filter.mean(frequency, win_length)
         
         frequency = frequency.reshape(-1,)
         confidence = confidence.reshape(-1,)
         time = np.arange(0,100/3.*frequency.size()[0],100/3.).reshape(-1,)[:len(frequency)]
+        
     elif crepe_backend == 'tensorflow':
         import crepe
         sr, audio = wavfile.read(audio_path)
@@ -246,7 +290,7 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
 
         rf_middle = middle_mcp + (middle_pip - middle_mcp) * 0.5
         rf_ring = ring_mcp + (ring_pip - ring_mcp) * 0.5
-        rf = rf_middle + (rf_ring - rf_middle) * 0.5
+        rf = rf_middle + (rf_ring - rf_middle) * 0.75
 
         mcps = [index_mcp, middle_mcp, ring_mcp, pinky_mcp]
         pips = [index_pip, middle_pip, ring_pip, pinky_pip]
@@ -279,7 +323,7 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
 
         smallest_dist = np.inf
         pressed_string_id = -1
-        for i in np.argsort(dist_list)[:2]:  # Obtain two closest potential contact points
+        for i in np.argsort(dist_list)[:5]:  # Obtain two closest potential contact points
             for tip in tips:
                 temp_dist = cal_dist(tip, contact_point_list[i])
                 if temp_dist < smallest_dist:
@@ -344,7 +388,14 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
             dist_tip_cp = cal_dist(contact_point, used_finger_tip)
             # threshold that finger is lifted
             dist_tip_pip = cal_dist(used_finger_tip, used_finger_pip)
-            if dist_tip_cp > dist_tip_pip:  # used finger lifted
+            dist_tip_mcp = cal_dist(used_finger_tip, used_finger_mcp)
+            if instrument == 'cello':
+                dist_thresh = dist_tip_pip
+            elif instrument == 'violin':
+                dist_thresh = dist_tip_mcp
+            else:
+                dist_thresh = dist_tip_mcp
+            if dist_tip_cp > dist_thresh:  # used finger lifted
                 contact_point = point_init()
                 used_finger_mcp = point_init()
                 used_finger_pip = point_init()
@@ -369,17 +420,17 @@ def mapping(proj, positions, instrument = 'cello', visualize=False):
 
     kp_3d_all_cp = np.array(kp_3d_all_cp)
     # Bow Points are currently not available, otherwise index should be set to 142
-    bias = 0
+    point_offset = 0
     
     if instrument == 'violin':
-        bias -= 2
-    kp_3d_all = kp_3d_all_cp[:, :(142+bias), :]
-    kp_3d_all_smooth = Savgol_Filter(kp_3d_all, 142+bias)
-    cp = kp_3d_all_cp[:, (142+bias):, :]
+        point_offset -= 2
+    kp_3d_all = kp_3d_all_cp[:, :(142+point_offset), :]
+    kp_3d_all_smooth = Savgol_Filter(kp_3d_all, 142+point_offset)
+    cp = kp_3d_all_cp[:, (142+point_offset):, :]
     kp_3d_all_cp_smooth = np.concatenate((kp_3d_all_smooth, cp), axis=1)
     for frame_id, finger_id in enumerate(used_finger):
         if not np.isnan(finger_id):
-           kp_3d_all_cp_smooth[frame_id][(151+bias):(155+bias)] = kp_3d_all_cp_smooth[frame_id][FULL_FINGER_INDICES[finger_id]]
+           kp_3d_all_cp_smooth[frame_id][(151+point_offset):(155+point_offset)] = kp_3d_all_cp_smooth[frame_id][FULL_FINGER_INDICES[finger_id]]
 
     if visualize:
         visualize_3d(kp_3d_all_cp_smooth, proj_dir, 'dw_cp_smooth_3d', 'whole')
@@ -430,7 +481,7 @@ if __name__ == '__main__':
     
     pitch_with_positions = freq_position.get_contact_position(pitch_results,instrument)
     positions = pitch_with_positions[:, -4:]
-    print(positions)
+    ic(positions.shape)
     if draw_cps:
         draw_contact_points(positions, proj, 'virtual_contact_point')
     new_positions = mapping(proj, positions, instrument=instrument, visualize=visualize)
