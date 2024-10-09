@@ -1,4 +1,4 @@
-# Due to multi tone and first frame occlusion while performing, we removed cello22, cello46, cello48, and cello49.
+# Due to not support multi tones and occlusions in the first frame of some videos while performing, we removed cello22, cello46, cello48, and cello49.
 # [label_nut_l_bridge_l] is used in [overlay.py] for reprojection verification. This variable is derived from the inference results of dwpose, and the results we uploaded have been amplified by the actual values.
 # You may creat a folder in /pose_estimation/results_upload and unzip the Mocap_Results in it.
 
