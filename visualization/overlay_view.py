@@ -16,7 +16,7 @@ from tools.load_summary import get_folder, get_inform, get_folder_extra
 from tools.rotate import frame_rotate
 from multiprocessing import Pool
 from tqdm import tqdm
-
+from label_ratio import label_nut_l_bridge_l_ratio
 
 REAL_CELLO_NUT_L_BRIDGE_L = 695
 REAL_VIOLIN_NUT_L_BRIDGE_L = 328
@@ -202,7 +202,7 @@ def overlay_process(proj_dir):
                 'cam23': 21334210
             }
     
-    cam_dict_index = 0
+    cam_dict_index = 10
     overlay_cam = str(list(CAM_DICT.values())[cam_dict_index])
     cam_num = str(list(CAM_DICT.keys())[cam_dict_index])
     
@@ -213,7 +213,10 @@ def overlay_process(proj_dir):
     video = imageio.get_reader(os.path.abspath(video_path), 'ffmpeg')
     cam_param = summary['CameraParameter']
     drop_frames = summary['FrameDropIDLog'][overlay_cam]
-
+    
+    kp_3d_all = np.load(f'../pose_estimation/result_upload/{parent_dir}/{proj_dir}.npy')
+    
+    '''
     with open(f'../pose_estimation/ik_result/{parent_dir}/{proj_dir}/kp_3d_ik_smooth.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_ik_smooth'])
@@ -222,13 +225,15 @@ def overlay_process(proj_dir):
         data_dict = json.load(f)
     kp_3d_dw = np.array(data_dict['kp_3d_all_dw_cp'])
     
-    # first frame is labeled manually
     manual_label = kp_3d_dw[0]
     
     label_nut_l = manual_label[134]
     label_bridge_l = manual_label[136]
     
     label_nut_l_bridge_l = math.dist(label_nut_l, label_bridge_l)
+    '''
+    
+    label_nut_l_bridge_l = label_nut_l_bridge_l_ratio[proj_dir]
     
     if instrument == 'cello':
         real_nul_l_bridge_l = REAL_CELLO_NUT_L_BRIDGE_L 
@@ -238,7 +243,6 @@ def overlay_process(proj_dir):
         raise Exception('Instrument type is not supported, please modify it into "cello" or "violin"!')
     
     ratio = real_nul_l_bridge_l / label_nut_l_bridge_l
-
     kp_3d_all /= ratio
 
     framenum = kp_3d_all.shape[0]
