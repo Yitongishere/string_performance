@@ -109,6 +109,7 @@ Torch: Please refer to [TORCHCREPE Documentation](https://github.com/maxrmorriso
 Follow the instructions below or the [official guide](https://github.com/google-deepmind/tapnet#live-demo) provided by google.
 
 Note: For inferring by pytorch models of TAPIR (TAP-Net/BootsTAPIR), you are required to install pytorch>=2.1.0 or you will miss key(s) in state_dict of the checkpoints when loading them and get wrong outputs.
+If you meet this question, please refer to [Pytorch <2.1.0 can't load the checkpoints correctly](https://github.com/google-deepmind/tapnet/issues/87) 
 
 #### 3.5.1. Install requirements for inference:
 `pip install -r requirements_inference.txt`
