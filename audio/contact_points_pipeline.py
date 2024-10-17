@@ -4,6 +4,7 @@ import math
 import os.path
 import cv2
 from scipy.io import wavfile
+from scipy.signal import butter, lfilter
 from pydub import AudioSegment
 import matplotlib.pyplot as plt
 import numpy as np
@@ -115,6 +116,63 @@ def get_sampling_rate_pydub(file_path):
     audio = AudioSegment.from_file(file_path)
     sample_rate = audio.frame_rate
     return sample_rate
+
+
+# 定义带通滤波器
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
+
+
+# 应用带通滤波器
+def bandpass_filter(data, lowcut, highcut, fs, order=5):
+    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = lfilter(b, a, data)
+    y[np.isnan(y)] = 0
+    return np.asarray(y, dtype = np.float32)
+
+
+def adjust(arr):
+    import torch
+    import numpy as np
+    output_var_type = None
+    if isinstance(arr, np.ndarray):
+        output_var_type = np.ndarray
+    elif isinstance(arr, list):
+        output_var_type = list
+    elif isinstance(arr, torch.Tensor):
+        output_var_type = torch.Tensor
+    else:
+        output_var_type = np.ndarray
+    
+    arr = np.asarray(arr)
+    arr_ori_shape = arr.shape
+    
+    if len(arr.shape) == 2:
+        arr = arr.reshape(-1)
+    #print(arr.shape)
+    for i in range(arr.shape[0]): #arr.shape[0]
+        if i == 0:
+            if abs(arr[i] -arr[i+1])>30 and abs(arr[i] - arr[i+2])>30:
+                arr[i] = np.mean([arr[i+1],arr[i+2]])
+        elif i == arr.shape[0] -1: # 
+            if abs(arr[i] - arr[i-1])>30 and abs(arr[i] - arr[i-2])>30:
+                arr[i] = np.mean([arr[i-1],arr[i-2]])
+        else:
+            if abs(arr[i] - arr[i-1])>30 and abs(arr[i] - arr[i+1])>30:
+                arr[i] = np.mean([arr[i-1],arr[i+1]])
+                
+    if output_var_type == np.ndarray:
+        return arr.reshape(arr_ori_shape)
+    elif output_var_type == list:
+        return arr.tolist()
+    elif output_var_type == torch.Tensor:
+        return torch.tensor(arr.reshape(arr_ori_shape))
+    else:
+        return arr.reshape(arr_ori_shape)
     
     
 def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs/background.wav'):
@@ -130,14 +188,19 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         sr = get_sampling_rate_pydub(audio_path)
         
         audio, sr = librosa.load(audio_path, sr = sr, mono=True)
-        audio_1channel = torch.tensor(audio).reshape(1,-1)
-        sample_num = audio_1channel.shape[1]
+        
         if instrument == 'cello':
             freq_range = freq_position.PITCH_RANGES_CELLO
         else:
             freq_range = freq_position.PITCH_RANGES_VIOLIN
         min_freq = np.min(freq_range)
         max_freq = np.max(freq_range)
+        
+        audio_filtered = bandpass_filter(audio, min_freq, max_freq, sr, order=2)
+
+        
+        audio_1channel = torch.tensor(audio_filtered).reshape(1,-1)
+        sample_num = audio_1channel.shape[1]
         
         frame_num = math.floor(30 * sample_num / sr)
         frequency,confidence = torchcrepe.predict(audio_1channel,
@@ -148,7 +211,8 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
                                                    fmin = min_freq,
                                                    fmax = max_freq,
                                                    batch_size=2048,
-                                                   device='cuda:0') #cuda:0
+                                                   device='cuda:0',#cuda:0
+                                                   decoder=torchcrepe.decode.weighted_argmax) #torchcrepe.decode.viterbi
         
         
         # We'll use a 15 millisecond window assuming a hop length of 5 milliseconds
@@ -156,6 +220,11 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         
         # Median filter noisy confidence value
         confidence = torchcrepe.filter.median(confidence, win_length)
+        
+        print(torch.min(frequency))
+        print(torch.max(frequency))
+        
+        frequency = adjust(frequency)
         
         # Remove inharmonic regions
         frequency = torchcrepe.threshold.At(.21)(frequency, confidence)
@@ -166,9 +235,12 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         frequency = frequency[~torch.isnan(frequency)] 
         print(torch.min(frequency))
         print(torch.max(frequency))
+        print(torch.min(confidence))
+        print(torch.max(confidence))
         
         min_freq = torch.floor(torch.min(frequency))
         max_freq = torch.ceil(torch.max(frequency))
+        
         
         frequency,confidence = torchcrepe.predict(audio_1channel,
                                                    sr,
@@ -178,11 +250,17 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
                                                    fmin = min_freq,
                                                    fmax = max_freq,
                                                    batch_size=2048,
-                                                   device='cuda:0') #cuda:0
+                                                   device='cuda:0',#cuda:0
+                                                   decoder=torchcrepe.decode.viterbi) #torchcrepe.decode.viterbi torchcrepe.decode.weighted_argmax
         
         confidence = torchcrepe.filter.median(confidence, win_length)
-        frequency = torchcrepe.threshold.At(.21)(frequency, confidence)
+        #frequency = torchcrepe.threshold.At(.21)(frequency, confidence)
         frequency = torchcrepe.filter.mean(frequency, win_length)
+        
+        print(torch.min(frequency))
+        print(torch.max(frequency))
+        print(torch.min(confidence))
+        print(torch.max(confidence))
         
         frequency = frequency.reshape(-1,)
         confidence = confidence.reshape(-1,)
