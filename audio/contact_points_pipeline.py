@@ -221,9 +221,6 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         # Median filter noisy confidence value
         confidence = torchcrepe.filter.median(confidence, win_length)
         
-        print(torch.min(frequency))
-        print(torch.max(frequency))
-        
         frequency = adjust(frequency)
         
         # Remove inharmonic regions
@@ -233,10 +230,6 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         frequency = torchcrepe.filter.mean(frequency, win_length)
         
         frequency = frequency[~torch.isnan(frequency)] 
-        print(torch.min(frequency))
-        print(torch.max(frequency))
-        print(torch.min(confidence))
-        print(torch.max(confidence))
         
         min_freq = torch.floor(torch.min(frequency))
         max_freq = torch.ceil(torch.max(frequency))
@@ -256,11 +249,6 @@ def pitch_detect_crepe(crepe_backend, proj, instrument='cello', audio_path='wavs
         confidence = torchcrepe.filter.median(confidence, win_length)
         #frequency = torchcrepe.threshold.At(.21)(frequency, confidence)
         frequency = torchcrepe.filter.mean(frequency, win_length)
-        
-        print(torch.min(frequency))
-        print(torch.max(frequency))
-        print(torch.min(confidence))
-        print(torch.max(confidence))
         
         frequency = frequency.reshape(-1,)
         confidence = confidence.reshape(-1,)
