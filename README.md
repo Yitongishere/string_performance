@@ -138,7 +138,7 @@ cd checkpoints
 wget -P checkpoints https://storage.googleapis.com/dm-tapnet/causal_tapir_checkpoint.npy
 ```
 
-Here is an effect of presentation.
+Here is an example of the key points result.
 
 <!-- <img src="https://metaverse-ai-lab-thu.github.io/String-Performance-Dataset-SPD/static/images/SPD_cello_tapnet_demo_21334181.gif" alt="cello keypoints Example" width="50%" height="50%" /> -->
 <img src="https://github.com/Metaverse-AI-Lab-THU/String-Performance-Dataset-SPD/blob/main/static/images/SPD_cello_tapnet_demo_21334181.gif" alt="cello keypoints Example" width="50%" height="50%" />
