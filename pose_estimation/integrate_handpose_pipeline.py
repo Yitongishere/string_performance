@@ -117,8 +117,8 @@ def get_hands_joints(dir_6d, frame, bone_lengths, cam_param, show_cam, instrumen
     lh_bone_length = bone_lengths[0]
     rh_bone_length = bone_lengths[1]
 
-    lh_joints_mano = get_joint_positions(lh_mano, lh_rot_averaged, lh_bone_length, MANO_PARENTS_INDICES)
-    rh_joints_mano = get_joint_positions(rh_mano, rh_rot_averaged, rh_bone_length, MANO_PARENTS_INDICES)
+    lh_joints_mano = get_joint_positions(lh_mano, lh_rot_averaged, MANO_PARENTS_INDICES, lh_bone_length)
+    rh_joints_mano = get_joint_positions(rh_mano, rh_rot_averaged, MANO_PARENTS_INDICES, rh_bone_length)
     # visualize_hand(lh_joints_mano, MANO_CONNECTIONS)
     
     lh_joints_dw = np.zeros(lh_joints_mano.shape)
@@ -332,7 +332,7 @@ if __name__ == "__main__":
         lh_wrist = kp_3d_all[frame][LEFT_WRIST_INDEX]
         rh_wrist = kp_3d_all[frame][RIGHT_WRIST_INDEX]
         lh_joints, rh_joints, lh_rot, rh_rot = get_hands_joints(dir_6d, frame + start_frame, 
-                                                                bone_lengths, cam_param,
+                                                                bone_lengths, cam_param, 
                                                                 cam_num, instrument, 
                                                                 parent_dir, proj_dir,
                                                                 cam_drop_frames)
