@@ -43,10 +43,10 @@ def get_hand_length(hands_dw):
     return bone_lengths
 
 
-def get_hands_joints(dir_6d, frame, bone_lengths, cam_param, show_cam, instrument, parent_dir, proj_dir, cam_drop_frames = None):
+def get_hands_joints(dir_6d, frame, bone_lengths, cam_param, show_cam, instrument, parent_dir, proj_dir, cam_drop_frames = None, filename_appendix=''):
     """输出dwpose顺序的手部关键点坐标"""
-    lh_mano = get_mano_init('left')
-    rh_mano = get_mano_init('right')
+    lh_mano = get_mano_init('left', filename_appendix)
+    rh_mano = get_mano_init('right', filename_appendix)
 
     if instrument == 'cello':
         cam_weight_lh = CAM_WEIGHTS_LH_CELLO.copy()
@@ -295,6 +295,8 @@ if __name__ == "__main__":
     parser.add_argument('--end_frame', default='786', type=int, required=False)
     parser.add_argument('--instrument', default='cello', type=str, required=True)
     parser.add_argument('--cam_num', default='cam0', type=str, required=True)
+    parser.add_argument('--end_frame', default='786', type=int, required=False)
+    parser.add_argument('--mano_file_appendix', default='CUSTOMED', type=str, required=False)
     
     args = parser.parse_args()
     with open(args.summary_jsonfile,'r') as f:
@@ -307,6 +309,7 @@ if __name__ == "__main__":
     end_frame = args.end_frame
     instrument = args.instrument
     cam_num = args.cam_num
+    mano_file_appendix = args.mano_file_appendix
     
     cam_param = summary['CameraParameter']
     cam_drop_frames = summary['FrameDropIDLog']
@@ -335,7 +338,7 @@ if __name__ == "__main__":
                                                                 bone_lengths, cam_param, 
                                                                 cam_num, instrument, 
                                                                 parent_dir, proj_dir,
-                                                                cam_drop_frames)
+                                                                cam_drop_frames, mano_file_appendix)
         
         hand_rot = np.concatenate([lh_rot, rh_rot], axis=0)
         integrated_hand_rot.append(hand_rot.tolist())
