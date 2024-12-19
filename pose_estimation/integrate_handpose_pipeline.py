@@ -295,8 +295,8 @@ if __name__ == "__main__":
     parser.add_argument('--end_frame', default='786', type=int, required=False)
     parser.add_argument('--instrument', default='cello', type=str, required=True)
     parser.add_argument('--cam_num', default='cam0', type=str, required=True)
-    parser.add_argument('--end_frame', default='786', type=int, required=False)
     parser.add_argument('--mano_file_appendix', default='CUSTOMED', type=str, required=False)
+    
     
     args = parser.parse_args()
     with open(args.summary_jsonfile,'r') as f:
