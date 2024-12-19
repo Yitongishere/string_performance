@@ -36,7 +36,7 @@ def integrate_ik_process(folder_name):
     6D hand poses are regressed by HPE.
     Further, handposes are integrated from different views in this section.
     """
-
+    
     integrate_command = f'{shell_python_cmd} integrate_handpose_pipeline.py ' \
                         f'--summary_jsonfile {summary_jsonfile_path} ' \
                         f'--parent_dir {parent_dir} ' \
@@ -53,12 +53,25 @@ def integrate_ik_process(folder_name):
     Integrated handposes are iked based on contact points.
     """
     
+    # If you want to load the bone length of smplh/smplx: please set [use_defined_bone_length] as 0
+    use_defined_bone_length = 0
+    # Please set the appendix to the mano file. The files are roughly named f"J3_left_{TYPE}" and "J3_right_{TYPE}" ,The TYPE can be 'CUSTOMED', 'SMPLX',  Or other custom types.
+    if use_defined_bone_length:
+        mano_file_appendix = 'CUSTOMED'
+    else:
+        mano_file_appendix = 'SMPLX'
+    
+    print(f'use_defined_bone_length[ik]:{bool(use_defined_bone_length)}')
+    print(f'mano_file_appendix[fk,ik]:[{mano_file_appendix}]')
+    
     ik_command =    f'{shell_python_cmd} inverse_kinematic_pipeline.py ' \
                     f'--summary_jsonfile {summary_jsonfile_path} ' \
                     f'--parent_dir {parent_dir} ' \
                     f'--proj_dir {proj_dir} ' \
                     f'--instrument {instrument} ' \
-                    f'--start_frame {start_frame_idx}'
+                    f'--start_frame {start_frame_idx} ' \
+                    f'--mano_file_appendix {mano_file_appendix} ' \
+                    f'--use_defined_bone_length {use_defined_bone_length}'
                     #f'--end_frame {end_frame_idx}'
 
     os.system(ik_command)
@@ -79,4 +92,5 @@ if __name__ == '__main__':
     
     os.chdir('./pose_estimation/')
     with Pool(processes=os.cpu_count()) as pool: 
-        pool.map(integrate_ik_process, folder_names)
+        pool.map(integrate_ik_process, folder_names[:-1])
+        #pool.map(integrate_ik_process, [folder_names[0]])
