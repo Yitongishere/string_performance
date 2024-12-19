@@ -6,4 +6,5 @@
 - 第四行：右手旋转6D（16x6）
 
 ## MANO手部模型
-![Alt text]([image.png](https://ar5iv.labs.arxiv.org/html/2008.08324/assets/x3.png))
+[FrankMocap: Fast Monocular 3D Hand and Body Motion Capture by Regression and Integration](https://ar5iv.labs.arxiv.org/html/2008.08324)
+![Figure 3:The hand model taken from SMPL-X. The example mesh is shown in (a) and the skeleton hierarchy is shown in (b).](https://ar5iv.labs.arxiv.org/html/2008.08324/assets/x3.png)
