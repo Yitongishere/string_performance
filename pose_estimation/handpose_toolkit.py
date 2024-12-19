@@ -40,13 +40,11 @@ def rotation_6d_to_R(d6):
     b3 = np.cross(b1, b2)
     b3 = b3 / np.linalg.norm(b3, axis=1, keepdims=True)
     R = np.stack((b1, b2, b3), axis=-2)
-
     return R
 
 
-def get_mano_init(hand_type='left'):
-
-    filepath = f"./mano_info/J3_{hand_type}.txt"
+def get_mano_init(hand_type='left', filename_appendix=''):
+    filepath = f"./mano_info/J3_{hand_type}_{filename_appendix}.txt"
     with open(filepath) as f:
         lines = f.readlines()
     init_pose = np.zeros((21, 3))
