@@ -31,6 +31,17 @@ def integrate_ik_process(folder_name):
     else:
         cam_num = 'cam10'
     
+    # If you want to load the bone length of smplh/smplx: please set [use_defined_bone_length] as 0
+    use_defined_bone_length = 0
+    # Please set the appendix to the mano file. The files are roughly named f"J3_left_{TYPE}" and "J3_right_{TYPE}" ,The TYPE can be 'CUSTOMED', 'SMPLX',  Or other custom types.
+    if use_defined_bone_length:
+        mano_file_appendix = 'CUSTOMED'
+    else:
+        mano_file_appendix = 'SMPLX'
+    
+    print(f'use_defined_bone_length[ik]:{bool(use_defined_bone_length)}')
+    print(f'mano_file_appendix[fk,ik]:[{mano_file_appendix}]')
+    
     """
     INTEGRATE handpose
     6D hand poses are regressed by HPE.
@@ -44,25 +55,16 @@ def integrate_ik_process(folder_name):
                         f'--start_frame {start_frame_idx} ' \
                         f'--end_frame {end_frame_idx} ' \
                         f'--instrument {instrument} ' \
+                        f'--mano_file_appendix {mano_file_appendix} ' \
                         f'--cam_num {cam_num}'
-                        
+                        #f'--end_frame {end_frame_idx}'
+    
     os.system(integrate_command)
 
     """
     INVERSE KINEMATIC
     Integrated handposes are iked based on contact points.
     """
-    
-    # If you want to load the bone length of smplh/smplx: please set [use_defined_bone_length] as 0
-    use_defined_bone_length = 0
-    # Please set the appendix to the mano file. The files are roughly named f"J3_left_{TYPE}" and "J3_right_{TYPE}" ,The TYPE can be 'CUSTOMED', 'SMPLX',  Or other custom types.
-    if use_defined_bone_length:
-        mano_file_appendix = 'CUSTOMED'
-    else:
-        mano_file_appendix = 'SMPLX'
-    
-    print(f'use_defined_bone_length[ik]:{bool(use_defined_bone_length)}')
-    print(f'mano_file_appendix[fk,ik]:[{mano_file_appendix}]')
     
     ik_command =    f'{shell_python_cmd} inverse_kinematic_pipeline.py ' \
                     f'--summary_jsonfile {summary_jsonfile_path} ' \
