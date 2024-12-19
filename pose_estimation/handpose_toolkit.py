@@ -69,8 +69,7 @@ def cal_dist(point1, point2):
     return np.sqrt(np.sum(np.square(point1 - point2)))
 
 
-def get_joint_positions(init_positions, rotations, bone_lengths, parent_indices):
-
+def get_joint_positions(init_positions, rotations, parent_indices, bone_lengths=None):
     positions = init_positions.copy()
     for i in range(1, 21):
         parent_index = parent_indices[i]
@@ -81,14 +80,19 @@ def get_joint_positions(init_positions, rotations, bone_lengths, parent_indices)
             parent_index = parent_indices[parent_index]
             R = np.dot(rotations[parent_index], R)
 
-        bone_length = bone_lengths[i - 1]
         original_parent_position = init_positions[parent_index]
         original_self_position = init_positions[i]
-        original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
-
+        
+        if bone_lengths is None:
+            original_vector = original_self_position - original_parent_position
+        else:
+            bone_length = bone_lengths[i - 1]
+            original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
+        
+        
         # calculate the displacement relative to the parent joint
         relative_position = np.dot(R, original_vector)
-
+        
         # accumulate to obtain global position
         positions[i] = relative_position + parent_position
 
@@ -179,7 +183,7 @@ def get_averaged_R(frame_info, R0_cam, cam_weights_lh, cam_weights_rh, cam_param
 
     # add R0 initially
     cam_num = str(CAM_DICT[R0_cam])
-
+    
     R0_lh = frame_info[cam_num]['R_lh'][0]
     R0_lh_converted = get_converted_R0(R0_cam, R0_lh, cam_param)
     R_matrix_lh = np.vstack((R0_lh_converted, R_matrix_lh))
