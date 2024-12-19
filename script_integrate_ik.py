@@ -32,7 +32,7 @@ def integrate_ik_process(folder_name):
         cam_num = 'cam10'
     
     # If you want to load the bone length of smplh/smplx: please set [use_defined_bone_length] as 0
-    use_defined_bone_length = 0
+    use_defined_bone_length = 1
     # Please set the appendix to the mano file. The files are roughly named f"J3_left_{TYPE}" and "J3_right_{TYPE}" ,The TYPE can be 'CUSTOMED', 'SMPLX',  Or other custom types.
     if use_defined_bone_length:
         mano_file_appendix = 'CUSTOMED'
