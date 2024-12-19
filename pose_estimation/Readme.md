@@ -6,4 +6,4 @@
 - 第四行：右手旋转6D（16x6）
 
 ## MANO手部模型
-![Alt text](image.png)
+![Alt text]([image.png](https://ar5iv.labs.arxiv.org/html/2008.08324/assets/x3.png))
