@@ -158,6 +158,7 @@ if __name__ == '__main__':
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
     parser.add_argument('--start_frame', default=128, type=str, required=True)
     parser.add_argument('--instrument', default='cello', type=str, required=False)
+    parser.add_argument('--mano_file_appendix', default='CUSTOMED', type=str, required=False)
     parser.add_argument('--use_defined_bone_length', default=1, type=int, required=True)
     
     args = parser.parse_args()
@@ -170,6 +171,7 @@ if __name__ == '__main__':
     proj_dir = args.proj_dir
     start_frame = int(args.start_frame)
     instrument = args.instrument
+    mano_file_appendix = args.mano_file_appendix
     use_defined_bone_length = args.use_defined_bone_length
     
     dir_6d = f"./6d_result/{parent_dir}/{proj_dir}"
@@ -211,8 +213,8 @@ if __name__ == '__main__':
         data_dict = json.load(f)
     integrated_hand_rot = np.array(data_dict['integrated_hand_rot'])
 
-    INIT_LEFT_POS = get_mano_init('left')
-    INIT_RIGHT_POS = get_mano_init('right')
+    INIT_LEFT_POS = get_mano_init('left', mano_file_appendix)
+    INIT_RIGHT_POS = get_mano_init('right', mano_file_appendix)
     
     if use_defined_bone_length:
         BONE_LENGTHS = get_bone_length_dw(kp_3d_pe, 1)
