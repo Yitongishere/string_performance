@@ -58,7 +58,7 @@ def construct_jacobian(init_pos, init_rot_vec, contact_finger, bone_length):
         new_rot_vec = init_rot_vec.copy()
         new_rot_vec[0][i] += delta_theta
         new_rot_mat = get_rot_mat(new_rot_vec)
-        new_pos = get_joint_positions(init_pos, new_rot_mat, bone_length, MANO_PARENTS_INDICES)
+        new_pos = get_joint_positions(init_pos, new_rot_mat, MANO_PARENTS_INDICES, bone_length)
         new_pos = mano_to_dw(new_pos, lh_wrist)
         new_tip_pos = new_pos[MANO_TIP[contact_finger]]
         delta_J = new_tip_pos - origin_tip_pos
@@ -76,12 +76,17 @@ def mano_to_dw(mano_pose, wrist):
     return dw_pose
 
 
-def wrist_obj_func(wrist_vec, rot_vec_except_wrist, target_hand_pos):
+def wrist_obj_func(wrist_vec, rot_vec_except_wrist, target_hand_pos, hand_type='left'):
     rot_vec_wrist = wrist_vec[0:3]
     trans_vec = wrist_vec[3:]
     rot_vec = np.vstack((rot_vec_wrist, rot_vec_except_wrist))
     rot_mat = get_rot_mat(rot_vec)
-    pos_mano = get_joint_positions(INIT_POS, rot_mat, BONE_LENGTH, MANO_PARENTS_INDICES)
+    if hand_type == 'left':
+        pos_mano = get_joint_positions(INIT_LEFT_POS, rot_mat, MANO_PARENTS_INDICES, LEFT_BONE_LENGTH)
+    elif hand_type == 'right':
+        pos_mano = get_joint_positions(INIT_RIGHT_POS, rot_mat, MANO_PARENTS_INDICES, RIGHT_BONE_LENGTH)
+    else:
+        raise Exception('wrong hand type')
     wrist_pos = target_hand_pos[0]
     pos_dw = mano_to_dw(pos_mano, wrist_pos)
     pos_dw_trans = pos_dw + trans_vec
@@ -97,7 +102,7 @@ def finger_obj_func(finger_rot, hand_rot, finger_indices, cp_pos, wrist_pos, fin
     for idx, f_id in enumerate(finger_indices):
         hand_rot[f_id] = finger_rot[idx]
     hand_rot_mat = get_rot_mat(hand_rot)
-    pos_mano = get_joint_positions(INIT_POS, hand_rot_mat, BONE_LENGTH, MANO_PARENTS_INDICES)
+    pos_mano = get_joint_positions(INIT_LEFT_POS, hand_rot_mat, MANO_PARENTS_INDICES, LEFT_BONE_LENGTH)
     pos_dw = mano_to_dw(pos_mano, wrist_pos)
     tip_pos = pos_dw[DW_TIP[finger_id]]
     dist = np.sum((tip_pos - cp_pos) ** 2)
@@ -153,6 +158,7 @@ if __name__ == '__main__':
     parser.add_argument('--proj_dir', default='cello_1113_scale', type=str, required=True)
     parser.add_argument('--start_frame', default=128, type=str, required=True)
     parser.add_argument('--instrument', default='cello', type=str, required=False)
+    parser.add_argument('--use_defined_bone_length', default=1, type=int, required=True)
     
     args = parser.parse_args()
     
@@ -164,6 +170,7 @@ if __name__ == '__main__':
     proj_dir = args.proj_dir
     start_frame = int(args.start_frame)
     instrument = args.instrument
+    use_defined_bone_length = args.use_defined_bone_length
     
     dir_6d = f"./6d_result/{parent_dir}/{proj_dir}"
 
@@ -204,9 +211,16 @@ if __name__ == '__main__':
         data_dict = json.load(f)
     integrated_hand_rot = np.array(data_dict['integrated_hand_rot'])
 
-    INIT_POS = get_mano_init('left')
-    BONE_LENGTHS = get_bone_length_dw(kp_3d_pe, 1)
-    BONE_LENGTH = BONE_LENGTHS[0]  # IK only involves left hand
+    INIT_LEFT_POS = get_mano_init('left')
+    INIT_RIGHT_POS = get_mano_init('right')
+    
+    if use_defined_bone_length:
+        BONE_LENGTHS = get_bone_length_dw(kp_3d_pe, 1)
+        LEFT_BONE_LENGTH = BONE_LENGTHS[0]  # IK only involves left hand
+        RIGHT_BONE_LENGTH = BONE_LENGTHS[1]
+    else:
+        LEFT_BONE_LENGTH = None
+        RIGHT_BONE_LENGTH = None
 
     if not os.path.exists(f'./ik_result/{parent_dir}/{proj_dir}'):
         os.makedirs(f'./ik_result/{parent_dir}/{proj_dir}', exist_ok=True)
@@ -219,6 +233,7 @@ if __name__ == '__main__':
     for frame_id in range(kp_3d_pe.shape[0]):
         lh_rh_rot = integrated_hand_rot[frame_id]
         lh_rot = lh_rh_rot[0:16]
+        
         rh_rot = lh_rh_rot[16:]
 
         lh_rot_vec = get_rot_vec(lh_rot)
@@ -249,14 +264,13 @@ if __name__ == '__main__':
         rh_wrist_trans_vec = [0, 0, 0]
         
         rh_wrist_vec = np.hstack((rh_wrist_rot_vec, rh_wrist_trans_vec))
-
         wrist_result = minimize(wrist_obj_func, rh_wrist_vec,
-                                args=(rh_rot_vec_except_wrist, rh_pos_dw),
+                                args=(rh_rot_vec_except_wrist, rh_pos_dw, 'right'),
                                 method='L-BFGS-B')
         optimized_wrist_vec = wrist_result.x
-        optimized_rotvec_wrist = optimized_wrist_vec[0:3]
-        optimized_trans_wrist = optimized_wrist_vec[3:]
-        rh_rot_vec = np.vstack((optimized_rotvec_wrist, rh_rot_vec_except_wrist))
+        optimized_rh_rotvec_wrist = optimized_wrist_vec[0:3]
+        optimized_rh_trans_wrist = optimized_wrist_vec[3:]
+        rh_rot_vec = np.vstack((optimized_rh_rotvec_wrist, rh_rot_vec_except_wrist))
         
         # Translation vector initialization(left_hand)
         lh_wrist_trans_vec = [0, 0, 0]
@@ -264,29 +278,35 @@ if __name__ == '__main__':
         lh_wrist_vec = np.hstack((lh_wrist_rot_vec, lh_wrist_trans_vec))
 
         wrist_result = minimize(wrist_obj_func, lh_wrist_vec,
-                                args=(lh_rot_vec_except_wrist, lh_pos_dw),
+                                args=(lh_rot_vec_except_wrist, lh_pos_dw, 'left'),
                                 method='L-BFGS-B')
         optimized_wrist_vec = wrist_result.x
-        optimized_rotvec_wrist = optimized_wrist_vec[0:3]
-        optimized_trans_wrist = optimized_wrist_vec[3:]
-        lh_rot_vec = np.vstack((optimized_rotvec_wrist, lh_rot_vec_except_wrist))
+        optimized_lh_rotvec_wrist = optimized_wrist_vec[0:3]
+        optimized_lh_trans_wrist = optimized_wrist_vec[3:]
+        lh_rot_vec = np.vstack((optimized_lh_rotvec_wrist, lh_rot_vec_except_wrist))
 
-        intermediate_rot_mat = get_rot_mat(lh_rot_vec)
-        intermediate_pos_mano = get_joint_positions(INIT_POS, intermediate_rot_mat, BONE_LENGTH, MANO_PARENTS_INDICES)
-        intermediate_pos_dw = mano_to_dw(intermediate_pos_mano, lh_wrist)
-        intermediate_pos_dw = intermediate_pos_dw + optimized_trans_wrist
-        intermediate_tip = intermediate_pos_dw[DW_TIP[used_finger]]
-        intermediate_pip = intermediate_pos_dw[DW_PIP[used_finger]]
-        intermediate_wrist = intermediate_pos_dw[0]
+        intermediate_lh_rot_mat = get_rot_mat(lh_rot_vec)
+        intermediate_lh_pos_mano = get_joint_positions(INIT_LEFT_POS, intermediate_lh_rot_mat, MANO_PARENTS_INDICES, LEFT_BONE_LENGTH)
+        intermediate_lh_pos_dw = mano_to_dw(intermediate_lh_pos_mano, lh_wrist)
+        intermediate_lh_pos_dw = intermediate_lh_pos_dw + optimized_lh_trans_wrist
+        # intermediate_tip = intermediate_lh_pos_dw[DW_TIP[used_finger]]
+        # intermediate_pip = intermediate_lh_pos_dw[DW_PIP[used_finger]]
+        # intermediate_wrist = intermediate_lh_pos_dw[0]
 
-        intermediate_frame[9] = intermediate_pos_dw[0]  # 9 is also wrist
+        intermediate_rh_rot_mat = get_rot_mat(rh_rot_vec)
+        intermediate_rh_pos_mano = get_joint_positions(INIT_RIGHT_POS, intermediate_rh_rot_mat, MANO_PARENTS_INDICES, RIGHT_BONE_LENGTH)
+        intermediate_rh_pos_dw = mano_to_dw(intermediate_rh_pos_mano, rh_wrist)
+        intermediate_rh_pos_dw = intermediate_rh_pos_dw + optimized_rh_trans_wrist
+
+        intermediate_frame[9] = intermediate_lh_pos_dw[0]  # 9 is also wrist
         intermediate_frame[10] = intermediate_frame[112]
-        intermediate_frame[91:112] = intermediate_pos_dw
-        intermediate_frame[112:133] = kp_3d_dw[frame_id][112:133]
+        intermediate_frame[91:112] = intermediate_lh_pos_dw
+        # intermediate_frame[112:133] = kp_3d_dw[frame_id][112:133]
+        intermediate_frame[112:133] = intermediate_rh_pos_dw
 
         kp_3d_ik_without_music[frame_id] = intermediate_frame
 
-        lh_wrist = lh_wrist + optimized_trans_wrist
+        lh_wrist = lh_wrist + optimized_lh_trans_wrist
         used_finger_rot = lh_rot_vec[used_finger_indices]
         # minimize only takes in 1-d x0
         used_finger_rot = used_finger_rot.reshape(-1)
@@ -304,7 +324,7 @@ if __name__ == '__main__':
             lh_rot_vec[f_id] = optimized_finger_rot[idx]
 
         optimized_rot_mat = get_rot_mat(lh_rot_vec)
-        optimized_pos_mano = get_joint_positions(INIT_POS, optimized_rot_mat, BONE_LENGTH, MANO_PARENTS_INDICES)
+        optimized_pos_mano = get_joint_positions(INIT_LEFT_POS, optimized_rot_mat, MANO_PARENTS_INDICES, LEFT_BONE_LENGTH)
         optimized_pos_dw = mano_to_dw(optimized_pos_mano, lh_wrist)
         optimized_tip = optimized_pos_dw[DW_TIP[used_finger]]
         optimized_pip = optimized_pos_dw[DW_PIP[used_finger]]
@@ -322,8 +342,9 @@ if __name__ == '__main__':
         extracted_frame[9] = optimized_pos_dw[0]  # 9 is also wrist
         extracted_frame[10] = extracted_frame[112]
         extracted_frame[91:112] = optimized_pos_dw
-        extracted_frame[112:133] = kp_3d_dw[frame_id][112:133]  # right hand should follow dw result
-        
+        # extracted_frame[112:133] = kp_3d_dw[frame_id][112:133]  # right hand should follow dw result
+        extracted_frame[112:133] = intermediate_rh_pos_dw
+
         kp_3d_ik[frame_id] = extracted_frame
 
         print(f'{frame_id} IKed. -> [{proj_dir}]')
