@@ -52,7 +52,7 @@ def construct_jacobian(init_pos, init_rot_vec, contact_finger, bone_length):
     Jacob_matrix = np.zeros([3, 3])
     for i in range(3):
         init_rot_mat = get_rot_mat(init_rot_vec)
-        origin_pos = get_joint_positions(init_pos, init_rot_mat, bone_length, MANO_PARENTS_INDICES)
+        origin_pos = get_joint_positions(init_pos, init_rot_mat, MANO_PARENTS_INDICES, bone_length)
         origin_pos = mano_to_dw(origin_pos, lh_wrist)
         origin_tip_pos = origin_pos[MANO_TIP[contact_finger]]
         new_rot_vec = init_rot_vec.copy()
@@ -212,17 +212,13 @@ if __name__ == '__main__':
     with open(f'../pose_estimation/fk_result/{parent_dir}/{proj_dir}/integrated_hand_rot.json', 'r') as f:
         data_dict = json.load(f)
     integrated_hand_rot = np.array(data_dict['integrated_hand_rot'])
-
+    
     INIT_LEFT_POS = get_mano_init('left', mano_file_appendix)
     INIT_RIGHT_POS = get_mano_init('right', mano_file_appendix)
     
-    if use_defined_bone_length:
-        BONE_LENGTHS = get_bone_length_dw(kp_3d_pe, 1)
-        LEFT_BONE_LENGTH = BONE_LENGTHS[0]  # IK only involves left hand
-        RIGHT_BONE_LENGTH = BONE_LENGTHS[1]
-    else:
-        LEFT_BONE_LENGTH = None
-        RIGHT_BONE_LENGTH = None
+    BONE_LENGTHS = get_bone_length_dw(kp_3d_pe, 1)
+    LEFT_BONE_LENGTH = BONE_LENGTHS[0]  # IK only involves left hand
+    RIGHT_BONE_LENGTH = BONE_LENGTHS[1]
 
     if not os.path.exists(f'./ik_result/{parent_dir}/{proj_dir}'):
         os.makedirs(f'./ik_result/{parent_dir}/{proj_dir}', exist_ok=True)
@@ -301,7 +297,7 @@ if __name__ == '__main__':
         intermediate_rh_pos_dw = intermediate_rh_pos_dw + optimized_rh_trans_wrist
 
         intermediate_frame[9] = intermediate_lh_pos_dw[0]  # 9 is also wrist
-        intermediate_frame[10] = intermediate_frame[112]
+        intermediate_frame[10] = intermediate_rh_pos_dw[0]
         intermediate_frame[91:112] = intermediate_lh_pos_dw
         # intermediate_frame[112:133] = kp_3d_dw[frame_id][112:133]
         intermediate_frame[112:133] = intermediate_rh_pos_dw
@@ -342,7 +338,7 @@ if __name__ == '__main__':
             global_translation.append(translation)
 
         extracted_frame[9] = optimized_pos_dw[0]  # 9 is also wrist
-        extracted_frame[10] = extracted_frame[112]
+        extracted_frame[10] = intermediate_rh_pos_dw[0]
         extracted_frame[91:112] = optimized_pos_dw
         # extracted_frame[112:133] = kp_3d_dw[frame_id][112:133]  # right hand should follow dw result
         extracted_frame[112:133] = intermediate_rh_pos_dw
