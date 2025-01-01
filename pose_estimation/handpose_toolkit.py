@@ -81,12 +81,9 @@ def get_joint_positions(init_positions, rotations, parent_indices, bone_lengths=
         original_parent_position = init_positions[parent_index]
         original_self_position = init_positions[i]
         
-        if bone_lengths is None:
-            original_vector = original_self_position - original_parent_position
-        else:
-            bone_length = bone_lengths[i - 1]
-            original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
-        
+        bone_length = bone_lengths[i - 1]
+        original_vector = bone_length * normalize_vector(original_self_position - original_parent_position)
+        # original_vector = original_self_position - original_parent_position
         
         # calculate the displacement relative to the parent joint
         relative_position = np.dot(R, original_vector)
