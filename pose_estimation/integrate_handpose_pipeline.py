@@ -1,7 +1,7 @@
 import argparse
 import json
 import os.path
-
+import math
 import numpy as np
 import torch
 from icecream import ic
@@ -27,6 +27,8 @@ def get_bone_length_dw(kp_3d_all, frame_num):
             bone_lengths[hand][idx] = cal_dist(point1, point2)
 
     return bone_lengths
+
+# def get_bone_length_mano(kp_3d_all, frame_num):
 
 
 def get_hand_length(hands_dw):
@@ -116,10 +118,11 @@ def get_hands_joints(dir_6d, frame, bone_lengths, cam_param, show_cam, instrumen
     
     lh_bone_length = bone_lengths[0]
     rh_bone_length = bone_lengths[1]
-
+    
     lh_joints_mano = get_joint_positions(lh_mano, lh_rot_averaged, MANO_PARENTS_INDICES, lh_bone_length)
     rh_joints_mano = get_joint_positions(rh_mano, rh_rot_averaged, MANO_PARENTS_INDICES, rh_bone_length)
-    # visualize_hand(lh_joints_mano, MANO_CONNECTIONS)
+    
+    #visualize_hand(lh_joints_mano, MANO_CONNECTIONS)
     
     lh_joints_dw = np.zeros(lh_joints_mano.shape)
     rh_joints_dw = np.zeros(rh_joints_mano.shape)
@@ -130,7 +133,7 @@ def get_hands_joints(dir_6d, frame, bone_lengths, cam_param, show_cam, instrumen
     return lh_joints_dw, rh_joints_dw, lh_rot_averaged, rh_rot_averaged
 
 
-def get_lh_bone_length(proj_dir):
+def get_lh_bone_length_old(proj_dir):
     print(os.path.abspath(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp_smooth.json'))
     with open(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp_smooth.json', 'r') as f:
         data_dict = json.load(f)
@@ -163,7 +166,44 @@ def get_lh_bone_length(proj_dir):
     bone_length_mano_lh_scale = bone_length_mano_lh / ratio
     bone_length_mano_lh_scale = bone_length_mano_lh_scale.tolist()
 
+    # ic(bone_length_mano_lh_scale)
+
     return bone_length_mano_lh_scale
+
+def get_bone_length_mano(kp_3d_dw, filename_appendix):
+
+    hand_joints_dw_lh = kp_3d_dw[:, 91:112, :]
+    bone_length_dw_lh_frame = np.array([get_hand_length(i) for i in hand_joints_dw_lh if not np.isnan(i).any()])
+    bone_length_dw_lh_frameavg = np.average(bone_length_dw_lh_frame)
+    hand_joints_dw_rh = kp_3d_dw[:, 112:133, :]
+    bone_length_dw_rh_frame = np.array([get_hand_length(i) for i in hand_joints_dw_rh if not np.isnan(i).any()])
+    bone_length_dw_rh_frameavg = np.average(bone_length_dw_rh_frame)
+
+    lh_mano = get_mano_init('left', filename_appendix)
+    rh_mano = get_mano_init('right', filename_appendix)
+
+    bone_length_mano_lh = np.zeros([20])
+    bone_length_mano_rh = np.zeros([20])
+    for idx, connection in enumerate(MANO_CONNECTIONS):
+        point1_lh = lh_mano[connection[0]]
+        point2_lh = lh_mano[connection[1]]
+        point1_rh = rh_mano[connection[0]]
+        point2_rh = rh_mano[connection[1]]
+        bone_length_mano_lh[idx] = cal_dist(point1_lh, point2_lh)
+        bone_length_mano_rh[idx] = cal_dist(point1_rh, point2_rh)
+    
+    lh_ratio = np.average(bone_length_mano_lh / bone_length_dw_lh_frameavg)
+    bone_length_mano_lh_scale = bone_length_mano_lh / lh_ratio
+    bone_length_mano_lh_scale = bone_length_mano_lh_scale.tolist()
+
+    rh_ratio = np.average(bone_length_mano_rh / bone_length_dw_rh_frameavg)
+    bone_length_mano_rh_scale = bone_length_mano_rh / rh_ratio
+    bone_length_mano_rh_scale = bone_length_mano_rh_scale.tolist()
+
+    ic(bone_length_mano_lh_scale)
+
+    return bone_length_mano_lh_scale, bone_length_mano_rh_scale
+
 
 
 CAM_WEIGHTS_LH_VIOLIN = {
@@ -282,7 +322,6 @@ DW_CONNECTIONS = [(0, 1), (1, 2), (2, 3), (3, 4),
 LEFT_WRIST_INDEX = 91
 RIGHT_WRIST_INDEX = 112
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='integrate_handpose_pipeline')
     parser.add_argument('--summary_jsonfile',
@@ -296,7 +335,6 @@ if __name__ == "__main__":
     parser.add_argument('--instrument', default='cello', type=str, required=True)
     parser.add_argument('--cam_num', default='cam0', type=str, required=True)
     parser.add_argument('--mano_file_appendix', default='CUSTOMED', type=str, required=False)
-    
     
     args = parser.parse_args()
     with open(args.summary_jsonfile,'r') as f:
@@ -318,16 +356,18 @@ if __name__ == "__main__":
     end_frame = summary['EndFrame']
 
     dir_6d = f"./6d_result/{parent_dir}/{proj_dir}"
-
-    lh_bone_length = get_lh_bone_length(proj_dir)
-
+    
     with open(f'../audio/cp_result/{parent_dir}/{proj_dir}/kp_3d_all_dw_cp.json', 'r') as f:
         data_dict = json.load(f)
     kp_3d_all = np.array(data_dict['kp_3d_all_dw_cp'])
-    
+
+    # lh_bone_length = get_lh_bone_length_old(proj_dir)
+    lh_bone_length, rh_bone_length = get_bone_length_mano(kp_3d_all, mano_file_appendix)
+
+    # ic(np.linalg.norm(lh_bone_length[0]))
     # bone_lengths = get_bone_length_dw(kp_3d_all, 1)
     
-    rh_bone_length = get_bone_length_dw(kp_3d_all, 1)[1]
+    # rh_bone_length = get_bone_length_dw(kp_3d_all, 1)[1]
     bone_lengths = np.array([lh_bone_length, rh_bone_length])
     
     integrated_hand_rot = []
@@ -345,6 +385,8 @@ if __name__ == "__main__":
 
         lh_joints_pano = lh_joints + lh_wrist
         rh_joints_pano = rh_joints + rh_wrist
+
+        # ic(np.linalg.norm(lh_joints[0]-lh_joints[5]))
 
         # kp_3d_all[frame][LEFT_WRIST_INDEX:LEFT_WRIST_INDEX+42] = np.vstack((lh_joints_pano, rh_joints_pano))
         kp_3d_all[frame][LEFT_WRIST_INDEX:RIGHT_WRIST_INDEX] = lh_joints_pano
