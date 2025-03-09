@@ -1,6 +1,14 @@
 import os
 import json
 
+def get_folder_extra(root_path):
+    folder_names = []
+    file_names = os.listdir(root_path)
+    for file in file_names:
+        if os.path.isdir(root_path + os.sep + file):
+            folder_names.append(file)
+    folder_names.sort()
+    return folder_names
 
 def get_folder(instrument,root_path):
     #instrument must be a string including "cello" or "violin"
